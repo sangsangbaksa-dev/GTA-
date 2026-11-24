@@ -9,6 +9,7 @@ namespace Harbor.Core.Sim;
 public sealed class SimWorld
 {
     public EventBus Events { get; } = new();
+    public ActorRegistry Actors { get; } = new();
     public FixedTickLoop Loop { get; }
     public ILog Log { get; }
 
