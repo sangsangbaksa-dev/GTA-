@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Vehicle",
+  "type": "object",
+  "required": ["id", "displayName", "class", "massKg", "engine", "handling"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+    "displayName": { "type": "string" },
+    "class": { "enum": ["compact", "sedan", "sports", "suv", "truck", "van", "bike", "emergency"] },
+    "massKg": { "type": "number", "minimum": 50 },
+    "engine": {
+      "type": "object",
+      "required": ["maxTorqueNm", "maxRpm", "gearRatios"],
+      "properties": {
+        "maxTorqueNm": { "type": "number" },
+        "maxRpm": { "type": "number" },
+        "gearRatios": { "type": "array", "items": { "type": "number" } }
+      }
+    },
+    "handling": {
+      "type": "object",
+      "required": ["steerAngleDeg", "suspensionStiffness", "frictionSlip"],
+      "properties": {
+        "steerAngleDeg": { "type": "number" },
+        "suspensionStiffness": { "type": "number" },
+        "frictionSlip": { "type": "number" }
+      }
+    },
+    "seats": { "type": "integer", "minimum": 1, "default": 2 },
+    "modelAsset": { "type": "string", "description": "res:// path of the visual scene" }
+  }
+}

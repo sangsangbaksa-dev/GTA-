@@ -1,0 +1,14 @@
+# Godot
+.godot/
+*.import.tmp
+export_presets.cfg
+# .NET
+bin/
+obj/
+*.user
+.vs/
+.idea/
+TestResults/
+# OS
+.DS_Store
+Thumbs.db

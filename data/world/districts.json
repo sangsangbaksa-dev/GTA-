@@ -1,0 +1,8 @@
+{
+  "chunkSizeMeters": 256,
+  "districts": [
+    { "id": "harbor_front", "displayName": "Harbor Front", "pedDensity": 0.8, "trafficDensity": 0.7, "policeResponseMultiplier": 1.0 },
+    { "id": "old_mill",     "displayName": "Old Mill",     "pedDensity": 0.4, "trafficDensity": 0.4, "policeResponseMultiplier": 1.4 },
+    { "id": "glass_heights","displayName": "Glass Heights","pedDensity": 1.0, "trafficDensity": 0.9, "policeResponseMultiplier": 0.7 }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "id": "calloway_compact",
+  "displayName": "Calloway Pip",
+  "class": "compact",
+  "massKg": 1050,
+  "engine": { "maxTorqueNm": 140, "maxRpm": 6500, "gearRatios": [3.4, 2.1, 1.4, 1.0, 0.8] },
+  "handling": { "steerAngleDeg": 32, "suspensionStiffness": 40, "frictionSlip": 2.6 },
+  "seats": 4,
+  "modelAsset": "res://assets/vehicles/calloway_compact/calloway_compact.tscn"
+}

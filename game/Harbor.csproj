@@ -1,0 +1,12 @@
+<Project Sdk="Godot.NET.Sdk/4.4.1">
+  <!-- Engine layer. May reference Godot and Harbor.Core; Harbor.Core must never reference this. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Harbor.Game</RootNamespace>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../core/src/Harbor.Core/Harbor.Core.csproj" />
+  </ItemGroup>
+</Project>
