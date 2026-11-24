@@ -1,0 +1,7 @@
+{
+  "safehouses": [
+    { "id": "sh_mill_warehouse",  "displayName": "Mill Warehouse",   "district": "old_mill",      "position": [-420, 0, 310],  "radius": 25, "price": 0 },
+    { "id": "sh_harbor_loft",     "displayName": "Dockside Loft",    "district": "harbor_front",  "position": [260, 0, -180],  "radius": 20, "price": 90000 },
+    { "id": "sh_heights_penthouse","displayName": "Heights Penthouse","district": "glass_heights", "position": [880, 0, 640],   "radius": 20, "price": 400000 }
+  ]
+}

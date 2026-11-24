@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EconomyConfig",
+  "type": "object",
+  "required": ["startingBalance", "deathDrop", "arrestFineFraction", "instantLaunderFee", "diminishingReturns"],
+  "properties": {
+    "startingBalance": { "type": "object", "properties": { "clean": { "type": "integer" }, "dirty": { "type": "integer" } } },
+    "deathDrop": { "type": "object", "required": ["fraction", "min", "max", "crewPrioritySeconds", "lifetimeSeconds", "pickupRadius"] },
+    "arrestFineFraction": { "type": "number", "minimum": 0, "maximum": 1 },
+    "logoutOutsideSafehouseTax": { "type": "number", "minimum": 0, "maximum": 1 },
+    "instantLaunderFee": { "type": "number", "minimum": 0, "maximum": 1 },
+    "diminishingReturns": { "type": "object", "required": ["startAtRepeat", "stepPenalty", "floor", "windowSeconds"] },
+    "bounty": { "type": "object" }
+  }
+}

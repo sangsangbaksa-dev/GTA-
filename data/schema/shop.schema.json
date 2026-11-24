@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Shop",
+  "type": "object",
+  "required": ["items"],
+  "properties": {
+    "items": { "type": "array", "items": {
+      "type": "object",
+      "required": ["id", "kind", "price", "currencies"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "kind": { "enum": ["weapon", "ammo", "armor", "medkit", "mod"] },
+        "ref": { "type": "string", "description": "weapon id (weapon) or weapon class (ammo)" },
+        "amount": { "type": "integer", "minimum": 1 },
+        "price": { "type": "integer", "minimum": 0 },
+        "currencies": { "type": "array", "items": { "enum": ["dirty", "clean"] }, "minItems": 1 },
+        "minRep": { "type": "integer", "minimum": 0 }
+      }
+    } }
+  }
+}

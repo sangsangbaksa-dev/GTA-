@@ -1,0 +1,9 @@
+{
+  "startingBalance": { "clean": 2000, "dirty": 0 },
+  "deathDrop": { "fraction": 0.25, "min": 100, "max": 25000, "crewPrioritySeconds": 30, "lifetimeSeconds": 300, "pickupRadius": 1.5 },
+  "arrestFineFraction": 0.4,
+  "logoutOutsideSafehouseTax": 0.1,
+  "instantLaunderFee": 0.45,
+  "diminishingReturns": { "startAtRepeat": 3, "stepPenalty": 0.2, "floor": 0.4, "windowSeconds": 3600 },
+  "bounty": { "minHeatLevel": 4, "holdSeconds": 60, "walletFraction": 0.2, "base": 2000 }
+}

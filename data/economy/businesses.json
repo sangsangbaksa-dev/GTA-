@@ -1,0 +1,7 @@
+{
+  "businesses": [
+    { "id": "biz_coin_laundromat",  "displayName": "Suds & Spin Laundromat", "district": "old_mill",      "feeRate": 0.30, "throughputPerHour": 20000, "price": 40000,  "dailyUpkeepRate": 0.05 },
+    { "id": "biz_pier_seafood",     "displayName": "Pier 9 Seafood Wholesale", "district": "harbor_front", "feeRate": 0.22, "throughputPerHour": 45000, "price": 120000, "dailyUpkeepRate": 0.05 },
+    { "id": "biz_heights_gallery",  "displayName": "Meridian Gallery",       "district": "glass_heights", "feeRate": 0.15, "throughputPerHour": 90000, "price": 350000, "dailyUpkeepRate": 0.05 }
+  ]
+}
