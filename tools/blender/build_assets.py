@@ -2,14 +2,16 @@
 
 Run headless:
     blender -b --factory-startup -P tools/blender/build_assets.py -- \
-        --out game/assets --props-out ../set/props [--only characters,weapons]
+        --out game/assets [--only characters,weapons]
+
+Props live in tools/blender/build_props.py (output goes to the Set repo).
 
 Outputs .glb files (glTF 2.0). Conventions (see game/assets/README.md):
   * 1 unit = 1 m, Blender Z-up / -Y forward (exporter converts to glTF Y-up).
   * Characters: one skinned mesh + armature "<name>_rig" (51 bones incl. fingers), A-pose, feet at origin.
     Built by characters.py / human.py (metaball body, garment layers, auto weights).
   * Weapons: origin at grip, barrel along -Y, empties "muzzle" and "grip_off".
-  * Buildings / props: mesh name ends with "-col" so Godot generates trimesh collision.
+  * Buildings: mesh name ends with "-col" so Godot generates trimesh collision.
 """
 import argparse
 import math
@@ -588,88 +590,6 @@ def bldg_garage():
     join(parts, "bldg_parking_garage-col")
 
 
-# ---------------------------------------------------------------- props (→ Set repo)
-
-
-def prop_crate():
-    reset(); p = P()
-    wood = mat("crate_wood", (0.55, 0.40, 0.22), rough=0.85)
-    parts = [box((1.2, 1.2, 1.2), (0, 0, 0.6), wood, bevel=0.02)]
-    for z in (0.08, 1.12):
-        for y in (-0.61, 0.61):
-            parts.append(box((1.22, 0.04, 0.14), (0, y, z), p["wood"]))
-        for x in (-0.61, 0.61):
-            parts.append(box((0.04, 1.22, 0.14), (x, 0, z), p["wood"]))
-    join(parts, "prop_crate_wood-col")
-
-
-def prop_barrel():
-    reset(); p = P()
-    red = mat("barrel_red", (0.65, 0.08, 0.05), metal=0.5, rough=0.5)
-    parts = [cyl(0.30, 0.9, (0, 0, 0.45), red, verts=16)]
-    for z in (0.2, 0.7):
-        parts.append(cyl(0.31, 0.04, (0, 0, z), p["gunmetal"], verts=16))
-    parts.append(box((0.25, 0.01, 0.2), (0, -0.30, 0.45), mat("hazard_label", (0.95, 0.8, 0.1))))
-    join(parts, "prop_barrel_explosive-col")
-
-
-def prop_barrier():
-    reset(); p = P()
-    parts = [
-        box((2.0, 0.6, 0.3), (0, 0, 0.15), p["concrete"]),
-        box((2.0, 0.3, 0.55), (0, 0, 0.55), p["concrete"], bevel=0.03),
-        box((2.0, 0.18, 0.12), (0, 0, 0.88), p["concrete"]),
-        box((0.3, 0.32, 0.1), (-0.6, 0, 0.75), mat("stripe_white_red", (0.85, 0.15, 0.1))),
-        box((0.3, 0.32, 0.1), (0.6, 0, 0.75), mat("stripe_white_red", (0.85, 0.15, 0.1))),
-    ]
-    join(parts, "prop_concrete_barrier-col")
-
-
-def prop_sandbags():
-    reset(); p = P()
-    sack = mat("sack", (0.55, 0.50, 0.36), rough=1.0)
-    parts = []
-    for row in range(3):
-        n = 4 - (row % 2)
-        for i in range(n):
-            x = -0.75 + i * 0.5 + (0.25 if row % 2 else 0)
-            parts.append(sphere(0.25, (x, 0, 0.13 + row * 0.22), sack, scale=(1.0, 0.75, 0.48), seg=10))
-    join(parts, "prop_sandbag_wall-col")
-
-
-def prop_dumpster():
-    reset(); p = P()
-    green = mat("dumpster_green", (0.10, 0.30, 0.15), metal=0.4, rough=0.6)
-    parts = [
-        box((1.8, 1.1, 1.1), (0, 0, 0.65), green, bevel=0.03),
-        box((1.85, 1.15, 0.06), (0, 0.02, 1.23), p["black"], rot=(math.radians(-4), 0, 0)),
-    ]
-    for x in (-0.75, 0.75):
-        for y in (-0.45, 0.45):
-            parts.append(cyl(0.06, 0.05, (x, y, 0.06), p["black"], rot=(0, math.radians(90), 0), verts=8))
-    join(parts, "prop_dumpster-col")
-
-
-def prop_ammo_box():
-    reset(); p = P()
-    olive = mat("ammo_olive", (0.22, 0.25, 0.14), metal=0.3, rough=0.6)
-    parts = [
-        box((0.30, 0.15, 0.18), (0, 0, 0.09), olive, bevel=0.008),
-        box((0.31, 0.16, 0.03), (0, 0, 0.18), olive),
-        box((0.12, 0.02, 0.02), (0, 0, 0.205), p["black"]),
-        box((0.10, 0.005, 0.05), (0, -0.078, 0.10), mat("ammo_label", (0.9, 0.8, 0.2))),
-    ]
-    join(parts, "prop_ammo_box-col")
-
-
-def prop_cone():
-    reset(); p = P()
-    orange = mat("cone_orange", (0.95, 0.35, 0.05), rough=0.6)
-    parts = [box((0.4, 0.4, 0.04), (0, 0, 0.02), p["black"]), cyl(0.15, 0.68, (0, 0, 0.38), orange, verts=12, r2=0.03)]
-    parts.append(cyl(0.11, 0.08, (0, 0, 0.42), mat("reflect", (0.95, 0.95, 0.95), emit=(0.3, 0.3, 0.3)), verts=12, r2=0.09))
-    join(parts, "prop_traffic_cone-col")
-
-
 # ---------------------------------------------------------------- main
 
 GROUPS = {
@@ -686,15 +606,6 @@ GROUPS = {
         ("buildings/bldg_corner_shop.glb", bldg_shop),
         ("buildings/bldg_parking_garage.glb", bldg_garage),
     ],
-    "props": [
-        ("prop_crate_wood.glb", prop_crate),
-        ("prop_barrel_explosive.glb", prop_barrel),
-        ("prop_concrete_barrier.glb", prop_barrier),
-        ("prop_sandbag_wall.glb", prop_sandbags),
-        ("prop_dumpster.glb", prop_dumpster),
-        ("prop_ammo_box.glb", prop_ammo_box),
-        ("prop_traffic_cone.glb", prop_cone),
-    ],
 }
 
 
@@ -702,14 +613,10 @@ def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="game/assets")
-    ap.add_argument("--props-out", default=None, help="props dir (Set repo); skipped if omitted")
-    ap.add_argument("--only", default="characters,weapons,buildings,props")
+    ap.add_argument("--only", default="characters,weapons,buildings")
     a = ap.parse_args(argv)
     for g in a.only.split(","):
-        root = a.props_out if g == "props" else a.out
-        if root is None:
-            print(f"[harbor] skip {g} (no output dir)")
-            continue
+        root = a.out
         for rel, fn in GROUPS[g]:
             fn()
             export(os.path.abspath(os.path.join(root, rel)))

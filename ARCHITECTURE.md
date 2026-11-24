@@ -59,11 +59,17 @@
 | `Harbor.Core.Heat` | 수배 레벨, 경찰 응답 규칙 |
 | `Harbor.Core.Missions` | 데이터 기반 미션 실행기, 목표 타입, 스토리 플래그 |
 | `Harbor.Core.Save` | 세이브 모델, 버전·마이그레이션, 직렬화 |
+| `Harbor.Core.Net` | 서버 권한형 멀티: 전송 포트, 메시지, 세션, 예측·보정, 보간, 랙 보정 |
+| `Harbor.Core.Economy` | 화폐·계정·원장, 상점, 세탁, 사망 드롭 |
+| `Harbor.Core.Activities` | 의뢰·습격·구역전·보급·현상금 |
 
 > 처음엔 하나의 `Harbor.Core` 어셈블리 안에 네임스페이스로 나누고, 커지면 위 표대로 분리한다. 의존 방향은 처음부터 지킨다.
 
 **코어 내부 의존 방향** (아래로만)
 ```
+Activities ─> Economy ─> Core
+Activities ─> Missions
+Net ─> (모든 모듈의 커맨드/스냅샷; 규칙 모듈은 Net을 모른다)
 Missions ─┬─> Heat ─┐
           ├─> Combat ┼─> Agents ─┬─> World ─> Data ─> Core
           └─> Vehicles ──────────┘
@@ -167,9 +173,26 @@ Godot: 이벤트 받아 피격 애니메이션·이펙트·HUD
 - 명명: `chr_*`, `wpn_*`, `bldg_*`, `prop_*`. 충돌이 필요한 메시는 이름 끝 `-col`(Godot 임포트가 충돌 생성).
 - 미리보기 PNG: `tools/blender/render_preview.py` → `docs/art/`.
 
-### 3.11 네트워킹
-- **Phase 1: 싱글플레이.** 단, 코어가 "커맨드 입력 → 고정 틱 → 상태"라서 나중에 서버 권한형 멀티로 확장하기 좋다.
-- 멀티 도입은 별도 ADR.
+### 3.11 네트워킹 (핵심 모듈) — ADR 0004
+**서버 권한형 멀티플레이.** 전용 서버는 Godot 없이 `Harbor.Core`만 호스팅하는 .NET 프로세스. 싱글플레이도 로컬 서버 + 클라 1명.
+
+```
+ 클라이언트(Godot)                              서버(.NET, 엔진 없음)
+ 입력 → InputCmd(틱, 이동, 조준, 버튼) ──UDP──▶ InputBuffer → SimWorld.Step (30Hz)
+ 예측: Movement.Step 로컬 적용                    │ 히트 판정(랙 보정 History 되감기)
+ 보정: 서버 상태 + 미확인 입력 재적용 ◀──Snapshot── │ 경제·의뢰·전투 규칙
+ 다른 엔티티: 100ms 보간                           └ 관심 영역(청크 반경)별 스냅샷 20Hz
+```
+- 코어 `Net/`: `ITransport`(포트), `NetWriter/NetReader`(이진 직렬화), `Messages`, `ServerSession`, `ClientSession`, `Prediction`, `Interpolation`, `LagCompHistory`, 테스트용 `InMemoryTransport`(지연·손실).
+- `Movement.Step`은 결정적 순수 함수 — 서버·클라가 같은 코드로 이동을 계산.
+- 차량 근거리 물리만 예외: 운전자 클라이언트 1차 권한 + 서버 타당성 검사.
+
+### 3.12 경제 — ADR 0005
+- 두 화폐(더러운 돈/깨끗한 돈), 계정(지갑·은행·금고·크루·사업체·시스템), **이중 기입 원장 + 멱등 TxId**. 서버 전용.
+- 데이터: `data/economy/*.json` (가격, 세탁 수수료, 드롭 비율, 보상 감쇠).
+
+### 3.13 활동
+- 의뢰·습격·구역전·보급·현상금. 데이터 `data/activities/`, 코어 `Activities/`. 기획: `docs/CONTENT_DESIGN.md`.
 
 ---
 
@@ -207,6 +230,17 @@ Godot: 이벤트 받아 피격 애니메이션·이펙트·HUD
 | M3 | 스트리밍 | 청크 로딩/언로드, 원점 이동, 4km² |
 | M4 | 살아있는 거리 + 수배 | 보행자·교통 에이전트, District 1개, Heat 3단계, 경찰 추격 |
 | M5 | 미션 + 세이브 | JSON 미션 3개, 세이브/로드 |
+
+멀티플레이·경제 트랙 (기획: `docs/CONTENT_DESIGN.md` §10) — 코어+테스트만으로 완결, Godot 연결은 G1:
+
+| 단계 | 목표 |
+|---|---|
+| N1 | 네트워크 기반: 전송 포트, 직렬화, 서버/클라 세션, 예측·보정, 보간 |
+| C1 | 전투 규칙: 방어구·부위·감쇠·관통·폭발·다운, 랙 보정 히트 판정 |
+| E1 | 경제: 원장, 지갑/은행/크루 금고, 사망 드롭, 상점, 세탁 |
+| A1 | 활동: 의뢰·습격 운반/분배·구역·보급·현상금, 보상 감쇠 |
+| G1 | Godot 연결: ENet 어댑터, 예측 표현, HUD |
+| S1 | 전용 서버 호스트 + 프로필 저장소 |
 
 ---
 
