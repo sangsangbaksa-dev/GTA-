@@ -162,6 +162,7 @@ Godot: 이벤트 받아 피격 애니메이션·이펙트·HUD
 
 ### 3.10 에셋 파이프라인
 - 원본 = `tools/blender/build_assets.py` (블렌더 4.2 헤드리스, `bpy`). 산출물 `.glb`는 Git LFS.
+- 사람: `human.py` + `characters.py` — 메타볼 몸 → 리메시 → 51본 리그(손가락 포함) 자동 웨이트 → 옷 레이어가 몸 웨이트 상속. 캐릭터당 ~5만 면.
 - 캐릭터·총기·건물 → `game/assets/{characters,weapons,buildings}/`. 범용 소품 → **sangsangbaksa-dev/Set** 리포 `props/`.
 - 명명: `chr_*`, `wpn_*`, `bldg_*`, `prop_*`. 충돌이 필요한 메시는 이름 끝 `-col`(Godot 임포트가 충돌 생성).
 - 미리보기 PNG: `tools/blender/render_preview.py` → `docs/art/`.

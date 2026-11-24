@@ -57,9 +57,9 @@ sc.world = w
 
 sc.render.engine = "CYCLES"
 sc.cycles.device = "CPU"
-sc.cycles.samples = 24
+sc.cycles.samples = 48
 sc.cycles.use_denoising = True
-sc.render.resolution_x, sc.render.resolution_y = 1600, 700
+sc.render.resolution_x, sc.render.resolution_y = 2000, 860
 sc.view_settings.view_transform = "AgX"
 sc.render.filepath = out
 bpy.ops.render.render(write_still=True)
