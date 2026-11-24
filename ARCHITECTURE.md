@@ -67,8 +67,9 @@
 
 **코어 내부 의존 방향** (아래로만)
 ```
-Activities ─> Economy ─> Core
-Activities ─> Missions
+Activities ─┬─> Economy ─> Core
+            ├─> Missions ─> Sim
+            └─> Heat
 Net ─> (모든 모듈의 커맨드/스냅샷; 규칙 모듈은 Net을 모른다)
 Missions ─┬─> Heat ─┐
           ├─> Combat ┼─> Agents ─┬─> World ─> Data ─> Core
@@ -116,7 +117,8 @@ Godot에는 UE의 World Partition 같은 내장 기능이 없으므로 직접 �
 - 인지(시야·소리)는 코어 이벤트 + 필요시 `IPhysicsQuery` 레이캐스트.
 
 ### 3.4 수배(Heat)
-- 범죄 이벤트(`CrimeCommitted`) → 열기 점수 → 단계(0~5) → 경찰 스폰 규칙. 테이블은 `data/ai/heat.json`.
+- 범죄 보고(`HeatSystem.Report`) → 열기 점수 → 단계(0~5) → 경찰 스폰 규칙. 테이블은 `data/ai/heat.json`.
+- 같은 범죄 반복은 스로틀, 조용히 있으면 감쇠. 사망·접속 종료 시 초기화. 경찰 출동은 Agents(M4). ADR 0006.
 
 ### 3.5 전투 (핵심 시스템)
 게임의 중심. 규칙은 전부 코어, Godot은 조준·표현만.
@@ -192,7 +194,9 @@ Godot: 이벤트 받아 피격 애니메이션·이펙트·HUD
 - 데이터: `data/economy/*.json` (가격, 세탁 수수료, 드롭 비율, 보상 감쇠).
 
 ### 3.13 활동
-- 의뢰·습격·구역전·보급·현상금. 데이터 `data/activities/`, 코어 `Activities/`. 기획: `docs/CONTENT_DESIGN.md`.
+- 의뢰·습격·구역전·보급·현상금. 데이터 `data/activities/`, 코어 `Activities/`. 기획: `docs/CONTENT_DESIGN.md`. ADR 0006.
+- 의뢰 = `Missions` 목표 목록(reach/interact/hold/escape/deliver). 보상은 원장 정산, 습격 몫은 에스크로 → 크루장 분배.
+- 운반 아이템(`CarrySystem`): 감속·달리기 불가·권총만, 다운/사망 시 떨어뜨림.
 
 ---
 
@@ -235,10 +239,10 @@ Godot: 이벤트 받아 피격 애니메이션·이펙트·HUD
 
 | 단계 | 목표 |
 |---|---|
-| N1 | 네트워크 기반: 전송 포트, 직렬화, 서버/클라 세션, 예측·보정, 보간 |
-| C1 | 전투 규칙: 방어구·부위·감쇠·관통·폭발·다운, 랙 보정 히트 판정 |
-| E1 | 경제: 원장, 지갑/은행/크루 금고, 사망 드롭, 상점, 세탁 |
-| A1 | 활동: 의뢰·습격 운반/분배·구역·보급·현상금, 보상 감쇠 |
+| N1 | 네트워크 기반: 전송 포트, 직렬화, 서버/클라 세션, 예측·보정, 보간 (완료) |
+| C1 | 전투 규칙: 방어구·부위·감쇠·관통·폭발·다운, 랙 보정 히트 판정 (완료) |
+| E1 | 경제: 원장, 지갑/은행/크루 금고, 사망 드롭, 상점, 세탁 (완료) |
+| A1 | 활동: 의뢰·습격 운반/분배·구역·보급·현상금, 보상 감쇠 (완료) |
 | G1 | Godot 연결: ENet 어댑터, 예측 표현, HUD |
 | S1 | 전용 서버 호스트 + 프로필 저장소 |
 

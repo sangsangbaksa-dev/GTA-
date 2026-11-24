@@ -1,0 +1,49 @@
+{
+  "id": "ct_dock_smuggle",
+  "displayName": "Dockside Run",
+  "kind": "contract",
+  "district": "harbor_front",
+  "minRep": 2,
+  "minPlayers": 1,
+  "maxPlayers": 4,
+  "timeLimitSeconds": 900,
+  "cooldownSeconds": 300,
+  "partyRadius": 60,
+  "reward": {
+    "currency": "dirty",
+    "min": 4000,
+    "max": 5000,
+    "xp": 300
+  },
+  "objectives": [
+    {
+      "type": "reach",
+      "label": "obj.reach_container",
+      "at": [
+        240,
+        0,
+        -260
+      ],
+      "radius": 6
+    },
+    {
+      "type": "deliver",
+      "label": "obj.deliver_crate",
+      "item": "prop_weapon_crate",
+      "at": [
+        242,
+        0,
+        -262
+      ],
+      "to": [
+        -380,
+        0,
+        280
+      ],
+      "count": 1,
+      "valueEach": 0,
+      "radius": 6,
+      "crime": "smuggling"
+    }
+  ]
+}

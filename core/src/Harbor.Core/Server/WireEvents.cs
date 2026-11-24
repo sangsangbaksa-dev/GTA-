@@ -20,8 +20,10 @@ public static class WireEventType
     public const ushort CashDropped = 22;
     public const ushort ActivityUpdate = 30;
     public const ushort ActivityResult = 31;
+    public const ushort HeistSplit = 32;
     public const ushort Notice = 40;
     public const ushort RequestRejected = 41;
+    public const ushort Wanted = 42;
 }
 
 /// <summary>Encoders shared by server and client. Clients decode with <see cref="NetReader"/> in the same order.</summary>
@@ -101,5 +103,68 @@ public static class WireEvents
         var w = new NetWriter(16);
         w.WriteString(weaponId); w.WriteVarUInt((uint)inMagazine); w.WriteVarUInt((uint)reserve);
         return w.ToArray();
+    }
+
+    // ------------------------------------------------------------------ activities
+
+    /// <summary>Objective started (progress 0) or progressed. Progress is sent in 1/1000 steps.</summary>
+    public static byte[] Objective(int runId, int index, string label, Vec3d target, double progress)
+    {
+        var w = new NetWriter(32);
+        w.WriteVarUInt((uint)runId); w.WriteVarUInt((uint)index); w.WriteString(label); w.WritePosition(target);
+        w.WriteUShort((ushort)System.Math.Clamp(System.Math.Round(progress * 1000), 0, 1000));
+        return w.ToArray();
+    }
+
+    public static (int RunId, int Index, string Label, Vec3d Target, double Progress) ReadObjective(byte[] p)
+    {
+        var r = new NetReader(p);
+        return ((int)r.ReadVarUInt32(), (int)r.ReadVarUInt32(), r.ReadString(), r.ReadPosition(), r.ReadUShort() / 1000.0);
+    }
+
+    public static byte[] Result(int runId, string contractId, bool success, string reason, long paidTotal)
+    {
+        var w = new NetWriter(32);
+        w.WriteVarUInt((uint)runId); w.WriteString(contractId); w.WriteBool(success); w.WriteString(reason); w.WriteVarInt(paidTotal);
+        return w.ToArray();
+    }
+
+    public static (int RunId, string ContractId, bool Success, string Reason, long Paid) ReadResult(byte[] p)
+    {
+        var r = new NetReader(p);
+        return ((int)r.ReadVarUInt32(), r.ReadString(), r.ReadBool(), r.ReadString(), r.ReadVarInt());
+    }
+
+    public static byte[] Split(int runId, string heistId, long take, double secondsLeft, IReadOnlyList<string> members)
+    {
+        var w = new NetWriter(64);
+        w.WriteVarUInt((uint)runId); w.WriteString(heistId); w.WriteVarInt(take); w.WriteVarUInt((uint)System.Math.Ceiling(secondsLeft));
+        w.WriteByte((byte)members.Count);
+        foreach (var m in members) w.WriteString(m);
+        return w.ToArray();
+    }
+
+    public static (int RunId, string HeistId, long Take, int SecondsLeft, List<string> Members) ReadSplit(byte[] p)
+    {
+        var r = new NetReader(p);
+        var run = (int)r.ReadVarUInt32(); var id = r.ReadString(); var take = r.ReadVarInt(); var secs = (int)r.ReadVarUInt32();
+        var n = System.Math.Min((int)r.ReadByte(), 4);
+        var members = new List<string>();
+        for (var i = 0; i < n; i++) members.Add(r.ReadString());
+        return (run, id, take, secs, members);
+    }
+
+    /// <summary>World notice for everyone: supply drops, turf attacks, bounties. <c>kind</c> e.g. "supply.announced".</summary>
+    public static byte[] Notice(string kind, string id, Vec3d position, long value)
+    {
+        var w = new NetWriter(48);
+        w.WriteString(kind); w.WriteString(id); w.WritePosition(position); w.WriteVarInt(value);
+        return w.ToArray();
+    }
+
+    public static (string Kind, string Id, Vec3d Position, long Value) ReadNotice(byte[] p)
+    {
+        var r = new NetReader(p);
+        return (r.ReadString(), r.ReadString(), r.ReadPosition(), r.ReadVarInt());
     }
 }

@@ -14,6 +14,7 @@ public enum AccountKind : byte
     Drop,       // cash bag lying in the world
     Faucet,     // system source (payouts) — may go negative
     Sink,       // system sink (fees, purchases)
+    Escrow,     // money held by an activity (heist take, bounty) until it is paid out or forfeited
 }
 
 /// <summary>Ledger account address, e.g. <c>wallet:rook</c>, <c>crew:7</c>, <c>sys:faucet:contract</c>.</summary>
@@ -27,6 +28,7 @@ public readonly record struct AccountId(AccountKind Kind, string Key)
     public static AccountId Drop(int dropId) => new(AccountKind.Drop, dropId.ToString(System.Globalization.CultureInfo.InvariantCulture));
     public static AccountId Faucet(string reason) => new(AccountKind.Faucet, reason);
     public static AccountId Sink(string reason) => new(AccountKind.Sink, reason);
+    public static AccountId Escrow(string key) => new(AccountKind.Escrow, key);
 
     public bool IsSystem => Kind is AccountKind.Faucet or AccountKind.Sink;
     public override string ToString() => $"{Kind.ToString().ToLowerInvariant()}:{Key}";

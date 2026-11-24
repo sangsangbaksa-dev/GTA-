@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "HeatConfig",
+  "type": "object",
+  "required": [
+    "levels",
+    "crimeHeat"
+  ],
+  "properties": {
+    "decayPerSecond": {
+      "type": "number"
+    },
+    "decayDelaySeconds": {
+      "type": "number"
+    },
+    "repeatCrimeSeconds": {
+      "type": "number"
+    },
+    "crimeHeat": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "levels": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "level",
+          "minHeat"
+        ],
+        "properties": {
+          "level": {
+            "type": "integer"
+          },
+          "minHeat": {
+            "type": "number"
+          },
+          "units": {
+            "type": "integer"
+          },
+          "responseSeconds": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  }
+}

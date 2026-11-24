@@ -18,8 +18,12 @@ public static class RequestType
     public const ushort CrewDeposit = 9;
     public const ushort CrewWithdraw = 10;
     public const ushort TogglePassive = 11;
+    /// <summary>A = contract id.</summary>
     public const ushort ContractStart = 20;
+    /// <summary>Y = heist run id, X = shares packed one byte per member (<see cref="Activities.ContractBoard.PackPercents"/>).</summary>
     public const ushort HeistSplit = 21;
+    public const ushort ContractAbandon = 22;
+    public const ushort CarryDrop = 23;
 }
 
 /// <summary>Generic request body: nonce + up to three strings + up to two integers (keeps the codec tiny and safe).</summary>

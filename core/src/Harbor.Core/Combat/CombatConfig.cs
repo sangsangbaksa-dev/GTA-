@@ -17,6 +17,8 @@ public sealed record CombatConfig
     public double EyeHeightCrouched { get; init; } = 1.1;
     public double RepeatKillWindowSeconds { get; init; } = 600;
     public int RepeatKillLimit { get; init; } = 3;
+    /// <summary>Weapon classes usable while carrying a heist bag or case (§6.2: one-handed only).</summary>
+    public List<WeaponClass> CarryAllowedClasses { get; init; } = new() { WeaponClass.Pistol };
 
     public sealed record HealthDef(int Max = 100, double RegenDelaySeconds = 6, double RegenPerSecond = 8, int RegenCap = 50);
     public sealed record ArmorDef(int Max = 100, double Absorb = 0.6);

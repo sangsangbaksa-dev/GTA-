@@ -1,7 +1,10 @@
+using Harbor.Core.Activities;
 using Harbor.Core.Combat;
 using Harbor.Core.Data;
 using Harbor.Core.Economy;
 using Harbor.Core.Geometry;
+using Harbor.Core.Heat;
+using Harbor.Core.Missions;
 using Harbor.Core.Net;
 using Harbor.Core.Ports;
 using Harbor.Core.Sim;
@@ -19,6 +22,8 @@ public sealed class GameServer
     public CombatSystem Combat { get; }
     public StaticWorld Static { get; }
     public EconomySystem Economy { get; }
+    public HeatSystem Heat { get; }
+    public ActivitySystem Activities { get; }
     /// <summary>Seconds between passive-mode toggles (CONTENT_DESIGN §6.6).</summary>
     public double PassiveCooldownSeconds { get; set; } = 300;
 
@@ -33,6 +38,9 @@ public sealed class GameServer
         Session = World.AddSystem(new ServerSession(transport, config, movement, Static));
         Combat = World.AddSystem(new CombatSystem(data.Combat, data.Materials, data.Weapons, Static, Session.History));
         Economy = World.AddSystem(new EconomySystem(data.Economy) { Items = new CombatItemReceiver(this) });
+        Heat = World.AddSystem(new HeatSystem(data.Heat));
+        Activities = World.AddSystem(new ActivitySystem(data.Activities, Economy, Heat));
+        ActivityBlocksPassive = Activities.IsBusy;
         Combat.SpawnPointFor = SpawnPointFor;
         foreach (var b in Static.All)
             if (b.Tag == "explosive") Combat.RegisterExplosive(b.Id);
@@ -42,9 +50,13 @@ public sealed class GameServer
         ev.Subscribe<PlayerLeft>(OnLeft);
         ev.Subscribe<PlayerInputApplied>(OnInput);
         ev.Subscribe<ClientRequest>(OnRequest);
-        ev.Subscribe<ActorKilled>(e =>
+        ev.Subscribe<ActorKilled>(OnKilled);
+        ev.Subscribe<ShotFired>(e => { if (IsPlayer(e.ShooterId)) Heat.Report(e.ShooterId, "shots_fired"); });
+        ev.Subscribe<RepeatKillDetected>(e =>
         {
-            if (World.Actors.TryGet(e.VictimId, out var v) && v.Kind == ActorKind.Player) Economy.DropOnDeath(e.VictimId, e.KillerId);
+            // harassment (§6.6): +2 wanted levels and an immediate bounty
+            Heat.AddLevels(e.KillerId, 2);
+            Activities.Bounties.Place(e.KillerId, "harassment");
         });
         ev.Subscribe<BalanceChanged>(e => SendBalance(e.ProfileId));
         ev.Subscribe<CashDropped>(e => Session.Broadcast(WireEventType.CashDropped, WireEvents.Point(e.LootActorId, e.Position)));
@@ -56,6 +68,62 @@ public sealed class GameServer
         ev.Subscribe<ActorRevived>(e => Session.Broadcast(WireEventType.Revived, WireEvents.ActorPair(e.VictimId, e.ReviverId)));
         ev.Subscribe<ActorRespawned>(e => ToActors(WireEventType.Respawned, WireEvents.Point(e.ActorId, e.Position), e.ActorId));
         ev.Subscribe<ExplosiveDetonated>(e => Session.Broadcast(WireEventType.Explosion, WireEvents.Point(e.BoxId, e.Position)));
+        WireActivities(ev);
+    }
+
+    private bool IsPlayer(int actorId) => World.Actors.TryGet(actorId, out var a) && a.Kind == ActorKind.Player;
+
+    private void OnKilled(ActorKilled e)
+    {
+        if (!IsPlayer(e.VictimId)) return;
+        Economy.DropOnDeath(e.VictimId, e.KillerId);
+        Activities.OnActorKilled(e.VictimId, e.KillerId); // bounty claim before the victim's heat is cleared
+        Heat.Clear(e.VictimId);
+        if (e.KillerId != e.VictimId && IsPlayer(e.KillerId)) Heat.Report(e.KillerId, "murder");
+    }
+
+    private void WireActivities(Events.EventBus ev)
+    {
+        ev.Subscribe<ObjectiveStarted>(e => ToRun(e.RunId, WireEventType.ActivityUpdate, WireEvents.Objective(e.RunId, e.Index, e.Label, e.Position, 0)));
+        ev.Subscribe<ObjectiveProgressed>(e =>
+        {
+            var o = Activities.Missions.Get(e.RunId)?.Current;
+            if (o != null) ToRun(e.RunId, WireEventType.ActivityUpdate, WireEvents.Objective(e.RunId, e.Index, o.Label, o.AtPos, e.Fraction));
+        });
+        ev.Subscribe<ContractEnded>(e => ToActors(WireEventType.ActivityResult, WireEvents.Result(e.RunId, e.ContractId, e.Success, e.Reason, e.TotalPaid), e.Party.ToArray()));
+        ev.Subscribe<HeistSplitPending>(e => ToActors(WireEventType.HeistSplit, WireEvents.Split(e.RunId, e.HeistId, e.Take, e.SecondsLeft, e.Members), e.MemberActors.ToArray()));
+        ev.Subscribe<HeistPaid>(e => Notice("heist.paid", e.HeistId, Math.Vec3d.Zero, e.Shares.Values.Sum()));
+        ev.Subscribe<PrepCompleted>(e => ToCrew(e.CrewId, WireEventType.Notice, WireEvents.Notice("heist.prep_done", e.PrepId, Math.Vec3d.Zero, 0)));
+        ev.Subscribe<PrepLost>(e => ToCrew(e.CrewId, WireEventType.Notice, WireEvents.Notice("heist.prep_lost", e.PrepId, Math.Vec3d.Zero, 0)));
+
+        ev.Subscribe<SupplyDropAnnounced>(e => Notice("supply.announced", e.SiteId, e.Position, (long)e.LandsInSeconds));
+        ev.Subscribe<SupplyDropLanded>(e => Notice("supply.landed", e.DropId.ToString(System.Globalization.CultureInfo.InvariantCulture), e.Position, e.CrateActorId));
+        ev.Subscribe<SupplyDropOpened>(e => Notice("supply.opened", e.DropId.ToString(System.Globalization.CultureInfo.InvariantCulture), Math.Vec3d.Zero, e.ActorId));
+
+        Math.Vec3d ZonePos(string id) => Activities.Turf.Get(id)?.Def.Center ?? Math.Vec3d.Zero;
+        ev.Subscribe<TurfAttackScheduled>(e => Notice("turf.attack_soon", e.ZoneId, ZonePos(e.ZoneId), (long)e.StartsInSeconds));
+        ev.Subscribe<TurfAttackStarted>(e => Notice("turf.attack_open", e.ZoneId, ZonePos(e.ZoneId), (long)e.WindowSeconds));
+        ev.Subscribe<TurfCaptured>(e => Notice("turf.captured", e.ZoneId, ZonePos(e.ZoneId), e.NewCrew));
+        ev.Subscribe<TurfDefended>(e => Notice("turf.defended", e.ZoneId, ZonePos(e.ZoneId), e.OwnerCrew));
+
+        ev.Subscribe<BountyPlaced>(e => Notice("bounty.placed", e.TargetActorId.ToString(System.Globalization.CultureInfo.InvariantCulture), Math.Vec3d.Zero, e.Amount));
+        ev.Subscribe<BountyClaimed>(e => Notice("bounty.claimed", e.TargetActorId.ToString(System.Globalization.CultureInfo.InvariantCulture), Math.Vec3d.Zero, e.Amount));
+        ev.Subscribe<BountyCleared>(e => Notice("bounty.cleared", e.TargetActorId.ToString(System.Globalization.CultureInfo.InvariantCulture), Math.Vec3d.Zero, 0));
+        ev.Subscribe<WantedLevelChanged>(e => ToActors(WireEventType.Wanted, new byte[] { (byte)e.NewLevel }, e.ActorId));
+    }
+
+    private void Notice(string kind, string id, Math.Vec3d pos, long value) =>
+        Session.Broadcast(WireEventType.Notice, WireEvents.Notice(kind, id, pos, value));
+
+    private void ToRun(int runId, ushort type, byte[] payload)
+    {
+        if (Activities.Missions.Get(runId) is { } run) ToActors(type, payload, run.Party.ToArray());
+    }
+
+    private void ToCrew(int crewId, ushort type, byte[] payload)
+    {
+        if (Economy.Crews.Get(crewId) is not { } crew) return;
+        ToActors(type, payload, crew.Members.Select(m => Economy.ActorOf(m) ?? -1).ToArray());
     }
 
     public void Update(double frameSeconds) => World.Update(frameSeconds);
@@ -78,6 +146,8 @@ public sealed class GameServer
         var p = Economy.ProfileOf(e.ActorId);
         if (p != null && World.Actors.TryGet(e.ActorId, out var a) && Economy.SafehouseAt(p, a.Position) == null)
             Economy.Penalize(p.Id, Data.Economy.Config.LogoutOutsideSafehouseTax, "logout_tax");
+        Activities.OnPlayerLeft(e.ActorId);
+        Heat.Clear(e.ActorId);
         Economy.UnbindActor(e.ActorId);
         Combat.Unregister(e.ActorId);
         _passiveToggledAt.Remove(e.ActorId);
@@ -117,12 +187,23 @@ public sealed class GameServer
             RequestType.CrewDeposit => Economy.CrewDeposit(e.ActorId, RequestCodec.ParseCurrency(body.Y), body.X, body.Nonce),
             RequestType.CrewWithdraw => Economy.CrewWithdraw(e.ActorId, body.A, RequestCodec.ParseCurrency(body.Y), body.X, body.Nonce),
             RequestType.TogglePassive => TogglePassive(e.ActorId),
+            RequestType.ContractStart => Activities.Contracts.Start(e.ActorId, body.A, body.Nonce),
+            RequestType.ContractAbandon => Activities.Contracts.Abandon(e.ActorId),
+            RequestType.HeistSplit => HeistSplit(e.ActorId, (int)body.Y, body.X),
+            RequestType.CarryDrop => Activities.Carry.Drop(e.ActorId) ? EconResult.Success : EconResult.Fail("not_carrying"),
             _ => ExtraRequest?.Invoke(e, body) ?? EconResult.Fail("unknown_request"),
         };
         if (!result.Ok) ToActors(WireEventType.RequestRejected, RequestCodec.Rejected(e.Type, body.Nonce, result.Error ?? "error"), e.ActorId);
     }
 
-    /// <summary>Hook for request types handled by later modules (activities).</summary>
+    private EconResult HeistSplit(int actorId, int runId, long packed)
+    {
+        var members = Activities.Contracts.SplitMembers(runId);
+        if (members == null) return EconResult.Fail("no_split");
+        return Activities.Contracts.SetSplit(actorId, runId, ContractBoard.UnpackPercents(packed, members.Count));
+    }
+
+    /// <summary>Hook for request types handled by mods or later modules.</summary>
     public Func<ClientRequest, RequestBody, EconResult>? ExtraRequest { get; set; }
 
     private EconResult CrewCreate(int actorId, string name)
@@ -156,7 +237,7 @@ public sealed class GameServer
         return EconResult.Success;
     }
 
-    /// <summary>Set by Activities: passive mode cannot be enabled during a contract or heist.</summary>
+    /// <summary>Passive mode cannot be enabled during a contract or heist, or while carrying (defaults to Activities.IsBusy).</summary>
     public Func<int, bool>? ActivityBlocksPassive { get; set; }
 
     private sealed class CombatItemReceiver(GameServer s) : IItemReceiver
@@ -203,6 +284,7 @@ public sealed class GameServer
         var c = e.Cmd;
         var input = new CombatInput(c.Has(InputButtons.Fire), c.Has(InputButtons.Aim), c.Has(InputButtons.Reload),
             c.Has(InputButtons.Interact), c.WeaponSlot, c.YawRadians, c.PitchRadians, e.ViewTick);
+        Activities.Input.Set(e.ActorId, input.Interact);
         var before = Combat.LoadoutOf(e.ActorId)?.Current?.InMagazine;
         Combat.ProcessInput(e.ActorId, input, World.Loop.StepSeconds);
         var l = Combat.LoadoutOf(e.ActorId);

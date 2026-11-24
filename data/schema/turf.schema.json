@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TurfConfig",
+  "type": "object",
+  "required": [
+    "zones"
+  ],
+  "properties": {
+    "captureSeconds": {
+      "type": "number"
+    },
+    "shopDiscount": {
+      "type": "number",
+      "minimum": 0,
+      "exclusiveMaximum": 1
+    },
+    "attackIntervalSeconds": {
+      "type": "number"
+    },
+    "attackNoticeSeconds": {
+      "type": "number"
+    },
+    "attackWindowSeconds": {
+      "type": "number"
+    },
+    "payoutIntervalSeconds": {
+      "type": "number"
+    },
+    "zones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "district",
+          "at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          },
+          "at": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "radius": {
+            "type": "number"
+          },
+          "incomePerHour": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  }
+}

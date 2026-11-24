@@ -1,0 +1,41 @@
+{
+  "id": "hp_lantern_recon",
+  "displayName": "Lantern Trust: Guard Recon",
+  "kind": "heistPrep",
+  "district": "glass_heights",
+  "minRep": 10,
+  "minPlayers": 1,
+  "maxPlayers": 4,
+  "timeLimitSeconds": 600,
+  "cooldownSeconds": 300,
+  "partyRadius": 60,
+  "reward": {
+    "currency": "dirty",
+    "min": 1500,
+    "max": 2000,
+    "xp": 300
+  },
+  "objectives": [
+    {
+      "type": "reach",
+      "label": "obj.reach_overlook",
+      "at": [
+        960,
+        0,
+        500
+      ],
+      "radius": 6
+    },
+    {
+      "type": "hold",
+      "label": "obj.watch_guards",
+      "at": [
+        960,
+        0,
+        500
+      ],
+      "radius": 10,
+      "seconds": 60
+    }
+  ]
+}

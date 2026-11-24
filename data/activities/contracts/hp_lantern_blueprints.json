@@ -1,0 +1,53 @@
+{
+  "id": "hp_lantern_blueprints",
+  "displayName": "Lantern Trust: Vault Plans",
+  "kind": "heistPrep",
+  "district": "glass_heights",
+  "minRep": 10,
+  "minPlayers": 1,
+  "maxPlayers": 4,
+  "timeLimitSeconds": 600,
+  "cooldownSeconds": 300,
+  "partyRadius": 60,
+  "reward": {
+    "currency": "dirty",
+    "min": 1500,
+    "max": 2000,
+    "xp": 300
+  },
+  "objectives": [
+    {
+      "type": "reach",
+      "label": "obj.reach_archive",
+      "at": [
+        900,
+        0,
+        560
+      ],
+      "radius": 6
+    },
+    {
+      "type": "interact",
+      "label": "obj.photograph_plans",
+      "at": [
+        901,
+        0,
+        561
+      ],
+      "radius": 2.0,
+      "seconds": 20,
+      "crime": "trespass"
+    },
+    {
+      "type": "escape",
+      "label": "obj.leave_area",
+      "at": [
+        900,
+        0,
+        560
+      ],
+      "radius": 10,
+      "distance": 150
+    }
+  ]
+}

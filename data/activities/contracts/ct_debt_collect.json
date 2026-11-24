@@ -1,0 +1,71 @@
+{
+  "id": "ct_debt_collect",
+  "displayName": "Debt Collection",
+  "kind": "contract",
+  "district": "glass_heights",
+  "minRep": 1,
+  "minPlayers": 1,
+  "maxPlayers": 4,
+  "timeLimitSeconds": 600,
+  "cooldownSeconds": 300,
+  "partyRadius": 60,
+  "reward": {
+    "currency": "dirty",
+    "min": 2800,
+    "max": 3500,
+    "xp": 200
+  },
+  "objectives": [
+    {
+      "type": "reach",
+      "label": "obj.find_debtor",
+      "at": [
+        860,
+        0,
+        700
+      ],
+      "radius": 6
+    },
+    {
+      "type": "interact",
+      "label": "obj.lean_on_debtor",
+      "at": [
+        861,
+        0,
+        700
+      ],
+      "radius": 2.0,
+      "seconds": 3,
+      "crime": "assault"
+    },
+    {
+      "type": "deliver",
+      "label": "obj.take_case",
+      "item": "prop_bond_case",
+      "at": [
+        862,
+        0,
+        701
+      ],
+      "to": [
+        930,
+        0,
+        610
+      ],
+      "count": 1,
+      "valueEach": 0,
+      "radius": 5
+    },
+    {
+      "type": "escape",
+      "label": "obj.lay_low",
+      "at": [
+        930,
+        0,
+        610
+      ],
+      "radius": 10,
+      "distance": 150
+    }
+  ]
+}

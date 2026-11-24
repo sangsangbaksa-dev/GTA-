@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ContractDef",
+  "type": "object",
+  "required": [
+    "id",
+    "kind",
+    "objectives",
+    "reward",
+    "timeLimitSeconds"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "contract",
+        "heistPrep",
+        "heistFinale"
+      ]
+    },
+    "district": {
+      "type": "string"
+    },
+    "minRep": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "minPlayers": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4
+    },
+    "maxPlayers": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4
+    },
+    "timeLimitSeconds": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "cooldownSeconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "partyRadius": {
+      "type": "number"
+    },
+    "reward": {
+      "type": "object",
+      "properties": {
+        "currency": {
+          "enum": [
+            "dirty",
+            "clean"
+          ]
+        },
+        "min": {
+          "type": "integer"
+        },
+        "max": {
+          "type": "integer"
+        },
+        "xp": {
+          "type": "integer"
+        }
+      },
+      "description": "paid min→max by time left, split evenly; finales pay delivered bag value via escrow instead"
+    },
+    "objectives": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "reach",
+              "interact",
+              "hold",
+              "escape",
+              "deliver"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "description": "HUD localization key"
+          },
+          "at": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "to": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "radius": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "all": {
+            "type": "boolean"
+          },
+          "resetOnInterrupt": {
+            "type": "boolean"
+          },
+          "crime": {
+            "type": "string",
+            "description": "key of data/ai/heat.json crimeHeat"
+          },
+          "distance": {
+            "type": "number"
+          },
+          "item": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8
+          },
+          "valueEach": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

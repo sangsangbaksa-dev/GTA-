@@ -244,4 +244,17 @@ public class CombatSystemTests
         }
         Assert.NotEmpty(a.Events.OfType<RepeatKillDetected>());
     }
+
+    [Theory]
+    [InlineData("halberd_ar", false)]
+    [InlineData("kestrel_p10", true)]
+    public void Carrying_A_Bag_Allows_Only_One_Handed_Weapons(string weapon, bool canFire)
+    {
+        var a = new Arena();
+        var shooter = a.Spawn(ActorKind.Player, Vec3d.Zero, team: 1, weapon: weapon);
+        var target = a.Spawn(ActorKind.Npc, new Vec3d(0, 0, -8), team: 2);
+        shooter.Status |= ActorFlags.Carrying;
+        a.Hold(shooter, target, 10);
+        Assert.Equal(canFire, a.Events.OfType<ShotFired>().Any());
+    }
 }

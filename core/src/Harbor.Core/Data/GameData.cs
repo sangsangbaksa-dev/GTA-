@@ -1,5 +1,7 @@
 using Harbor.Core.Combat;
+using Harbor.Core.Activities;
 using Harbor.Core.Economy;
+using Harbor.Core.Heat;
 using Harbor.Core.Ports;
 
 namespace Harbor.Core.Data;
@@ -11,11 +13,14 @@ public sealed class GameData
     public CombatConfig Combat { get; init; } = new();
     public MaterialTable Materials { get; init; } = MaterialTable.Default;
     public EconomyData Economy { get; init; } = EconomyData.Default;
+    public HeatConfig Heat { get; init; } = new();
+    public ActivityData Activities { get; init; } = ActivityData.Empty;
 
     private sealed record MaterialFile(List<MaterialEntry> Materials);
     private sealed record ShopFile(List<ShopItem> Items);
     private sealed record BusinessFile(List<BusinessDef> Businesses);
     private sealed record SafehouseFile(List<SafehouseDef> Safehouses);
+    private sealed record HeistFile(List<HeistDef> Heists);
     private sealed record MaterialEntry(string Id, List<WeaponClass> PenetrableBy, double DamageScale, double MaxThickness);
 
     public static GameData Load(IFileSystem fs, string root = "data")
@@ -40,6 +45,24 @@ public sealed class GameData
         economy.Validate();
         foreach (var i in economy.Shop.Values.Where(i => i.Kind == ShopItemKind.Weapon))
             Json.Require(weapons.ContainsKey(i.Ref), $"shop item {i.Id} references unknown weapon {i.Ref}");
-        return new GameData { Weapons = weapons, Combat = combat, Materials = table, Economy = economy };
+
+        var heat = Json.Read<HeatConfig>(fs, $"{root}/ai/heat.json");
+        heat.Validate();
+
+        var contracts = new Dictionary<string, ContractDef>();
+        foreach (var path in fs.ListFiles($"{root}/activities/contracts", ".json"))
+        {
+            var c = Json.Read<ContractDef>(fs, path);
+            Json.Require(contracts.TryAdd(c.Id, c), $"duplicate contract id {c.Id}");
+            foreach (var o in c.Objectives)
+                Json.Require(o.Crime.Length == 0 || heat.CrimeHeat.ContainsKey(o.Crime), $"{c.Id}: unknown crime {o.Crime}");
+        }
+        var activities = new ActivityData(contracts,
+            Json.Read<HeistFile>(fs, $"{root}/activities/heists.json").Heists.ToDictionary(h => h.Id),
+            Json.Read<TurfConfig>(fs, $"{root}/activities/turf.json"),
+            Json.Read<SupplyDropConfig>(fs, $"{root}/activities/supply_drops.json"));
+        activities.Validate(economy);
+
+        return new GameData { Weapons = weapons, Combat = combat, Materials = table, Economy = economy, Heat = heat, Activities = activities };
     }
 }

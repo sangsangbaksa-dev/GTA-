@@ -9,5 +9,6 @@
   "eyeHeight": 1.6,
   "eyeHeightCrouched": 1.1,
   "repeatKillWindowSeconds": 600,
-  "repeatKillLimit": 3
+  "repeatKillLimit": 3,
+  "carryAllowedClasses": ["pistol"]
 }

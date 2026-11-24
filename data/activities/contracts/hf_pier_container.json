@@ -1,0 +1,62 @@
+{
+  "id": "hf_pier_container",
+  "displayName": "Blue Pier Container",
+  "kind": "heistFinale",
+  "district": "harbor_front",
+  "minRep": 6,
+  "minPlayers": 2,
+  "maxPlayers": 4,
+  "timeLimitSeconds": 900,
+  "cooldownSeconds": 300,
+  "partyRadius": 60,
+  "reward": {
+    "currency": "dirty",
+    "min": 0,
+    "max": 0,
+    "xp": 1400
+  },
+  "objectives": [
+    {
+      "type": "reach",
+      "label": "obj.regroup_pier",
+      "at": [
+        280,
+        0,
+        -380
+      ],
+      "radius": 20,
+      "all": true
+    },
+    {
+      "type": "interact",
+      "label": "obj.open_container",
+      "at": [
+        285,
+        0,
+        -385
+      ],
+      "radius": 3,
+      "seconds": 20,
+      "crime": "heist"
+    },
+    {
+      "type": "deliver",
+      "label": "obj.haul_bags",
+      "item": "prop_cash_bag",
+      "at": [
+        286,
+        0,
+        -387
+      ],
+      "to": [
+        260,
+        0,
+        -180
+      ],
+      "count": 4,
+      "valueEach": 27500,
+      "radius": 8,
+      "crime": "heist"
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "id": "hp_saltworks_getaway",
+  "displayName": "Saltworks: Getaway Van",
+  "kind": "heistPrep",
+  "district": "old_mill",
+  "minRep": 0,
+  "minPlayers": 1,
+  "maxPlayers": 4,
+  "timeLimitSeconds": 600,
+  "cooldownSeconds": 300,
+  "partyRadius": 60,
+  "reward": {
+    "currency": "dirty",
+    "min": 800,
+    "max": 1200,
+    "xp": 150
+  },
+  "objectives": [
+    {
+      "type": "reach",
+      "label": "obj.find_van",
+      "at": [
+        -300,
+        0,
+        420
+      ],
+      "radius": 6
+    },
+    {
+      "type": "interact",
+      "label": "obj.hotwire_van",
+      "at": [
+        -300,
+        0,
+        421
+      ],
+      "radius": 2.0,
+      "seconds": 8,
+      "crime": "vehicle_theft",
+      "resetOnInterrupt": true
+    },
+    {
+      "type": "reach",
+      "label": "obj.stash_van",
+      "at": [
+        -410,
+        0,
+        300
+      ],
+      "radius": 10
+    }
+  ]
+}

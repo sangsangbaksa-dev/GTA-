@@ -1,0 +1,73 @@
+{
+  "id": "hf_lantern_vault",
+  "displayName": "Lantern Trust Vault",
+  "kind": "heistFinale",
+  "district": "glass_heights",
+  "minRep": 12,
+  "minPlayers": 2,
+  "maxPlayers": 4,
+  "timeLimitSeconds": 1200,
+  "cooldownSeconds": 300,
+  "partyRadius": 60,
+  "reward": {
+    "currency": "dirty",
+    "min": 0,
+    "max": 0,
+    "xp": 2500
+  },
+  "objectives": [
+    {
+      "type": "reach",
+      "label": "obj.regroup_bank",
+      "at": [
+        940,
+        0,
+        560
+      ],
+      "radius": 20,
+      "all": true
+    },
+    {
+      "type": "interact",
+      "label": "obj.drill_vault",
+      "at": [
+        945,
+        0,
+        565
+      ],
+      "radius": 3,
+      "seconds": 40,
+      "crime": "heist"
+    },
+    {
+      "type": "deliver",
+      "label": "obj.haul_bags",
+      "item": "prop_cash_bag",
+      "at": [
+        946,
+        0,
+        567
+      ],
+      "to": [
+        980,
+        0,
+        420
+      ],
+      "count": 4,
+      "valueEach": 60000,
+      "radius": 8,
+      "crime": "heist"
+    },
+    {
+      "type": "escape",
+      "label": "obj.escape_police",
+      "at": [
+        980,
+        0,
+        420
+      ],
+      "radius": 10,
+      "distance": 250
+    }
+  ]
+}

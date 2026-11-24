@@ -1,0 +1,62 @@
+{
+  "id": "hf_saltworks_vault",
+  "displayName": "Saltworks Payday",
+  "kind": "heistFinale",
+  "district": "old_mill",
+  "minRep": 3,
+  "minPlayers": 2,
+  "maxPlayers": 4,
+  "timeLimitSeconds": 900,
+  "cooldownSeconds": 300,
+  "partyRadius": 60,
+  "reward": {
+    "currency": "dirty",
+    "min": 0,
+    "max": 0,
+    "xp": 800
+  },
+  "objectives": [
+    {
+      "type": "reach",
+      "label": "obj.regroup_factory",
+      "at": [
+        -560,
+        0,
+        420
+      ],
+      "radius": 20,
+      "all": true
+    },
+    {
+      "type": "interact",
+      "label": "obj.crack_vault",
+      "at": [
+        -570,
+        0,
+        430
+      ],
+      "radius": 2.5,
+      "seconds": 25,
+      "crime": "heist"
+    },
+    {
+      "type": "deliver",
+      "label": "obj.haul_bags",
+      "item": "prop_cash_bag",
+      "at": [
+        -571,
+        0,
+        432
+      ],
+      "to": [
+        -410,
+        0,
+        305
+      ],
+      "count": 4,
+      "valueEach": 15000,
+      "radius": 8,
+      "crime": "heist"
+    }
+  ]
+}

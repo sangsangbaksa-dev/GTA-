@@ -183,7 +183,8 @@ public sealed class CombatSystem : ISimSystem
 
         if (input.Reload) TryStartReload(l);
 
-        if (input.Fire)
+        var handsFull = (actor.Status & ActorFlags.Carrying) != 0 && !Config.CarryAllowedClasses.Contains(slot.Def.Class);
+        if (input.Fire && !handsFull)
         {
             var needsRelease = slot.Def.FireMode != FireMode.Auto;
             if (!(needsRelease && l.TriggerWasHeld) && l.Cooldown <= 0 && !l.IsReloading)

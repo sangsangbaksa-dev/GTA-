@@ -103,13 +103,31 @@ public sealed class EconomySystem : ISimSystem
         var reason = Items?.CanReceive(actorId, item);
         if (reason != null) return EconResult.Fail(reason);
         var from = currency == Currency.Dirty ? AccountId.Wallet(p.Id) : AccountId.Bank(p.Id);
-        var r = Ledger.Post(new Transfer(txId, from, AccountId.Sink("shop"), item.Price, currency, $"buy:{item.Id}"));
+        var price = PriceFor(actorId, item);
+        var r = Ledger.Post(new Transfer(txId, from, AccountId.Sink("shop"), price, currency, $"buy:{item.Id}"));
         if (r.Status == TxStatus.InsufficientFunds) return EconResult.Fail("insufficient_funds");
         if (!r.Ok) return EconResult.Fail("invalid");
         Items?.Receive(actorId, item);
         if (item.Kind == ShopItemKind.Weapon) p.OwnedWeapons.Add(item.Ref);
-        _world.Events.Publish(new PurchaseCompleted(actorId, item.Id, currency, item.Price));
+        _world.Events.Publish(new PurchaseCompleted(actorId, item.Id, currency, price));
         return EconResult.Success;
+    }
+
+    /// <summary>Set by Activities (turf discount). Returns a price multiplier for this buyer, 1 = list price.</summary>
+    public Func<int, ShopItem, double>? PriceModifier { get; set; }
+
+    public long PriceFor(int actorId, ShopItem item)
+    {
+        var mul = System.Math.Clamp(PriceModifier?.Invoke(actorId, item) ?? 1.0, 0.0, 1.0);
+        return (long)System.Math.Round(item.Price * mul);
+    }
+
+    /// <summary>Hands out a shop item for free (activity rewards). Returns false if the actor can't take it.</summary>
+    public bool Grant(int actorId, string itemId)
+    {
+        if (!Data.Shop.TryGetValue(itemId, out var item) || Items == null || Items.CanReceive(actorId, item) != null) return false;
+        Items.Receive(actorId, item);
+        return true;
     }
 
     public EconResult BuyBusiness(int actorId, string businessId, ulong nonce)

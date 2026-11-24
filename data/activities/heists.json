@@ -1,0 +1,47 @@
+{
+  "heists": [
+    {
+      "id": "hs_saltworks_payday",
+      "displayName": "Saltworks Payday",
+      "district": "old_mill",
+      "preps": [
+        "hp_saltworks_schedule",
+        "hp_saltworks_getaway"
+      ],
+      "finale": "hf_saltworks_vault",
+      "minPlayers": 2,
+      "minSharePercent": 15,
+      "splitTimeoutSeconds": 120,
+      "crewRep": 1
+    },
+    {
+      "id": "hs_blue_pier",
+      "displayName": "Blue Pier Container",
+      "district": "harbor_front",
+      "preps": [
+        "hp_pier_manifest",
+        "hp_pier_crane_key"
+      ],
+      "finale": "hf_pier_container",
+      "minPlayers": 2,
+      "minSharePercent": 15,
+      "splitTimeoutSeconds": 120,
+      "crewRep": 2
+    },
+    {
+      "id": "hs_lantern_trust",
+      "displayName": "Lantern Trust",
+      "district": "glass_heights",
+      "preps": [
+        "hp_lantern_blueprints",
+        "hp_lantern_drill",
+        "hp_lantern_recon"
+      ],
+      "finale": "hf_lantern_vault",
+      "minPlayers": 2,
+      "minSharePercent": 15,
+      "splitTimeoutSeconds": 120,
+      "crewRep": 3
+    }
+  ]
+}
