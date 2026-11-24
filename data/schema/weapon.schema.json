@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Weapon",
+  "type": "object",
+  "required": ["id", "displayName", "class", "damage", "fireMode", "roundsPerMinute", "magazineSize", "reloadSeconds", "rangeM"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+    "displayName": { "type": "string" },
+    "class": { "enum": ["pistol", "smg", "rifle", "shotgun", "melee"] },
+    "damage": { "type": "number", "minimum": 0, "description": "per pellet/bullet, before falloff and armor" },
+    "pellets": { "type": "integer", "minimum": 1, "default": 1 },
+    "headshotMultiplier": { "type": "number", "default": 2.0 },
+    "fireMode": { "enum": ["semi", "auto", "pump"] },
+    "roundsPerMinute": { "type": "number", "minimum": 1 },
+    "magazineSize": { "type": "integer", "minimum": 1 },
+    "reloadSeconds": { "type": "number", "minimum": 0 },
+    "rangeM": {
+      "type": "object",
+      "required": ["falloffStart", "falloffEnd", "minDamageScale"],
+      "properties": {
+        "falloffStart": { "type": "number" },
+        "falloffEnd": { "type": "number" },
+        "minDamageScale": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "spreadDeg": { "type": "object", "properties": { "hip": { "type": "number" }, "aim": { "type": "number" } } },
+    "recoil": { "type": "object", "properties": { "pitchDeg": { "type": "number" }, "yawDeg": { "type": "number" } } },
+    "noiseRadiusM": { "type": "number", "description": "AI hearing radius; feeds Heat" },
+    "modelAsset": { "type": "string", "description": "res:// path of the .glb" }
+  }
+}
