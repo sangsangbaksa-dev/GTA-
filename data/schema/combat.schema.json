@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CombatConfig",
+  "type": "object",
+  "required": ["health", "armor", "zones", "downed", "respawnSeconds", "suppression", "explosive"],
+  "properties": {
+    "health": { "type": "object", "required": ["max", "regenDelaySeconds", "regenPerSecond", "regenCap"] },
+    "armor": { "type": "object", "required": ["max", "absorb"], "properties": { "absorb": { "type": "number", "minimum": 0, "maximum": 1 } } },
+    "zones": { "type": "object", "description": "damage multipliers; head uses weapon.headshotMultiplier when 0" },
+    "downed": { "type": "object", "required": ["seconds", "reviveSeconds", "reviveHealth", "reviveRange"] },
+    "respawnSeconds": { "type": "number" },
+    "suppression": { "type": "object" },
+    "explosive": { "type": "object", "required": ["health", "radius", "innerDamage", "outerDamage"] },
+    "eyeHeight": { "type": "number" },
+    "eyeHeightCrouched": { "type": "number" }
+  }
+}

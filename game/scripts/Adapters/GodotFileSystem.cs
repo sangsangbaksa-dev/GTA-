@@ -21,4 +21,13 @@ public sealed class GodotFileSystem : IFileSystem
             ?? throw new System.IO.IOException($"Cannot write {path}: {FileAccess.GetOpenError()}");
         f.StoreString(contents);
     }
+
+    public System.Collections.Generic.IReadOnlyList<string> ListFiles(string directory, string extension)
+    {
+        var files = new System.Collections.Generic.List<string>();
+        foreach (var name in DirAccess.GetFilesAt(directory))
+            if (name.EndsWith(extension, System.StringComparison.Ordinal)) files.Add(directory.TrimEnd('/') + "/" + name);
+        files.Sort(System.StringComparer.Ordinal);
+        return files;
+    }
 }

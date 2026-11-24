@@ -12,7 +12,8 @@ public sealed record ServerConfig
     public double SnapshotRateHz { get; init; } = 20;
     /// <summary>Actors farther than this from a player are not replicated to them (interest management).</summary>
     public double InterestRadius { get; init; } = 512;
-    public double MaxRewindSeconds { get; init; } = 0.25;
+    /// <summary>Covers RTT ≈ 250 ms plus the 100 ms interpolation delay; higher pings are disadvantaged on purpose.</summary>
+    public double MaxRewindSeconds { get; init; } = 0.35;
     public double HistorySeconds { get; init; } = 1.0;
     public int MaxBufferedInputs { get; init; } = 32;
     public Vec3d SpawnPoint { get; init; } = Vec3d.Zero;

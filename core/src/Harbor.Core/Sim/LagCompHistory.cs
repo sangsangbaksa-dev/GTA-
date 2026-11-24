@@ -1,7 +1,6 @@
 using Harbor.Core.Math;
-using Harbor.Core.Sim;
 
-namespace Harbor.Core.Net;
+namespace Harbor.Core.Sim;
 
 public readonly record struct PoseSample(Vec3d Position, bool Crouched, bool Alive);
 

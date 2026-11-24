@@ -90,6 +90,7 @@ public sealed class StaticWorld(double cellSize = 8.0) : IPhysicsQuery
     }
 
     public bool TryGet(int id, out StaticBox box) => _boxes.TryGetValue(id, out box);
+    public IEnumerable<StaticBox> All => _boxes.Values;
 
     public IEnumerable<StaticBox> Overlapping(Aabb query)
     {
