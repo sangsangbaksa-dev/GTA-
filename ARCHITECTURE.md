@@ -1,6 +1,7 @@
 # ARCHITECTURE
 
 > 코드네임 **Project Harbor** — 가상의 해안 도시 **Port Calloway**를 무대로 한 오리지널 오픈월드 액션 게임.
+> **전투 중심**: 핵심 루프는 3인칭 커버 슈팅. 운전·탐험은 전투 사이를 잇는 수단 ([ADR 0003](docs/adr/0003-combat-focus-and-asset-pipeline.md)).
 > 세계관·캐릭터·이름·에셋은 전부 자체 제작한다. 기존 게임의 콘텐츠를 재현하지 않는다.
 
 이 문서는 코드베이스의 **지도**다. 구조를 바꾸면 이 문서와 `docs/adr/`를 같이 갱신한다.
@@ -15,8 +16,10 @@
 | 언어 | **C# (.NET 8)** | 엔진과 무관하게 돌아가는 코어 라이브러리를 만들기 쉬움, 테스트 용이 |
 | 물리 | Godot 내장 **Jolt** | 차량·충돌은 엔진 쪽, 원거리 시뮬레이션은 코어 쪽 |
 | 구조 | **헥사고날(포트 & 어댑터)** | 나중에 엔진 없는 다른 게임과 합칠 예정 → 게임 규칙은 엔진 독립 |
+| 게임 방향 | **전투 중심** (커버 슈팅 + 적 전술 AI) | 사용자 요청 |
+| 에셋 | **블렌더 헤드리스 스크립트 → glTF** | 텍스트 원본이라 diff·재생성 가능 |
 
-상세: [`docs/adr/0001-engine-godot.md`](docs/adr/0001-engine-godot.md), [`docs/adr/0002-portable-core.md`](docs/adr/0002-portable-core.md)
+상세: [`docs/adr/0001-engine-godot.md`](docs/adr/0001-engine-godot.md), [`docs/adr/0002-portable-core.md`](docs/adr/0002-portable-core.md), [`docs/adr/0003-combat-focus-and-asset-pipeline.md`](docs/adr/0003-combat-focus-and-asset-pipeline.md)
 
 ### 가장 중요한 규칙: 코어는 Godot을 모른다
 
@@ -52,7 +55,7 @@
 | `Harbor.Core.World` | 도시 구조: District, 청크 그리드, 도로/인도 그래프, 시간·날씨, 인구 예산 |
 | `Harbor.Core.Agents` | NPC·교통 에이전트 (경량 ECS 스타일 배열), 행동 결정(유틸리티/상태머신) |
 | `Harbor.Core.Vehicles` | 차량 스펙·소유·손상 상태, 원거리 차량 kinematic 이동 |
-| `Harbor.Core.Combat` | 체력·데미지·무기 규칙, 범죄 판정 |
+| `Harbor.Core.Combat` | 체력·방어구·데미지(거리 감쇠·부위 배율), 무기·탄약, 커버 판정, 범죄 판정 |
 | `Harbor.Core.Heat` | 수배 레벨, 경찰 응답 규칙 |
 | `Harbor.Core.Missions` | 데이터 기반 미션 실행기, 목표 타입, 스토리 플래그 |
 | `Harbor.Core.Save` | 세이브 모델, 버전·마이그레이션, 직렬화 |
@@ -79,7 +82,7 @@ Save ─> (모든 모듈의 ISaveable)
 | `game/scripts/Player/` | 입력 → `PlayerCommand`, 카메라 |
 | `game/scripts/Vehicles/` | 근거리 차량 물리 (`VehicleBody3D`/Jolt) ↔ 코어 상태 동기화 |
 | `game/scripts/UI/` | HUD, 미니맵, 메뉴, 인게임 폰 |
-| `game/scenes/`, `game/assets/` | 씬·에셋 |
+| `game/scenes/`, `game/assets/` | 씬·에셋. 에셋 규칙은 `game/assets/README.md` |
 
 ---
 
@@ -109,9 +112,33 @@ Godot에는 UE의 World Partition 같은 내장 기능이 없으므로 직접 �
 ### 3.4 수배(Heat)
 - 범죄 이벤트(`CrimeCommitted`) → 열기 점수 → 단계(0~5) → 경찰 스폰 규칙. 테이블은 `data/ai/heat.json`.
 
-### 3.5 전투
-- 코어: 체력·방어·데미지 계산, 무기 스펙(`data/weapons/*.json`), 탄약.
-- Godot: 조준, 히트 판정용 레이캐스트(결과를 커맨드로 코어에 전달), 이펙트.
+### 3.5 전투 (핵심 시스템)
+게임의 중심. 규칙은 전부 코어, Godot은 조준·표현만.
+
+**무기** — `data/weapons/*.json` (스키마 `weapon.schema.json`): 데미지, 펠릿 수, 부위 배율, 연사 모드·RPM, 탄창·재장전, 거리 감쇠(시작·끝·최소 배율), 탄퍼짐(힙/조준), 반동, 소음 반경.
+현재: `kestrel_p10`(권총), `wasp_smg`(SMG), `halberd_ar`(소총), `breaker_12`(산탄총).
+
+**데미지 흐름**
+```
+Godot: 조준 → 발사 입력 → PlayerCommand.Fire
+Core : 탄약·연사 쿨다운 검사 → 탄퍼짐으로 방향 산출 → IPhysicsQuery.Raycast(포트)
+       → 히트 부위·거리 → damage × 부위배율 × 감쇠 × (1 - 방어구) → HealthChanged / Died 이벤트
+       → 소음 이벤트 → 주변 AI 인지 + Heat
+Godot: 이벤트 받아 피격 애니메이션·이펙트·HUD
+```
+
+**커버** — 레벨에 커버 지점(`CoverPoint`: 위치, 법선, 높이 low/high)을 배치. 건물·소품 에셋은 커버를 염두에 두고 만든다 (낮은 벽 ~1m, 기둥, 바리케이드).
+- 코어: 커버 지점 등록/점유, "이 위치가 위협 방향에서 가려지는가" 판정(레이캐스트 포트).
+- Godot: 커버 진입/이동/엿보기 애니메이션.
+
+**적 AI** (`Agents`) — 유틸리티 AI로 행동 선택: `TakeCover`, `Advance`, `Flank`, `Suppress`, `Charge`(근접), `Retreat`, `Reload`. 수치는 `data/ai/`.
+| 아키타입 | 모델 | 성향 |
+|---|---|---|
+| Saltline Crew 브롤러 | `chr_enemy_brawler` | 근접 돌진, 체력 높음, 커버 거의 안 씀 |
+| Velvet Hand 건맨 | `chr_enemy_gunman` | 권총/SMG, 커버 사용, 측면 이동 |
+| Ironclad 진압요원 | `chr_enemy_enforcer` | 방탄 방패(정면 피해 차단), 천천히 전진, 소총 |
+
+**플레이어** — `chr_player_rook`. 체력 + 방어구 게이지, 무기 슬롯 4개(권총/SMG/소총/산탄총).
 
 ### 3.6 미션
 - 미션 = 데이터 (`data/missions/*.json`): 시작 조건, 목표 리스트, 실패 조건, 보상, 다음 미션.
@@ -133,7 +160,14 @@ Godot에는 UE의 World Partition 같은 내장 기능이 없으므로 직접 �
 - 포맷 버전 올릴 때 마이그레이션 필수 (`core/src/Harbor.Core/Save/Migrations/`).
 - 파일 입출력은 `IFileSystem` 포트로 → 엔진 없이도 동작.
 
-### 3.10 네트워킹
+### 3.10 에셋 파이프라인
+- 원본 = `tools/blender/build_assets.py` (블렌더 4.2 헤드리스, `bpy`). 산출물 `.glb`는 Git LFS.
+- 사람: `human.py` + `characters.py` — 메타볼 몸 → 리메시 → 51본 리그(손가락 포함) 자동 웨이트 → 옷 레이어가 몸 웨이트 상속. 캐릭터당 ~5만 면.
+- 캐릭터·총기·건물 → `game/assets/{characters,weapons,buildings}/`. 범용 소품 → **sangsangbaksa-dev/Set** 리포 `props/`.
+- 명명: `chr_*`, `wpn_*`, `bldg_*`, `prop_*`. 충돌이 필요한 메시는 이름 끝 `-col`(Godot 임포트가 충돌 생성).
+- 미리보기 PNG: `tools/blender/render_preview.py` → `docs/art/`.
+
+### 3.11 네트워킹
 - **Phase 1: 싱글플레이.** 단, 코어가 "커맨드 입력 → 고정 틱 → 상태"라서 나중에 서버 권한형 멀티로 확장하기 좋다.
 - 멀티 도입은 별도 ADR.
 
@@ -151,13 +185,15 @@ Godot에는 UE의 World Partition 같은 내장 기능이 없으므로 직접 �
 ├─ game/                     ← Godot 프로젝트 (project.godot)
 │  ├─ scripts/               ← C# (Bridge, Adapters, Streaming, Views, Player, Vehicles, UI)
 │  ├─ scenes/
-│  └─ assets/                ← 바이너리 에셋 (Git LFS)
+│  └─ assets/                ← 바이너리 에셋 (Git LFS): characters/ weapons/ buildings/
 ├─ data/                     ← JSON 게임 데이터 + schema/
 ├─ docs/
 │  ├─ adr/
 │  └─ lore/                  ← 오리지널 세계관
 └─ tools/
+   └─ blender/               ← 에셋 생성 스크립트
 ```
+소품: 별도 리포 `sangsangbaksa-dev/Set` (`props/`).
 
 ---
 
@@ -167,9 +203,9 @@ Godot에는 UE의 World Partition 같은 내장 기능이 없으므로 직접 �
 |---|---|---|
 | M0 | 스켈레톤 | 코어 빌드·테스트 통과, Godot에서 빈 씬 + CoreHost 틱 |
 | M1 | 걷기 + 운전 | 3인칭 캐릭터, 차량 1종, 테스트 구역 1km² |
-| M2 | 스트리밍 | 청크 로딩/언로드, 원점 이동, 4km² |
-| M3 | 살아있는 거리 | 보행자·교통 에이전트, District 1개 |
-| M4 | 전투 + 수배 | 무기 2종, Heat 3단계, 경찰 추격 |
+| M2 | 전투 | 무기 4종, 커버 시스템, 적 아키타입 3종, 전투 테스트 맵(창고·주차장) |
+| M3 | 스트리밍 | 청크 로딩/언로드, 원점 이동, 4km² |
+| M4 | 살아있는 거리 + 수배 | 보행자·교통 에이전트, District 1개, Heat 3단계, 경찰 추격 |
 | M5 | 미션 + 세이브 | JSON 미션 3개, 세이브/로드 |
 
 ---
