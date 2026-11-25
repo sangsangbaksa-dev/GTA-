@@ -24,6 +24,8 @@ public static class RequestType
     public const ushort HeistSplit = 21;
     public const ushort ContractAbandon = 22;
     public const ushort CarryDrop = 23;
+    /// <summary>A = travel point id (data/world/travel.json).</summary>
+    public const ushort FastTravel = 30;
 }
 
 /// <summary>Generic request body: nonce + up to three strings + up to two integers (keeps the codec tiny and safe).</summary>

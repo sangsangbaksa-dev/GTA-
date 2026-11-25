@@ -4,7 +4,7 @@ Port Calloway의 항만과 시가지를 무대로 한 오리지널 3인칭 오�
 
 ## 플레이
 
-[GitHub Release](https://github.com/sangsangbaksa-dev/GTA-/releases/tag/v0.1.0)에서 Windows 또는 Linux x86_64 아카이브를 내려받아 모두 푼다. `ProjectHarbor` 실행 파일을 열고 **Play locally**를 선택하면 같은 서버 권한형 게임을 로컬에서 플레이할 수 있다. 전용 서버를 실행 중이라면 **Join a server**에서 호스트와 포트를 입력한다. 기본 포트는 `7788`이다.
+[GitHub Release](https://github.com/sangsangbaksa-dev/GTA-/releases/tag/v0.1.0)에서 Windows 또는 Linux x86_64 아카이브를 내려받아 모두 푼다. `ProjectHarbor` 실행 파일을 열고 **Play locally**를 선택하면 같은 서버 권한형 게임을 로컬에서 플레이할 수 있다. 전용 서버를 실행 중이라면 **Join a server**에서 호스트와 포트를 입력한다. 기본 포트는 `7788`이다. **City operations**에서는 Port Calloway의 도시 의뢰와 기존 ENet 세션을 열 수 있다.
 
 | 입력 | 동작 |
 |---|---|

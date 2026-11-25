@@ -1,5 +1,7 @@
 using Harbor.Core.Combat;
 using Harbor.Core.Activities;
+using Harbor.Core.Agents;
+using Harbor.Core.World;
 using Harbor.Core.Economy;
 using Harbor.Core.Heat;
 using Harbor.Core.Ports;
@@ -15,12 +17,20 @@ public sealed class GameData
     public EconomyData Economy { get; init; } = EconomyData.Default;
     public HeatConfig Heat { get; init; } = new();
     public ActivityData Activities { get; init; } = ActivityData.Empty;
+    public AgentData Agents { get; init; } = AgentData.Empty;
+    public MapData Map { get; init; } = MapData.Empty;
+    public TravelConfig Travel { get; init; } = new();
 
     private sealed record MaterialFile(List<MaterialEntry> Materials);
     private sealed record ShopFile(List<ShopItem> Items);
     private sealed record BusinessFile(List<BusinessDef> Businesses);
     private sealed record SafehouseFile(List<SafehouseDef> Safehouses);
     private sealed record HeistFile(List<HeistDef> Heists);
+    private sealed record FactionFile(List<FactionDef> Factions);
+    private sealed record ArchetypeFile(List<ArchetypeDef> Archetypes, double CorpseSeconds = 12, double ThinkHz = 10,
+        double ActivationRadius = 220, double DeactivationRadius = 320);
+    private sealed record EncounterFile(List<EncounterDef> Encounters);
+    private sealed record AssetFile(Dictionary<string, AssetDef> Assets);
     private sealed record MaterialEntry(string Id, List<WeaponClass> PenetrableBy, double DamageScale, double MaxThickness);
 
     public static GameData LoadCombat(IFileSystem fs, string root = "data")
@@ -69,7 +79,30 @@ public sealed class GameData
             Json.Read<SupplyDropConfig>(fs, $"{root}/activities/supply_drops.json"));
         activities.Validate(economy);
 
-        return new GameData { Weapons = combat.Weapons, Combat = combat.Combat, Materials = combat.Materials,
-            Economy = economy, Heat = heat, Activities = activities };
+        var arch = Json.Read<ArchetypeFile>(fs, $"{root}/ai/archetypes.json");
+        var agents = new AgentData
+        {
+            Factions = Json.Read<FactionFile>(fs, $"{root}/ai/factions.json").Factions.ToDictionary(f => f.Id),
+            Archetypes = arch.Archetypes.ToDictionary(a => a.Id),
+            Encounters = fs.Exists($"{root}/ai/encounters.json") ? Json.Read<EncounterFile>(fs, $"{root}/ai/encounters.json").Encounters : new(),
+            Police = Json.Read<PoliceConfig>(fs, $"{root}/ai/police.json"),
+            CorpseSeconds = arch.CorpseSeconds, ThinkHz = arch.ThinkHz,
+            ActivationRadius = arch.ActivationRadius, DeactivationRadius = arch.DeactivationRadius,
+        };
+        agents.Validate(combat.Weapons.Keys.ToArray(), heat.CrimeHeat.Keys);
+
+        var map = Json.Read<MapData>(fs, $"{root}/world/map.json") with
+        {
+            Assets = Json.Read<AssetFile>(fs, $"{root}/world/assets.json").Assets,
+        };
+        map.Validate();
+        var travel = Json.Read<TravelConfig>(fs, $"{root}/world/travel.json");
+        travel.Validate();
+
+        return new GameData
+        {
+            Weapons = combat.Weapons, Combat = combat.Combat, Materials = combat.Materials, Economy = economy, Heat = heat, Activities = activities,
+            Agents = agents, Map = map, Travel = travel,
+        };
     }
 }

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "assets",
+  "type": "object",
+  "properties": {
+    "assets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "min": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "size": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "material": {
+            "enum": [
+              "concrete",
+              "metal",
+              "thinMetal",
+              "wood",
+              "glass",
+              "earth"
+            ]
+          },
+          "tag": {
+            "type": "string"
+          },
+          "solid": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "min",
+          "size"
+        ]
+      }
+    }
+  },
+  "required": [
+    "assets"
+  ]
+}

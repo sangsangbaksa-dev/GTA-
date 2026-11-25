@@ -306,6 +306,23 @@ public sealed class EconomySystem : ISimSystem
         return dropId;
     }
 
+    /// <summary>Spawns a dirty-cash bag paid from a faucet (NPC loot). The beneficiary's crew has pickup priority for a while.</summary>
+    public int? DropCash(Vec3d position, long amount, string faucet, int beneficiaryActorId)
+    {
+        if (amount <= 0) return null;
+        var cfg = Data.Config.DeathDrop;
+        var dropId = _nextDrop++;
+        if (!Ledger.Post(new Transfer($"drop:{dropId}", AccountId.Faucet(faucet), AccountId.Drop(dropId), amount, Currency.Dirty, faucet)).Ok)
+            return null;
+        var loot = _world.Actors.Spawn(ActorKind.Loot, position);
+        loot.Name = "prop_cash_stack";
+        var who = _byActor.GetValueOrDefault(beneficiaryActorId);
+        _drops[dropId] = new CashDrop(dropId, loot.Id, loot.Position, Now + cfg.LifetimeSeconds, Now + cfg.CrewPrioritySeconds,
+            who?.CrewId ?? 0, who?.Id ?? "");
+        _world.Events.Publish(new CashDropped(dropId, loot.Id, amount, loot.Position));
+        return dropId;
+    }
+
     private void StepDrops()
     {
         var r = Data.Config.DeathDrop.PickupRadius;

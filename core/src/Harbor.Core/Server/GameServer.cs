@@ -1,4 +1,5 @@
 using Harbor.Core.Activities;
+using Harbor.Core.Agents;
 using Harbor.Core.Combat;
 using Harbor.Core.Data;
 using Harbor.Core.Economy;
@@ -24,6 +25,7 @@ public sealed class GameServer
     public EconomySystem Economy { get; }
     public HeatSystem Heat { get; }
     public ActivitySystem Activities { get; }
+    public AgentSystem Agents { get; }
     /// <summary>Seconds between passive-mode toggles (CONTENT_DESIGN §6.6).</summary>
     public double PassiveCooldownSeconds { get; set; } = 300;
 
@@ -33,14 +35,21 @@ public sealed class GameServer
         MovementConfig? movement = null)
     {
         Data = data;
-        Static = staticWorld ?? new StaticWorld();
+        if (staticWorld == null)
+        {
+            staticWorld = new StaticWorld();
+            data.Map.BuildStatic(staticWorld);
+        }
+        Static = staticWorld;
         World = new SimWorld(log);
-        Session = World.AddSystem(new ServerSession(transport, config, movement, Static));
+        Session = World.AddSystem(new ServerSession(transport, config ?? new ServerConfig { SpawnPoint = data.Map.SpawnPoint }, movement, Static));
         Combat = World.AddSystem(new CombatSystem(data.Combat, data.Materials, data.Weapons, Static, Session.History));
+        Agents = World.AddSystem(new AgentSystem(data.Agents, Combat, Static, Session.MovementConfig));
         Economy = World.AddSystem(new EconomySystem(data.Economy) { Items = new CombatItemReceiver(this) });
         Heat = World.AddSystem(new HeatSystem(data.Heat));
         Activities = World.AddSystem(new ActivitySystem(data.Activities, Economy, Heat));
         ActivityBlocksPassive = Activities.IsBusy;
+        Agents.WantedLevel = Heat.LevelOf;
         Combat.SpawnPointFor = SpawnPointFor;
         foreach (var b in Static.All)
             if (b.Tag == "explosive") Combat.RegisterExplosive(b.Id);
@@ -69,7 +78,38 @@ public sealed class GameServer
         ev.Subscribe<ActorRespawned>(e => ToActors(WireEventType.Respawned, WireEvents.Point(e.ActorId, e.Position), e.ActorId));
         ev.Subscribe<ExplosiveDetonated>(e => Session.Broadcast(WireEventType.Explosion, WireEvents.Point(e.BoxId, e.Position)));
         WireActivities(ev);
+        WireAgents(ev);
     }
+
+    private void WireAgents(Events.EventBus ev)
+    {
+        ev.Subscribe<WantedLevelChanged>(e =>
+        {
+            var lvl = Data.Heat.Levels.FirstOrDefault(l => l.Level == e.NewLevel) ?? Data.Heat.Levels[0];
+            Agents.Police.SetWanted(e.ActorId, e.NewLevel, lvl.Units, lvl.ResponseSeconds);
+        });
+        ev.Subscribe<NpcSpawned>(e => Session.Broadcast(WireEventType.ActorInfo,
+            WireEvents.ActorInfo(new ActorInfoMsg(e.ActorId, ActorKind.Npc, e.Model, Data.Agents.Factions[e.Faction].DisplayName, World.Actors.Get(e.ActorId).Team))));
+        ev.Subscribe<NpcDespawned>(e => Session.Broadcast(WireEventType.ActorRemoved, WireEvents.ActorPair(e.ActorId, 0)));
+        ev.Subscribe<NpcKilled>(e =>
+        {
+            if (!IsPlayer(e.KillerId)) return;
+            var def = Data.Agents.Archetypes[e.Archetype];
+            var crime = Data.Agents.Factions[e.Faction].KillCrime;
+            if (crime.Length > 0) Heat.Report(e.KillerId, crime);
+            var amount = def.CashDrop[0] + (long)((def.CashDrop[1] - def.CashDrop[0]) * ((e.ActorId * 2654435761u) % 1000 / 1000.0));
+            Economy.DropCash(e.Position + new Math.Vec3d(0.4, 0, 0.4), amount, $"npc:{e.Faction}", e.KillerId);
+        });
+        ev.Subscribe<ShotFired>(e => Session.Broadcast(WireEventType.Shot, WireEvents.Shot(e)));
+    }
+
+    /// <summary>Presentation info for every actor clients need a model for.</summary>
+    private ActorInfoMsg InfoOf(Actor a) => a.Kind switch
+    {
+        ActorKind.Player => new ActorInfoMsg(a.Id, a.Kind, "chr_player_rook", a.Name, a.Team),
+        ActorKind.Npc when Agents.Get(a.Id) is { } ag => new ActorInfoMsg(a.Id, a.Kind, ag.Def.Model, ag.Faction.DisplayName, a.Team),
+        _ => new ActorInfoMsg(a.Id, a.Kind, a.Name, "", a.Team),
+    };
 
     private bool IsPlayer(int actorId) => World.Actors.TryGet(actorId, out var a) && a.Kind == ActorKind.Player;
 
@@ -139,6 +179,9 @@ public sealed class GameServer
         foreach (var w in profile.OwnedWeapons) Combat.GiveWeapon(actor.Id, w);
         actor.Position = SpawnPointFor(actor);
         SendBalance(profile.Id);
+        Session.Broadcast(WireEventType.ActorInfo, WireEvents.ActorInfo(InfoOf(actor)));
+        foreach (var other in World.Actors.All)
+            if (other.Id != actor.Id) Session.SendEvent(e.Peer, WireEventType.ActorInfo, WireEvents.ActorInfo(InfoOf(other)));
     }
 
     private void OnLeft(PlayerLeft e)
@@ -190,10 +233,35 @@ public sealed class GameServer
             RequestType.ContractStart => Activities.Contracts.Start(e.ActorId, body.A, body.Nonce),
             RequestType.ContractAbandon => Activities.Contracts.Abandon(e.ActorId),
             RequestType.HeistSplit => HeistSplit(e.ActorId, (int)body.Y, body.X),
+            RequestType.FastTravel => FastTravel(e.ActorId, body.A, body.Nonce),
             RequestType.CarryDrop => Activities.Carry.Drop(e.ActorId) ? EconResult.Success : EconResult.Fail("not_carrying"),
             _ => ExtraRequest?.Invoke(e, body) ?? EconResult.Fail("unknown_request"),
         };
         if (!result.Ok) ToActors(WireEventType.RequestRejected, RequestCodec.Rejected(e.Type, body.Nonce, result.Error ?? "error"), e.ActorId);
+    }
+
+    private readonly Dictionary<int, double> _travelledAt = new();
+
+    private EconResult FastTravel(int actorId, string pointId, ulong nonce)
+    {
+        var cfg = Data.Travel;
+        var point = cfg.Points.FirstOrDefault(p => p.Id == pointId);
+        var p = Economy.ProfileOf(actorId);
+        if (point == null || p == null || !World.Actors.TryGet(actorId, out var a)) return EconResult.Fail("invalid");
+        if (!a.IsAlive || (a.Status & ActorFlags.Downed) != 0) return EconResult.Fail("incapacitated");
+        if (Heat.LevelOf(actorId) > 0) return EconResult.Fail("wanted");
+        if (Activities.IsBusy(actorId)) return EconResult.Fail("in_activity");
+        if (_travelledAt.TryGetValue(actorId, out var last) && Economy.Now - last < cfg.CooldownSeconds) return EconResult.Fail("cooldown");
+        if (cfg.Cost > 0)
+        {
+            if (Economy.Bank(p.Id) < cfg.Cost) return EconResult.Fail("insufficient_funds");
+            if (!Economy.Move($"travel:{p.Id}:{nonce}", AccountId.Bank(p.Id), AccountId.Sink("travel"), cfg.Cost, Currency.Clean, "travel").Ok)
+                return EconResult.Fail("payment_failed");
+        }
+        _travelledAt[actorId] = Economy.Now;
+        a.Move = new MoveState { Position = point.Pos + new Math.Vec3d((actorId % 4) * 1.2, 0, 0), Yaw = a.Move.Yaw };
+        ToActors(WireEventType.Travelled, WireEvents.Point(actorId, a.Position), actorId);
+        return EconResult.Success;
     }
 
     private EconResult HeistSplit(int actorId, int runId, long packed)

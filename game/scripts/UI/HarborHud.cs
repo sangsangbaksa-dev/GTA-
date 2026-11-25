@@ -282,6 +282,7 @@ public partial class HarborHud : CanvasLayer
             Show(_host.HasPlayer ? Screen.Play : Screen.Connecting);
         }, true);
         Button(column, "Join a server", () => Show(Screen.Connect));
+        Button(column, "City operations", () => GetTree().ChangeSceneToFile(HarborLaunch.CityScene));
         Button(column, "Controls", () => ShowControls(Screen.Title));
         Button(column, "Settings", () => ShowSettings(Screen.Title));
         Button(column, "Quit game", () => GetTree().Quit());

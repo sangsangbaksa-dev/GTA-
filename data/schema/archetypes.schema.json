@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "archetypes",
+  "type": "object",
+  "properties": {
+    "archetypes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "faction": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "style": {
+            "enum": [
+              "charge",
+              "cover",
+              "advance"
+            ]
+          },
+          "health": {
+            "type": "integer"
+          },
+          "armor": {
+            "type": "integer"
+          },
+          "weapon": {
+            "type": "string"
+          },
+          "speedMultiplier": {
+            "type": "number"
+          },
+          "sightRange": {
+            "type": "number"
+          },
+          "fovDeg": {
+            "type": "number"
+          },
+          "reactionSeconds": {
+            "type": "number"
+          },
+          "attackRange": {
+            "type": "number"
+          },
+          "preferredRange": {
+            "type": "number"
+          },
+          "aimErrorDeg": {
+            "type": "number"
+          },
+          "burstSeconds": {
+            "type": "number"
+          },
+          "burstPauseSeconds": {
+            "type": "number"
+          },
+          "meleeDamage": {
+            "type": "number"
+          },
+          "meleeRange": {
+            "type": "number"
+          },
+          "meleeCooldown": {
+            "type": "number"
+          },
+          "shieldFrontScale": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "shieldConeDeg": {
+            "type": "number"
+          },
+          "cashDrop": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          }
+        },
+        "required": [
+          "id",
+          "faction",
+          "model",
+          "style"
+        ]
+      }
+    },
+    "corpseSeconds": {
+      "type": "number"
+    },
+    "thinkHz": {
+      "type": "number"
+    },
+    "activationRadius": {
+      "type": "number"
+    },
+    "deactivationRadius": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "archetypes"
+  ]
+}

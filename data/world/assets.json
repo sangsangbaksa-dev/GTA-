@@ -1,0 +1,604 @@
+{
+ "assets": {
+  "bldg_apartment_block": {
+   "min": [
+    -6.25,
+    -0.09,
+    -5.25
+   ],
+   "size": [
+    13.45,
+    16.79,
+    11.85
+   ],
+   "material": "concrete",
+   "tag": "building",
+   "solid": true
+  },
+  "bldg_corner_shop": {
+   "min": [
+    -4.7,
+    0.0,
+    -4.15
+   ],
+   "size": [
+    9.4,
+    4.82,
+    9.76
+   ],
+   "material": "concrete",
+   "tag": "building",
+   "solid": true
+  },
+  "bldg_parking_garage": {
+   "min": [
+    -15.12,
+    -0.12,
+    -10.15
+   ],
+   "size": [
+    32.22,
+    11.27,
+    22.45
+   ],
+   "material": "concrete",
+   "tag": "building",
+   "solid": true
+  },
+  "bldg_warehouse": {
+   "min": [
+    -11.4,
+    -0.03,
+    -7.55
+   ],
+   "size": [
+    22.8,
+    9.67,
+    17.27
+   ],
+   "material": "concrete",
+   "tag": "building",
+   "solid": true
+  },
+  "prop_ammo_box": {
+   "min": [
+    -0.16,
+    0.0,
+    -0.08
+   ],
+   "size": [
+    0.33,
+    0.23,
+    0.17
+   ],
+   "material": "metal",
+   "tag": "pickup_ammo",
+   "solid": false
+  },
+  "prop_armor_vest": {
+   "min": [
+    -0.15,
+    0.0,
+    -0.51
+   ],
+   "size": [
+    0.35,
+    0.14,
+    0.75
+   ],
+   "material": "metal",
+   "tag": "pickup_armor",
+   "solid": false
+  },
+  "prop_atm": {
+   "min": [
+    -0.37,
+    0.0,
+    -0.45
+   ],
+   "size": [
+    0.74,
+    1.68,
+    0.96
+   ],
+   "material": "metal",
+   "tag": "atm",
+   "solid": true
+  },
+  "prop_barrel_explosive": {
+   "min": [
+    -0.31,
+    0.0,
+    -0.31
+   ],
+   "size": [
+    0.61,
+    0.89,
+    0.61
+   ],
+   "material": "thinMetal",
+   "tag": "explosive",
+   "solid": true
+  },
+  "prop_barrel_oil": {
+   "min": [
+    -0.31,
+    0.0,
+    -0.31
+   ],
+   "size": [
+    0.61,
+    0.89,
+    0.61
+   ],
+   "material": "thinMetal",
+   "tag": "cover_low",
+   "solid": true
+  },
+  "prop_bench": {
+   "min": [
+    -0.9,
+    0.0,
+    -0.27
+   ],
+   "size": [
+    1.8,
+    0.86,
+    0.57
+   ],
+   "material": "wood",
+   "tag": "decor_sit",
+   "solid": true
+  },
+  "prop_bond_case": {
+   "min": [
+    -0.23,
+    0.0,
+    -0.06
+   ],
+   "size": [
+    0.47,
+    0.38,
+    0.13
+   ],
+   "material": "metal",
+   "tag": "loot_carry",
+   "solid": false
+  },
+  "prop_bus_shelter": {
+   "min": [
+    -1.75,
+    0.0,
+    -0.75
+   ],
+   "size": [
+    3.5,
+    2.95,
+    1.65
+   ],
+   "material": "glass",
+   "tag": "cover_high",
+   "solid": true
+  },
+  "prop_cable_spool": {
+   "min": [
+    -0.75,
+    0.0,
+    -0.49
+   ],
+   "size": [
+    1.5,
+    1.5,
+    0.98
+   ],
+   "material": "wood",
+   "tag": "cover_high",
+   "solid": true
+  },
+  "prop_cash_bag": {
+   "min": [
+    -0.22,
+    0.01,
+    -0.44
+   ],
+   "size": [
+    0.44,
+    0.46,
+    0.88
+   ],
+   "material": "metal",
+   "tag": "loot_carry",
+   "solid": false
+  },
+  "prop_cash_register": {
+   "min": [
+    -0.21,
+    0.0,
+    -0.21
+   ],
+   "size": [
+    0.42,
+    0.45,
+    0.42
+   ],
+   "material": "metal",
+   "tag": "register",
+   "solid": false
+  },
+  "prop_cash_stack": {
+   "min": [
+    -0.25,
+    0.0,
+    -0.07
+   ],
+   "size": [
+    0.5,
+    0.13,
+    0.15
+   ],
+   "material": "metal",
+   "tag": "loot_small",
+   "solid": false
+  },
+  "prop_concrete_barrier": {
+   "min": [
+    -1.0,
+    0.0,
+    -0.31
+   ],
+   "size": [
+    2.0,
+    0.89,
+    0.62
+   ],
+   "material": "concrete",
+   "tag": "cover_low",
+   "solid": true
+  },
+  "prop_crate_stack": {
+   "min": [
+    -1.25,
+    0.0,
+    -0.6
+   ],
+   "size": [
+    2.35,
+    1.69,
+    1.2
+   ],
+   "material": "wood",
+   "tag": "cover_high",
+   "solid": true
+  },
+  "prop_crate_wood": {
+   "min": [
+    -0.62,
+    0.0,
+    -0.62
+   ],
+   "size": [
+    1.24,
+    1.2,
+    1.24
+   ],
+   "material": "wood",
+   "tag": "cover_high",
+   "solid": true
+  },
+  "prop_dock_bollard": {
+   "min": [
+    -0.3,
+    0.0,
+    -0.3
+   ],
+   "size": [
+    0.6,
+    0.66,
+    1.51
+   ],
+   "material": "metal",
+   "tag": "cover_low",
+   "solid": true
+  },
+  "prop_dumpster": {
+   "min": [
+    -1.0,
+    0.01,
+    -0.64
+   ],
+   "size": [
+    2.0,
+    1.35,
+    1.29
+   ],
+   "material": "metal",
+   "tag": "cover_high",
+   "solid": true
+  },
+  "prop_fire_hydrant": {
+   "min": [
+    -0.2,
+    0.0,
+    -0.16
+   ],
+   "size": [
+    0.41,
+    0.82,
+    0.39
+   ],
+   "material": "metal",
+   "tag": "decor_breakable",
+   "solid": true
+  },
+  "prop_gas_cylinder_cage": {
+   "min": [
+    -0.67,
+    0.0,
+    -0.37
+   ],
+   "size": [
+    1.35,
+    1.76,
+    0.75
+   ],
+   "material": "thinMetal",
+   "tag": "explosive",
+   "solid": true
+  },
+  "prop_laptop_hack": {
+   "min": [
+    -0.17,
+    0.0,
+    -0.16
+   ],
+   "size": [
+    0.45,
+    0.23,
+    0.28
+   ],
+   "material": "metal",
+   "tag": "hack_terminal",
+   "solid": false
+  },
+  "prop_life_ring_stand": {
+   "min": [
+    -0.35,
+    0.0,
+    -0.14
+   ],
+   "size": [
+    0.7,
+    1.53,
+    0.2
+   ],
+   "material": "metal",
+   "tag": "decor",
+   "solid": false
+  },
+  "prop_medkit": {
+   "min": [
+    -0.18,
+    0.0,
+    -0.06
+   ],
+   "size": [
+    0.37,
+    0.3,
+    0.13
+   ],
+   "material": "metal",
+   "tag": "pickup_health",
+   "solid": false
+  },
+  "prop_newspaper_box": {
+   "min": [
+    -0.23,
+    0.0,
+    -0.21
+   ],
+   "size": [
+    0.46,
+    0.98,
+    0.45
+   ],
+   "material": "thinMetal",
+   "tag": "cover_low",
+   "solid": true
+  },
+  "prop_pallet_stack": {
+   "min": [
+    -0.6,
+    0.0,
+    -0.5
+   ],
+   "size": [
+    1.2,
+    1.18,
+    1.01
+   ],
+   "material": "wood",
+   "tag": "cover_high",
+   "solid": true
+  },
+  "prop_parking_meter": {
+   "min": [
+    -0.09,
+    0.0,
+    -0.07
+   ],
+   "size": [
+    0.18,
+    1.4,
+    0.15
+   ],
+   "material": "metal",
+   "tag": "decor_breakable",
+   "solid": false
+  },
+  "prop_road_barricade": {
+   "min": [
+    -0.75,
+    -0.01,
+    -0.31
+   ],
+   "size": [
+    1.5,
+    1.09,
+    0.85
+   ],
+   "material": "wood",
+   "tag": "decor_physics",
+   "solid": true
+  },
+  "prop_safe": {
+   "min": [
+    -0.4,
+    0.0,
+    -0.37
+   ],
+   "size": [
+    0.8,
+    1.13,
+    0.86
+   ],
+   "material": "metal",
+   "tag": "safe",
+   "solid": true
+  },
+  "prop_sandbag_wall": {
+   "min": [
+    -1.37,
+    0.01,
+    -0.39
+   ],
+   "size": [
+    2.78,
+    0.78,
+    0.55
+   ],
+   "material": "earth",
+   "tag": "cover_low",
+   "solid": true
+  },
+  "prop_scaffold_section": {
+   "min": [
+    -1.35,
+    0.0,
+    -0.58
+   ],
+   "size": [
+    2.7,
+    3.02,
+    1.15
+   ],
+   "material": "thinMetal",
+   "tag": "vantage",
+   "solid": true
+  },
+  "prop_shipping_container": {
+   "min": [
+    -3.04,
+    0.0,
+    -1.23
+   ],
+   "size": [
+    6.17,
+    2.59,
+    2.46
+   ],
+   "material": "metal",
+   "tag": "cover_full",
+   "solid": true
+  },
+  "prop_street_lamp": {
+   "min": [
+    -0.16,
+    0.0,
+    -0.16
+   ],
+   "size": [
+    0.32,
+    5.9,
+    2.06
+   ],
+   "material": "metal",
+   "tag": "decor_light",
+   "solid": false
+  },
+  "prop_traffic_cone": {
+   "min": [
+    -0.19,
+    0.0,
+    -0.19
+   ],
+   "size": [
+    0.38,
+    0.7,
+    0.38
+   ],
+   "material": "metal",
+   "tag": "decor_physics",
+   "solid": false
+  },
+  "prop_trash_bin": {
+   "min": [
+    -0.27,
+    0.0,
+    -0.27
+   ],
+   "size": [
+    0.54,
+    1.04,
+    0.55
+   ],
+   "material": "thinMetal",
+   "tag": "decor_physics",
+   "solid": true
+  },
+  "prop_vending_machine": {
+   "min": [
+    -0.47,
+    0.0,
+    -0.4
+   ],
+   "size": [
+    0.95,
+    1.85,
+    0.84
+   ],
+   "material": "metal",
+   "tag": "shop_small",
+   "solid": true
+  },
+  "prop_weapon_crate": {
+   "min": [
+    -0.74,
+    0.0,
+    -0.26
+   ],
+   "size": [
+    1.48,
+    0.4,
+    0.53
+   ],
+   "material": "wood",
+   "tag": "supply_drop",
+   "solid": true
+  },
+  "prop_workbench": {
+   "min": [
+    -0.9,
+    0.0,
+    -0.39
+   ],
+   "size": [
+    1.8,
+    1.9,
+    0.9
+   ],
+   "material": "wood",
+   "tag": "workbench",
+   "solid": true
+  }
+ }
+}

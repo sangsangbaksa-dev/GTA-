@@ -1,0 +1,9 @@
+{
+  "cost": 150,
+  "cooldownSeconds": 60,
+  "points": [
+    { "id": "tp_old_mill",      "displayName": "Old Mill — 버스 정류장",      "position": [-440, 0, 340] },
+    { "id": "tp_harbor_front",  "displayName": "Harbor Front — 부두 입구",    "position": [260, 0, -200] },
+    { "id": "tp_glass_heights", "displayName": "Glass Heights — 중앙 광장",   "position": [860, 0, 600] }
+  ]
+}

@@ -1,0 +1,245 @@
+{
+ "_generated": "tools/map/build_map.py",
+ "encounters": [
+  {
+   "id": "enc_tz_mill_yard",
+   "position": [
+    -480,
+    0,
+    260
+   ],
+   "radius": 11,
+   "leashRadius": 45,
+   "respawnSeconds": 240,
+   "members": [
+    {
+     "archetype": "saltline_brawler",
+     "count": 2
+    },
+    {
+     "archetype": "saltline_gunman",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "enc_tz_mill_canal",
+   "position": [
+    -350,
+    0,
+    400
+   ],
+   "radius": 11,
+   "leashRadius": 45,
+   "respawnSeconds": 240,
+   "members": [
+    {
+     "archetype": "saltline_brawler",
+     "count": 2
+    },
+    {
+     "archetype": "saltline_gunman",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "enc_tz_mill_rail",
+   "position": [
+    -600,
+    0,
+    330
+   ],
+   "radius": 11,
+   "leashRadius": 45,
+   "respawnSeconds": 240,
+   "members": [
+    {
+     "archetype": "saltline_brawler",
+     "count": 2
+    },
+    {
+     "archetype": "saltline_gunman",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "enc_tz_harbor_pier9",
+   "position": [
+    220,
+    0,
+    -220
+   ],
+   "radius": 11,
+   "leashRadius": 45,
+   "respawnSeconds": 240,
+   "members": [
+    {
+     "archetype": "saltline_brawler",
+     "count": 1
+    },
+    {
+     "archetype": "saltline_gunman",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "enc_tz_harbor_fishmarket",
+   "position": [
+    340,
+    0,
+    -140
+   ],
+   "radius": 11,
+   "leashRadius": 45,
+   "respawnSeconds": 240,
+   "members": [
+    {
+     "archetype": "saltline_brawler",
+     "count": 1
+    },
+    {
+     "archetype": "saltline_gunman",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "enc_tz_harbor_drydock",
+   "position": [
+    150,
+    0,
+    -360
+   ],
+   "radius": 11,
+   "leashRadius": 45,
+   "respawnSeconds": 240,
+   "members": [
+    {
+     "archetype": "saltline_brawler",
+     "count": 1
+    },
+    {
+     "archetype": "saltline_gunman",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "enc_tz_heights_plaza",
+   "position": [
+    900,
+    0,
+    600
+   ],
+   "radius": 11,
+   "leashRadius": 45,
+   "respawnSeconds": 240,
+   "members": [
+    {
+     "archetype": "velvet_gunman",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "enc_tz_heights_garage",
+   "position": [
+    800,
+    0,
+    680
+   ],
+   "radius": 11,
+   "leashRadius": 45,
+   "respawnSeconds": 240,
+   "members": [
+    {
+     "archetype": "velvet_gunman",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "enc_tz_heights_skybridge",
+   "position": [
+    980,
+    0,
+    560
+   ],
+   "radius": 11,
+   "leashRadius": 45,
+   "respawnSeconds": 240,
+   "members": [
+    {
+     "archetype": "velvet_gunman",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "enc_hf_lantern_vault",
+   "position": [
+    945,
+    0,
+    565
+   ],
+   "radius": 7,
+   "leashRadius": 50,
+   "respawnSeconds": 300,
+   "members": [
+    {
+     "archetype": "ironclad_enforcer",
+     "count": 3
+    },
+    {
+     "archetype": "velvet_gunman",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "enc_hf_pier_container",
+   "position": [
+    285,
+    0,
+    -385
+   ],
+   "radius": 7,
+   "leashRadius": 50,
+   "respawnSeconds": 300,
+   "members": [
+    {
+     "archetype": "ironclad_enforcer",
+     "count": 3
+    },
+    {
+     "archetype": "saltline_gunman",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "enc_hf_saltworks_vault",
+   "position": [
+    -570,
+    0,
+    430
+   ],
+   "radius": 7,
+   "leashRadius": 50,
+   "respawnSeconds": 300,
+   "members": [
+    {
+     "archetype": "ironclad_enforcer",
+     "count": 3
+    },
+    {
+     "archetype": "saltline_gunman",
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

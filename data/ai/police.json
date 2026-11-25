@@ -1,0 +1,10 @@
+{
+  "maxUnitsPerPlayer": 10,
+  "maxUnitsTotal": 32,
+  "spawnDistance": [55, 85],
+  "spawnBatch": 2,
+  "swatFromLevel": 4,
+  "despawnAfterSeconds": 20,
+  "officer": "police_officer",
+  "swat": "police_swat"
+}

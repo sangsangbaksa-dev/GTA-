@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "encounters",
+  "type": "object",
+  "properties": {
+    "encounters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "position": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "radius": {
+            "type": "number"
+          },
+          "leashRadius": {
+            "type": "number"
+          },
+          "respawnSeconds": {
+            "type": "number"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "archetype": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "archetype"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "members"
+        ]
+      }
+    }
+  },
+  "required": [
+    "encounters"
+  ]
+}
