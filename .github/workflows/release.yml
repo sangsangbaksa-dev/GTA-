@@ -45,7 +45,8 @@ jobs:
         run: |
           GODOT=$(ls ~/godot/Godot_v*_mono_linux_x86_64/Godot_v*_mono_linux.x86_64)
           cd game
-          dotnet new sln -n Harbor --force
+          # Newer SDKs default to .slnx; Godot 4.4 needs a classic .sln.
+          dotnet new sln -n Harbor --force --format sln 2>/dev/null || dotnet new sln -n Harbor --force
           dotnet sln Harbor.sln add Harbor.csproj ../core/src/Harbor.Core/Harbor.Core.csproj
           "$GODOT" --headless --import || true
           mkdir -p ../build/windows ../build/linux
