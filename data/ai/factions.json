@@ -1,0 +1,8 @@
+{
+  "factions": [
+    { "id": "saltline",  "displayName": "Saltline Crew",     "team": -1, "players": "always", "enemies": ["velvet", "ironclad"], "killCrime": "assault" },
+    { "id": "velvet",    "displayName": "Velvet Hand",       "team": -2, "players": "always", "enemies": ["saltline"],            "killCrime": "assault" },
+    { "id": "ironclad",  "displayName": "Ironclad Security", "team": -3, "players": "always", "enemies": ["saltline"],            "killCrime": "assault" },
+    { "id": "police",    "displayName": "Calloway PD",       "team": -4, "players": "wanted", "enemies": [],                      "killCrime": "attack_police" }
+  ]
+}

@@ -25,4 +25,12 @@ internal static class Repo
 
     private static Harbor.Core.Data.GameData? _data;
     public static Harbor.Core.Data.GameData Data => _data ??= Harbor.Core.Data.GameData.Load(new DiskFileSystem(Root));
+
+    private static Harbor.Core.Data.GameData? _quiet;
+    /// <summary>Same data without NPCs, for rule tests that must not be interrupted by gangs or police.</summary>
+    public static Harbor.Core.Data.GameData DataWithoutNpcs => _quiet ??= new Harbor.Core.Data.GameData
+    {
+        Weapons = Data.Weapons, Combat = Data.Combat, Materials = Data.Materials, Economy = Data.Economy, Heat = Data.Heat,
+        Activities = Data.Activities, Map = Data.Map, Travel = Data.Travel, Agents = Harbor.Core.Agents.AgentData.Empty,
+    };
 }
