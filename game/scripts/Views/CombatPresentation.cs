@@ -12,12 +12,11 @@ namespace Harbor.Game.Views;
 public partial class CombatPresentation : Node3D
 {
     private const string AssetRoot = "res://assets/";
-    private static readonly string[] CharacterPaths =
+    private static readonly (string Preferred, string Fallback)[] CharacterPaths =
     {
-        "characters/chr_player_rook.glb",
-        "characters/chr_enemy_gunman.glb",
-        "characters/chr_enemy_enforcer.glb",
-        "characters/chr_enemy_brawler.glb"
+        ("chr_harbor_rook", "chr_player_rook"),
+        ("chr_harbor_crew", "chr_enemy_gunman"),
+        ("chr_harbor_officer", "chr_enemy_enforcer")
     };
     private static readonly Dictionary<string, string> Weapons = new()
     {
@@ -28,6 +27,7 @@ public partial class CombatPresentation : Node3D
     };
 
     private readonly PackedScene[] _characters = new PackedScene[CharacterPaths.Length];
+    private bool _patrolHasShield;
     private readonly Dictionary<string, PackedScene> _weapons = new();
     private readonly Dictionary<string, AudioStream> _sounds = new();
     private readonly Dictionary<int, CharacterView> _views = new();
@@ -56,7 +56,16 @@ public partial class CombatPresentation : Node3D
         ProcessPriority = 20;
 
         for (var i = 0; i < _characters.Length; i++)
-            _characters[i] = GD.Load<PackedScene>(AssetRoot + CharacterPaths[i]);
+        {
+            var (preferred, fallback) = CharacterPaths[i];
+            var path = AssetRoot + "characters/" + preferred + ".glb";
+            if (!ResourceLoader.Exists(path))
+            {
+                path = AssetRoot + "characters/" + fallback + ".glb";
+                if (i == 2) _patrolHasShield = true;
+            }
+            _characters[i] = GD.Load<PackedScene>(path);
+        }
         foreach (var (id, path) in Weapons)
             _weapons[id] = GD.Load<PackedScene>(AssetRoot + "weapons/" + path + ".glb");
 
@@ -120,8 +129,6 @@ public partial class CombatPresentation : Node3D
             if (actor.Team == 3 && actor.IsAlive)
                 patrolPosition ??= CoreHost.ToGodot(actor.Position);
         }
-        foreach (var actor in _host.RemotePlayers)
-            UpdateCharacter(actor, dt, blend);
 
         _expired.Clear();
         foreach (var id in _views.Keys)
@@ -159,7 +166,7 @@ public partial class CombatPresentation : Node3D
         if (!_views.TryGetValue(actor.Id, out var view))
         {
             var remote = actor.Kind == ActorKind.Player;
-            var modelIndex = remote ? 0 : actor.Team == 3 ? 2 : actor.Id % 3 == 0 ? 3 : 1;
+            var modelIndex = remote ? 0 : actor.Team == 3 ? 2 : 1;
             var root = new Node3D { Name = $"Actor_{actor.Id}", Position = position, Rotation = new Vector3(0, (float)actor.Move.Yaw, 0) };
             var model = _characters[modelIndex].Instantiate<Node3D>();
             model.Rotation = new Vector3(0, Mathf.Pi, 0);
@@ -167,7 +174,7 @@ public partial class CombatPresentation : Node3D
             AddChild(root);
 
             var gait = RookGait.Create(model);
-            var pose = WeaponPose.Create(model, shielded: actor.Team == 3);
+            var pose = WeaponPose.Create(model, shielded: actor.Team == 3 && _patrolHasShield);
             var weaponId = remote ? "wasp_smg" : "kestrel_p10";
             pose?.Equip(weaponId, _weapons[weaponId]);
             view = new CharacterView(root, model, gait, pose, actor.Id);
@@ -199,14 +206,17 @@ public partial class CombatPresentation : Node3D
         view.Flinch = Mathf.MoveToward(view.Flinch, 0, dt * 4.8f);
         view.Kick = Mathf.MoveToward(view.Kick, 0, dt * 6.5f);
         var speed = (float)actor.Move.Velocity.WithY(0).Length;
-        view.Phase = Mathf.PosMod(view.Phase + Mathf.Min(speed, 9f) * dt * 5.1f, Mathf.Tau);
-        var bob = Mathf.Abs(Mathf.Sin(view.Phase)) * Mathf.Min(speed * 0.015f, 0.04f);
-        view.Model.Position = Vector3.Up * bob;
-        view.Model.Rotation = new Vector3(-speed * 0.019f + view.Flinch * 0.12f, Mathf.Pi, 0.11f * view.Flinch * view.FallSide);
-        view.Model.Scale = new Vector3(1, Mathf.Lerp(view.Model.Scale.Y, actor.Move.Crouched ? 0.74f : 1, blend), 1);
-        view.Gait?.Update(view.Phase, speed * 1.6f, actor.Move.Crouched, blend);
-        var raised = actor.Kind != ActorKind.Player || (actor.Flags & ActorFlags.Aiming) != 0 || view.Kick > 0;
-        view.Pose?.Update(raised ? 0.82f : 0.28f, (float)actor.Move.Pitch, view.Kick, 0, false, blend);
+        var sprinting = (actor.Flags & ActorFlags.Sprinting) != 0;
+        var local = new Basis(Vector3.Up, -heading) * CoreHost.ToGodot(actor.Move.Velocity);
+        var strafe = speed > 0.2f ? Mathf.Clamp(local.X / speed, -1, 1) : 0;
+        view.Phase = Mathf.PosMod(view.Phase + Mathf.Min(speed, 9f) * dt * (sprinting ? 2.45f : 3.35f)
+            * (local.Z > 0.3f ? -1 : 1), Mathf.Tau);
+        view.Model.Position = Vector3.Zero;
+        view.Model.Rotation = new Vector3(view.Flinch * 0.15f, Mathf.Pi, 0.11f * view.Flinch * view.FallSide);
+        view.Gait?.Update(view.Phase, speed, actor.Move.Crouched, blend, dt, sprinting, strafe: strafe);
+        var activelyAiming = (actor.Flags & ActorFlags.Aiming) != 0 || view.Kick > 0;
+        var raised = activelyAiming ? 1f : actor.Kind == ActorKind.Player || sprinting ? 0.22f : 0.79f;
+        view.Pose?.Update(raised, (float)actor.Move.Pitch, view.Kick, 0, false, blend);
         if (view.Beacon != null)
             view.Beacon.Visible = Mathf.PosMod((float)Time.GetTicksMsec() * 0.001f + actor.Id * 0.11f, 1.1f) < 0.15f;
     }
@@ -234,7 +244,7 @@ public partial class CombatPresentation : Node3D
         if (!_host.IsDriving)
         {
             var camera = _player.Camera;
-            var raised = _player.IsAiming ? 1f : _weaponKick > 0 ? 0.75f : Mathf.Lerp(0.32f, 0.18f, Mathf.Clamp(_player.Speed / 8f, 0, 1));
+            var raised = _player.IsAiming ? 1f : _weaponKick > 0 ? 0.86f : _player.IsSprinting ? 0.10f : 0.31f;
             var pitch = _player.IsAiming || _weaponKick > 0 ? camera.GlobalRotation.X : 0;
             _playerPose?.Update(raised, pitch, _weaponKick, (_reloading ? 1f : 0) + _playerFlinch * 0.22f,
                 status.Health <= 0, blend);
@@ -520,6 +530,9 @@ public partial class CombatPresentation : Node3D
         private readonly Arm _right;
         private readonly Arm _left;
         private readonly bool _shielded;
+        private readonly int _hips;
+        private readonly float _restHipsHeight;
+        private readonly float _torsoRatio;
         private Node3D? _weapon;
         private Node3D? _muzzle;
         private Node3D? _foregrip;
@@ -537,6 +550,9 @@ public partial class CombatPresentation : Node3D
             _shielded = shielded;
             _right = ReadArm("R");
             _left = ReadArm("L");
+            _hips = _rig.FindBone("hips");
+            _restHipsHeight = _hips >= 0 ? _rig.GetBoneGlobalRest(_hips).Origin.Y : 1f;
+            _torsoRatio = _right.Upper >= 0 ? _rig.GetBoneGlobalRest(_right.Upper).Origin.Y / 1.48f : 1;
         }
 
         public static WeaponPose? Create(Node3D actor, bool shielded = false)
@@ -573,10 +589,13 @@ public partial class CombatPresentation : Node3D
             _pitch = Mathf.Lerp(_pitch, pitch, blend);
             _reload = Mathf.Lerp(_reload, reload, blend);
             var rightSign = Mathf.Sign(_rig.GetBoneGlobalRest(_right.Upper).Origin.X);
-            var rightHand = new Vector3(rightSign * (0.28f - _raised * 0.07f),
-                1.05f + _raised * 0.33f - _reload * 0.17f, 0.22f + _raised * 0.20f - kick * 0.047f);
-            var raise = -_pitch * _raised + (1 - _raised) * 0.65f - kick * 0.13f + _reload * 0.33f;
-            var twist = _reload * -0.21f * rightSign;
+            var hipShift = _hips >= 0 ? _rig.GetBoneGlobalPose(_hips).Origin.Y - _restHipsHeight : 0;
+            var pistol = _id == "kestrel_p10";
+            var rightHand = new Vector3(rightSign * (0.29f - _raised * (pistol ? 0.16f : 0.09f)),
+                (1.04f + _raised * 0.38f - _reload * 0.17f) * _torsoRatio + hipShift,
+                0.20f + _raised * (pistol ? 0.24f : 0.16f) - kick * 0.052f);
+            var raise = -_pitch * _raised + (1 - _raised) * (pistol ? 0.85f : 0.59f) - kick * 0.15f + _reload * 0.39f;
+            var twist = (_reload * -0.31f + (1 - _raised) * 0.10f) * rightSign;
             var weaponBasis = Basis.FromEuler(new Vector3(raise, -0.19f * (1 - _raised) * rightSign, twist));
             _weapon.Transform = new Transform3D(weaponBasis, rightHand);
             Solve(_right, rightHand - weaponBasis.Z * 0.064f, new Vector3(rightSign * 0.8f, -1, -0.3f), weaponBasis.Z);
@@ -589,7 +608,7 @@ public partial class CombatPresentation : Node3D
             var support = _foregrip is { } grip
                 ? _weapon.Transform * grip.Position
                 : rightHand + new Vector3(-rightSign * 0.05f, -0.035f, 0.027f);
-            support = support.Lerp(new Vector3(-rightSign * 0.26f, 1.04f, 0.16f), _reload * 0.9f);
+            support = support.Lerp(new Vector3(-rightSign * 0.26f, 1.04f * _torsoRatio + hipShift, 0.16f), _reload * 0.9f);
             Solve(_left, support - weaponBasis.Z * 0.063f, new Vector3(-rightSign * 0.95f, -1, -0.20f), weaponBasis.Z);
         }
 

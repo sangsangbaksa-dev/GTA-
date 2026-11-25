@@ -11,5 +11,6 @@
     <EmbeddedResource Include="../data/**/*.json" Exclude="../data/schema/**"
                       LogicalName="data/%(RecursiveDir)%(Filename)%(Extension)" />
     <EmbeddedResource Include="data/missions/harbor_lockdown.json" LogicalName="data/missions/harbor_lockdown.json" />
+    <EmbeddedResource Include="data/missions/harbor_jobs.json" LogicalName="data/missions/harbor_jobs.json" />
   </ItemGroup>
 </Project>

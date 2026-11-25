@@ -1,5 +1,5 @@
 using System;
-using System.Globalization;
+using System.Linq;
 using Godot;
 using Harbor.Core.Combat;
 using Harbor.Core.Math;
@@ -20,7 +20,7 @@ public partial class HarborHud : CanvasLayer
     private static readonly Color Muted = new("#aac0c1");
     private static readonly Color Red = new("#ff8071");
 
-    private enum Screen { Title, Connect, Connecting, Play, Pause, Controls, Settings, Map, Result }
+    private enum Screen { Title, Loading, Play, Pause, Controls, Settings, Map, Jobs, Roster, Result }
 
     private CoreHost _host = null!;
     private ThirdPersonController _player = null!;
@@ -44,13 +44,14 @@ public partial class HarborHud : CanvasLayer
     private ProgressBar _health = null!;
     private ProgressBar _armor = null!;
     private CombatReticle _reticle = null!;
-    private Label _connection = null!;
+    private Label _jobNotice = null!;
+    private PanelContainer _jobNoticeCard = null!;
     private Screen _screen;
     private Screen _previous;
-    private bool _remote;
     private bool _restarting;
-    private string _server = "127.0.0.1";
-    private string _port = "7788";
+    private string? _trackedJob;
+    private string? _shownJobResult;
+    private float _noticeLeft;
 
     public override void _Ready()
     {
@@ -68,8 +69,7 @@ public partial class HarborHud : CanvasLayer
         _intro.LookAt(new Vector3(2, 1.2f, -15));
         BuildGameHud();
         ReadSettings();
-        _remote = _host.IsRemote;
-        Show(_remote ? Screen.Connecting : Screen.Title);
+        Show(Screen.Title);
     }
 
     public override void _ExitTree()
@@ -80,27 +80,26 @@ public partial class HarborHud : CanvasLayer
 
     public override void _UnhandledKeyInput(InputEvent @event)
     {
-        if (@event is not InputEventKey { Pressed: true, Echo: false, PhysicalKeycode: Key.M }) return;
-        if (_screen == Screen.Play) Show(Screen.Map);
-        else if (_screen == Screen.Map) Show(Screen.Play);
+        if (@event is not InputEventKey { Pressed: true, Echo: false } key) return;
+        if (key.PhysicalKeycode == Key.M && (_screen is Screen.Play or Screen.Map))
+            Show(_screen == Screen.Play ? Screen.Map : Screen.Play);
+        else if (key.PhysicalKeycode == Key.J && (_screen is Screen.Play or Screen.Jobs))
+        {
+            if (_screen == Screen.Jobs) Show(_previous);
+            else ShowJobs(Screen.Play);
+        }
         else return;
         GetViewport().SetInputAsHandled();
     }
 
     public override void _Process(double delta)
     {
-        if (_screen == Screen.Connecting)
+        if (_screen == Screen.Loading)
         {
-            _connection.Text = _host.ConnectionMessage;
-            if (_host.ConnectionStatus == HarborConnectionStatus.Ready && _host.HasPlayer) Show(Screen.Play);
+            if (_host.HasPlayer) Show(Screen.Play);
             return;
         }
         if (_screen == Screen.Map) _largeMap?.QueueRedraw();
-        if (_remote && _host.ConnectionStatus is HarborConnectionStatus.Disconnected or HarborConnectionStatus.Failed)
-        {
-            if (_screen is Screen.Play or Screen.Pause or Screen.Map or Screen.Result) Show(Screen.Connecting);
-            return;
-        }
         if (_screen != Screen.Play || !_host.HasPlayer) return;
 
         var run = _host.Lockdown;
@@ -114,25 +113,32 @@ public partial class HarborHud : CanvasLayer
         var player = _host.RenderPosition;
         var input = _player.LastInputWasGamepad ? "X" : "E";
         var movingInCar = _host.IsDriving;
-        _operation.Text = run.Phase == LockdownPhase.FreeRoam ? "PORT CALLOWAY  /  HARBOR FRONT" : "HARBOR LOCKDOWN";
-        _objective.Text = run.Phase switch
+        var jobs = _host.Jobs;
+        var active = jobs.Active;
+        var eligible = jobs.Available.FirstOrDefault(offer => offer.CanStart);
+        var tracked = jobs.Available.FirstOrDefault(offer => offer.Id == _trackedJob);
+        _operation.Text = active != null ? "PORT CALLOWAY  /  ACTIVE JOB" :
+            run.Phase == LockdownPhase.FreeRoam ? "PORT CALLOWAY  /  HARBOR FRONT" : "HARBOR LOCKDOWN";
+        _objective.Text = active?.Title ?? (run.Phase switch
         {
             LockdownPhase.FirstWave => "Clear the quay",
             LockdownPhase.Reinforcements => "Hold the waterfront",
             LockdownPhase.Extraction => "Reach extraction",
             _ => "Free roam"
-        };
-        _detailText.Text = run.Phase switch
+        });
+        _detailText.Text = active != null ? JobDetail(active) : (run.Phase switch
         {
             LockdownPhase.Reinforcements when run.ReinforcementSeconds > 0 =>
                 $"REINFORCEMENTS IN {System.Math.Ceiling(run.ReinforcementSeconds):0} s",
             LockdownPhase.FirstWave or LockdownPhase.Reinforcements =>
                 $"WAVE {run.WaveNumber}/{run.WaveCount}     {run.RemainingEnemies} HOSTILE{(run.RemainingEnemies == 1 ? "" : "S")}",
             LockdownPhase.Extraction => "RETURN TO THE EAST GATE",
-            _ => "EXPLORE THE DISTRICT OR TAKE A JOB"
-        };
+            _ => tracked != null ? $"TRACKING  /  {tracked.Title.ToUpperInvariant()}" : "J  BROWSE CITY JOBS"
+        });
 
-        _prompt.Text = movingInCar ? $"{input}   Exit vehicle" : _host.CanEnterVehicle ? $"{input}   Enter vehicle" :
+        _prompt.Text = active is { CanInteract: true } ? $"{input}   Recover cargo" :
+            !movingInCar && _host.CanEnterVehicle ? $"{input}   Enter vehicle" :
+            eligible != null ? $"{input}   Start {eligible.Title}" : movingInCar ? $"{input}   Exit vehicle" :
             run.CanStart ? $"{input}   Start Harbor Lockdown" : "";
         _prompt.Visible = _prompt.Text.Length > 0;
         _wanted.Text = _host.WantedLevel > 0 ? "WANTED    " + new string('★', _host.WantedLevel) : "";
@@ -149,18 +155,43 @@ public partial class HarborHud : CanvasLayer
         _weapon.Text = movingInCar ? "CALLOWAY COMPACT" : combat.WeaponName.ToUpperInvariant();
         _ammo.Text = movingInCar ? $"{System.Math.Abs(_host.Vehicle.Speed) * 3.6:00} km/h" :
             combat.IsReloading ? "RELOADING" : $"{combat.Magazine:00}  /  {combat.Reserve:00}";
+        UpdateJobNotice((float)delta);
+        _map.TrackedJob = _trackedJob;
         _map.QueueRedraw();
-        UpdateWaypoint(run, player);
+        if (active != null) UpdateWaypoint(active.Waypoint, active.Objective, player);
+        else if (run.Phase == LockdownPhase.Extraction) UpdateWaypoint(run.ExtractionPosition, "Extraction", player);
+        else if (run.Phase == LockdownPhase.FreeRoam)
+            UpdateWaypoint(tracked?.StartPosition ?? run.StartPosition, tracked?.Title ?? "Lockdown", player);
+        else _waypoint.Hide();
     }
 
-    private void UpdateWaypoint(HarborLockdownState run, Vec3d player)
+    private static string JobDetail(HarborJobProgress job)
     {
-        var active = run.Phase is LockdownPhase.FreeRoam or LockdownPhase.Extraction;
-        var target = run.Phase == LockdownPhase.Extraction ? run.ExtractionPosition : run.StartPosition;
+        var stage = $"{job.Stage}/{job.StageCount}";
+        var clock = job.RemainingSeconds > 0 ? $"  ·  {FormatTime(job.RemainingSeconds)}" : "";
+        return $"{job.Objective}  ·  {stage}{clock}";
+    }
+
+    private void UpdateJobNotice(float elapsed)
+    {
+        if (_host.Jobs.LastResult is { } result && result.RunId.ToString() != _shownJobResult)
+        {
+            _shownJobResult = result.RunId.ToString();
+            _noticeLeft = 6.0f;
+            _jobNotice.Text = result.Reward > 0
+                ? $"{result.Title} complete   +${result.Reward:N0}"
+                : $"{result.Title}  ·  {result.Status}";
+        }
+        _noticeLeft = Mathf.Max(0, _noticeLeft - elapsed);
+        _jobNoticeCard.Visible = _noticeLeft > 0;
+    }
+
+    private void UpdateWaypoint(Vec3d target, string title, Vec3d player)
+    {
         var distance = (target - player).Length;
         var point = CoreHost.ToGodot(target) + Vector3.Up * 2.15f;
         var camera = _player.Camera;
-        if (!active || distance < 2.5 || camera.IsPositionBehind(point))
+        if (distance < 2.5 || camera.IsPositionBehind(point))
         {
             _waypoint.Hide();
             return;
@@ -173,7 +204,7 @@ public partial class HarborHud : CanvasLayer
             _waypoint.Hide();
             return;
         }
-        _waypoint.Text = $"◆  {(run.Phase == LockdownPhase.Extraction ? "EXTRACTION" : "LOCKDOWN")}  {distance:0} m";
+        _waypoint.Text = $"◆  {title.ToUpperInvariant()}  {distance:0} m";
         _waypoint.Position = screen - new Vector2(_waypoint.Size.X * 0.5f, 16);
         _waypoint.Show();
     }
@@ -183,13 +214,13 @@ public partial class HarborHud : CanvasLayer
         var task = Card(_game, Control.LayoutPreset.TopLeft, new Vector2(26, 26), new Vector2(330, 0));
         _operation = Text(task, "", 13, Seafoam, _detail);
         _objective = Text(task, "", 36, White, _design);
-        _detailText = Text(task, "", 12, Muted, _detail);
+        _detailText = Text(task, "", 12, Muted, _detail, true);
 
         var mapColumn = Card(_game, Control.LayoutPreset.TopRight, new Vector2(-232, 26), new Vector2(206, 0));
         _wanted = Text(mapColumn, "", 18, Amber, _design);
         _map = new DockMap { Host = _host, Player = _player, CustomMinimumSize = new Vector2(175, 152) };
         mapColumn.AddChild(_map);
-        Text(mapColumn, "M  DISTRICT MAP", 12, Muted, _detail);
+        Text(mapColumn, "M  MAP      J  JOBS", 12, Muted, _detail);
 
         var status = Card(_game, Control.LayoutPreset.BottomRight, new Vector2(-248, -169), new Vector2(222, 0));
         _weapon = Text(status, "", 15, Muted, _detail);
@@ -207,6 +238,11 @@ public partial class HarborHud : CanvasLayer
         _prompt.OffsetTop = -100;
         _prompt.OffsetBottom = -70;
         _waypoint = Text(_game, "", 13, Amber, _detail);
+        var notice = Card(_game, Control.LayoutPreset.CenterTop, new Vector2(-190, 26), new Vector2(380, 0));
+        _jobNotice = Text(notice, "", 22, Seafoam, _design);
+        _jobNotice.HorizontalAlignment = HorizontalAlignment.Center;
+        _jobNoticeCard = notice.GetParent<PanelContainer>();
+        _jobNoticeCard.Hide();
     }
 
     private void OnPauseRequested()
@@ -215,9 +251,9 @@ public partial class HarborHud : CanvasLayer
         {
             case Screen.Play: Show(Screen.Pause); break;
             case Screen.Pause or Screen.Map: Show(Screen.Play); break;
-            case Screen.Controls or Screen.Settings: Show(_previous); break;
-            case Screen.Connect: Show(Screen.Title); break;
-            case Screen.Connecting: CancelConnect(); break;
+            case Screen.Controls or Screen.Settings or Screen.Jobs: Show(_previous); break;
+            case Screen.Roster: Show(Screen.Title); break;
+            case Screen.Loading: Show(Screen.Title); break;
         }
     }
 
@@ -242,7 +278,7 @@ public partial class HarborHud : CanvasLayer
         _game.Visible = playing;
         _menu.Visible = !playing;
         _player.SetPaused(!playing);
-        if (screen is Screen.Title or Screen.Connect or Screen.Connecting || screen is (Screen.Controls or Screen.Settings) && _previous == Screen.Title)
+        if (screen is Screen.Title or Screen.Loading or Screen.Roster || screen is (Screen.Controls or Screen.Settings) && _previous == Screen.Title)
             _intro.MakeCurrent();
         else
             _player.Camera.MakeCurrent();
@@ -254,14 +290,29 @@ public partial class HarborHud : CanvasLayer
             BuildDistrictMap();
             return;
         }
+        if (screen == Screen.Jobs)
+        {
+            var board = Fill(new HarborJobBoard(), _menu);
+            board.Build(_host, _trackedJob, _design, _detail, offer =>
+            {
+                _trackedJob = offer;
+                Show(Screen.Play);
+            }, () => Show(_previous));
+            return;
+        }
+        if (screen == Screen.Roster)
+        {
+            var gallery = Fill(new HarborRoster(), _menu);
+            gallery.Build(_design, _detail, () => Show(Screen.Title));
+            return;
+        }
 
         var column = MenuColumn();
         Text(column, "PORT CALLOWAY  /  HARBOR FRONT", 14, Seafoam, _detail);
         switch (screen)
         {
             case Screen.Title: BuildTitle(column); break;
-            case Screen.Connect: BuildConnect(column); break;
-            case Screen.Connecting: BuildConnecting(column); break;
+            case Screen.Loading: Text(column, "ENTERING CALLOWAY", 62, White, _design); break;
             case Screen.Pause: BuildPause(column); break;
             case Screen.Controls: BuildControls(column); break;
             case Screen.Settings: BuildSettings(column); break;
@@ -273,80 +324,23 @@ public partial class HarborHud : CanvasLayer
     {
         Text(column, "PROJECT HARBOR", 82, White, _design);
         Text(column, "Open-world action on the Calloway waterfront.", 21, White, null);
-        Text(column, "Drive the district, take on Harbor Lockdown, or see how long you can stay ahead of the port police.", 16, Muted, null, true);
+        Text(column, "Meet the people who work the docks, pick up a job, or take the long way around the waterfront.", 16, Muted, null, true);
         Space(column, 18);
-        Button(column, "Play locally", () =>
-        {
-            if (_remote) _host.StartLocalSession();
-            _remote = false;
-            Show(_host.HasPlayer ? Screen.Play : Screen.Connecting);
-        }, true);
-        Button(column, "Join a server", () => Show(Screen.Connect));
+        Button(column, "Start game", () => Show(_host.HasPlayer ? Screen.Play : Screen.Loading), true);
         Button(column, "City operations", () => GetTree().ChangeSceneToFile(HarborLaunch.CityScene));
+        Button(column, "Harbor characters", () => Show(Screen.Roster));
         Button(column, "Controls", () => ShowControls(Screen.Title));
         Button(column, "Settings", () => ShowSettings(Screen.Title));
         Button(column, "Quit game", () => GetTree().Quit());
     }
 
-    private void BuildConnect(VBoxContainer column)
-    {
-        Text(column, "JOIN A SERVER", 62, White, _design);
-        Text(column, "Enter the address of a running Project Harbor server.", 17, Muted, null, true);
-        Space(column, 12);
-        Text(column, "HOST OR IP ADDRESS", 12, Seafoam, _detail);
-        var address = Field(column, _server, "127.0.0.1");
-        Text(column, "PORT", 12, Seafoam, _detail);
-        var port = Field(column, _port, "7788");
-        var error = Text(column, "", 14, Red, null, true);
-        void Join()
-        {
-            var host = address.Text.Trim();
-            if (host.Length == 0 || !int.TryParse(port.Text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture,
-                out var number) || number is < 1 or > 65535)
-            {
-                error.Text = "Enter a host and a valid port (1–65535).";
-                return;
-            }
-            _server = host;
-            _port = number.ToString(CultureInfo.InvariantCulture);
-            _remote = true;
-            _host.ConnectToServer(host, number);
-            Show(Screen.Connecting);
-        }
-        address.TextSubmitted += _ => Join();
-        port.TextSubmitted += _ => Join();
-        Space(column, 8);
-        Button(column, "Connect", Join, true);
-        Button(column, "Back", () => Show(Screen.Title));
-        address.CallDeferred(Control.MethodName.GrabFocus);
-    }
-
-    private void BuildConnecting(VBoxContainer column)
-    {
-        Text(column, _remote ? "HARBOR SERVER" : "ENTERING CALLOWAY", 62, White, _design);
-        _connection = Text(column, _host.ConnectionMessage, 17, Muted, null, true);
-        Space(column, 14);
-        Button(column, "Back", CancelConnect, true);
-    }
-
-    private void CancelConnect()
-    {
-        if (_remote)
-        {
-            _host.StartLocalSession();
-            _remote = false;
-            Show(Screen.Connect);
-        }
-        else Show(Screen.Title);
-    }
-
     private void BuildPause(VBoxContainer column)
     {
         Text(column, "GAME MENU", 62, White, _design);
-        if (_remote) Text(column, "The server continues while this menu is open.", 16, Muted, null);
         Space(column, 18);
         Button(column, "Resume", () => Show(Screen.Play), true);
         Button(column, "District map", () => Show(Screen.Map));
+        Button(column, "City jobs", () => ShowJobs(Screen.Pause));
         Button(column, "Controls", () => ShowControls(Screen.Pause));
         Button(column, "Settings", () => ShowSettings(Screen.Pause));
         Button(column, "Return to title", ReturnToTitle);
@@ -357,6 +351,12 @@ public partial class HarborHud : CanvasLayer
     {
         _previous = previous;
         Show(Screen.Controls);
+    }
+
+    private void ShowJobs(Screen previous)
+    {
+        _previous = previous;
+        Show(Screen.Jobs);
     }
 
     private void ShowSettings(Screen previous)
@@ -376,6 +376,7 @@ public partial class HarborHud : CanvasLayer
         ControlRow(column, "Sprint / handbrake", "Shift / Space", "L3 / A");
         ControlRow(column, "Crouch", "C", "B");
         ControlRow(column, "Interact / enter vehicle", "E", "X");
+        ControlRow(column, "District map / city jobs", "M / J", "Game menu");
         ControlRow(column, "Menu", "Esc", "Menu");
         Space(column, 14);
         Button(column, "Back", () => Show(_previous), true);
@@ -470,8 +471,10 @@ public partial class HarborHud : CanvasLayer
     private void ReturnToTitle()
     {
         _restarting = false;
+        _trackedJob = null;
+        _shownJobResult = null;
+        _noticeLeft = 0;
         _host.StartLocalSession();
-        _remote = false;
         Show(Screen.Title);
     }
 
@@ -485,7 +488,7 @@ public partial class HarborHud : CanvasLayer
         column.AddThemeConstantOverride("separation", 10);
         panel.AddChild(column);
         Text(column, "PORT CALLOWAY", 34, White, _design);
-        _largeMap = new DockMap { Host = _host, Player = _player, EntireDistrict = true, CustomMinimumSize = new Vector2(550, 350) };
+        _largeMap = new DockMap { Host = _host, Player = _player, TrackedJob = _trackedJob, EntireDistrict = true, CustomMinimumSize = new Vector2(550, 350) };
         column.AddChild(_largeMap);
         Text(column, "AMBER  LOCKDOWN     TEAL  VEHICLE / EXTRACTION     WHITE  YOU", 12, Muted, _detail);
         Button(column, "Return to game", () => Show(Screen.Play), true);
@@ -532,7 +535,7 @@ public partial class HarborHud : CanvasLayer
         return column;
     }
 
-    private static Label Text(Node parent, string value, int size, Color color, Font? font, bool wrap = false)
+    internal static Label Text(Node parent, string value, int size, Color color, Font? font, bool wrap = false)
     {
         var label = new Label { Text = value, MouseFilter = Control.MouseFilterEnum.Ignore };
         if (wrap) label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -555,7 +558,7 @@ public partial class HarborHud : CanvasLayer
         Text(row, gamepad, 14, Muted, _detail);
     }
 
-    private static StyleBoxFlat Box(Color color, int radius, int margin)
+    internal static StyleBoxFlat Box(Color color, int radius, int margin)
     {
         var style = new StyleBoxFlat { BgColor = color, ContentMarginLeft = margin, ContentMarginRight = margin,
             ContentMarginTop = margin, ContentMarginBottom = margin };
@@ -583,15 +586,6 @@ public partial class HarborHud : CanvasLayer
         button.Pressed += pressed;
         column.AddChild(button);
         if (primary) button.CallDeferred(Control.MethodName.GrabFocus);
-    }
-
-    private static LineEdit Field(VBoxContainer column, string value, string placeholder)
-    {
-        var field = new LineEdit { Text = value, PlaceholderText = placeholder,
-            CustomMinimumSize = new Vector2(310, 39), SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin };
-        field.AddThemeStyleboxOverride("normal", Box(new Color("#243b44"), 5, 8));
-        column.AddChild(field);
-        return field;
     }
 
     private static ProgressBar Bar(VBoxContainer column, Color color)

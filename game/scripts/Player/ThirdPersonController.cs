@@ -29,6 +29,7 @@ public partial class ThirdPersonController : Node3D
     private const string LookUp = "walk_look_up";
     private const string LookDown = "walk_look_down";
     private const float InitialPitch = -0.30f;
+    private const string FallbackModelPath = "res://assets/characters/chr_player_rook.glb";
 
     public event Action? PauseRequested;
     public bool IsPaused => _host.IsPaused;
@@ -45,7 +46,7 @@ public partial class ThirdPersonController : Node3D
     [Export] public float GamepadLookSpeed { get; set; } = 2.4f;
     [Export] public float CameraDistance { get; set; } = 4.25f;
     [Export(PropertyHint.File, "*.glb,*.tscn")]
-    public string ModelPath { get; set; } = "res://assets/characters/chr_player_rook.glb";
+    public string ModelPath { get; set; } = "res://assets/characters/chr_harbor_rook.glb";
 
     private CoreHost _host = null!;
     private Node3D _avatar = null!;
@@ -92,8 +93,8 @@ public partial class ThirdPersonController : Node3D
 
         _avatar = new Node3D { Name = "Avatar", Visible = false };
         AddChild(_avatar);
-        if (!string.IsNullOrEmpty(ModelPath) && ResourceLoader.Exists(ModelPath)
-            && ResourceLoader.Load<PackedScene>(ModelPath) is { } model)
+        var path = !string.IsNullOrEmpty(ModelPath) && ResourceLoader.Exists(ModelPath) ? ModelPath : FallbackModelPath;
+        if (ResourceLoader.Exists(path) && ResourceLoader.Load<PackedScene>(path) is { } model)
         {
             var rook = model.Instantiate<Node3D>();
             rook.Rotation = new Vector3(0, Mathf.Pi, 0);
@@ -236,12 +237,14 @@ public partial class ThirdPersonController : Node3D
             _wasDriving = driving;
         }
 
-        _stride = Mathf.PosMod(_stride + speed * frame * 3.1f, Mathf.Tau);
-        var bob = Mathf.Abs(Mathf.Sin(_stride)) * Mathf.Min(speed * 0.009f, 0.035f);
-        _gait?.Update(_stride, speed, state.Crouched, blend);
-        _avatar.GlobalPosition = position + Vector3.Up * bob;
+        var localVelocity = new Basis(Vector3.Up, -_bodyAngle) * velocity;
+        var retreating = localVelocity.Z > 0.3f;
+        var cycle = state.Sprinting ? 2.45f : state.Crouched ? 4.45f : 3.35f;
+        _stride = Mathf.PosMod(_stride + speed * frame * cycle * (retreating ? -1 : 1), Mathf.Tau);
+        var strafe = speed > 0.2f ? Mathf.Clamp(localVelocity.X / speed, -1, 1) : 0;
+        _gait?.Update(_stride, speed, state.Crouched, blend, frame, state.Sprinting, strafe: strafe);
+        _avatar.GlobalPosition = position;
         _avatar.Rotation = new Vector3(0, _bodyAngle, 0);
-        _avatar.Scale = new Vector3(1, Mathf.Lerp(_avatar.Scale.Y, state.Crouched ? 0.73f : 1f, blend), 1);
 
         var targetHeight = driving ? 2.18f : state.Crouched ? 1.17f : 1.55f;
         _cameraHeight = Mathf.Lerp(_cameraHeight, targetHeight, blend);

@@ -21,8 +21,10 @@ import sys
 import bpy
 from mathutils import Vector
 
+sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import characters  # noqa: E402  (higher-fidelity humans, see human.py)
+import harbor_people  # noqa: E402
 
 # ---------------------------------------------------------------- utilities
 
@@ -592,8 +594,18 @@ def bldg_garage():
 
 # ---------------------------------------------------------------- main
 
+def character_group(roster):
+    def setup(builder):
+        def build():
+            reset()
+            builder()
+        return build
+    return [(rel, setup(fn)) for rel, fn in roster]
+
+
 GROUPS = {
-    "characters": [(rel, (lambda f: (lambda: (reset(), f())))(fn)) for rel, fn in characters.ROSTER],
+    "characters": character_group(characters.ROSTER),
+    "harbor_people": character_group(harbor_people.ROSTER),
     "weapons": [
         ("weapons/wpn_pistol_kestrel.glb", wpn_pistol),
         ("weapons/wpn_smg_wasp.glb", wpn_smg),
@@ -613,13 +625,17 @@ def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="game/assets")
-    ap.add_argument("--only", default="characters,weapons,buildings")
+    ap.add_argument("--only", default="characters,harbor_people,weapons,buildings", help="comma-separated groups or asset IDs")
     a = ap.parse_args(argv)
-    for g in a.only.split(","):
-        root = a.out
-        for rel, fn in GROUPS[g]:
+    assets = {os.path.splitext(os.path.basename(path))[0]: [(path, fn)]
+              for group in GROUPS.values() for path, fn in group}
+    for name in a.only.split(","):
+        selected = GROUPS.get(name, assets.get(name))
+        if selected is None:
+            ap.error(f"unknown asset group or ID: {name}")
+        for rel, fn in selected:
             fn()
-            export(os.path.abspath(os.path.join(root, rel)))
+            export(os.path.abspath(os.path.join(a.out, rel)))
 
 
 if __name__ == "__main__":

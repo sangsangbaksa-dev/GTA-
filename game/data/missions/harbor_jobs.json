@@ -1,0 +1,87 @@
+{
+  "$schema": "../../../data/schema/harbor-jobs.schema.json",
+  "jobs": [
+    {
+      "id": "stackyard_sweep",
+      "title": "Stackyard Sweep",
+      "briefing": "The freight crew is still waiting for the night gate to reopen. Drive the Saltline crew out of the stacks, then meet the foreman at the cargo board.",
+      "kind": "combat",
+      "start": [55, 0, -78],
+      "radius": 3.5,
+      "timeLimit": 150,
+      "reward": 850,
+      "stages": [
+        { "type": "clear", "objective": "Clear the east loading rows", "at": [69, 0, -91], "radius": 6, "enemies": [[61, 0, -91], [73, 0, -96]] },
+        { "type": "clear", "objective": "Stop the last crew by the gantry", "at": [84, 0, -84], "radius": 6, "enemies": [[84, 0, -84]] },
+        { "type": "reach", "objective": "Check in at the foreman's cargo board", "at": [80, 0, -100], "radius": 3 }
+      ]
+    },
+    {
+      "id": "quay_recovery",
+      "title": "Quay Recovery",
+      "briefing": "A survey crew left its pilot log at the east quay. Clear the loading apron and get the original back before the pilot boat leaves.",
+      "kind": "combat",
+      "start": [136, 0, -28],
+      "radius": 3.5,
+      "timeLimit": 135,
+      "reward": 720,
+      "stages": [
+        { "type": "clear", "objective": "Clear the loading apron", "at": [128, 0, -23], "radius": 6, "enemies": [[120, 0, -23], [130, 0, -17], [131, 0, -30]] },
+        { "type": "recover", "objective": "Recover the pilot log at the quay", "at": [140, 0, -12], "radius": 2.5 }
+      ]
+    },
+    {
+      "id": "night_dispatch",
+      "title": "Night Dispatch",
+      "briefing": "The night market needs a driver to collect its unloading slips. Make the four dispatch stops and pull in at the market lot.",
+      "kind": "drive",
+      "start": [-164, 0, 38.6],
+      "radius": 6,
+      "timeLimit": 95,
+      "reward": 500,
+      "stages": [
+        { "type": "checkpoint", "objective": "Pick up the slips on West Viaduct", "at": [-155, 0, 33], "radius": 6 },
+        { "type": "checkpoint", "objective": "Turn onto Drydock Avenue", "at": [-85, 0, 33], "radius": 6 },
+        { "type": "checkpoint", "objective": "Check in at Freight Lane", "at": [-85, 0, -41], "radius": 6 },
+        { "type": "checkpoint", "objective": "Take the westbound return", "at": [-155, 0, -41], "radius": 6 },
+        { "type": "park", "objective": "Stop at the market dispatch turnout", "at": [-159.1, 0, 17], "radius": 2.4 }
+      ]
+    },
+    {
+      "id": "basin_circuit",
+      "title": "Basin Circuit",
+      "briefing": "The basin watch has marked a test loop across the bridge and along Rail Exchange. Hit the checkpoints in order and finish back beside the water.",
+      "kind": "drive",
+      "start": [-32.8, 0, -62],
+      "radius": 6,
+      "timeLimit": 72,
+      "reward": 650,
+      "stages": [
+        { "type": "checkpoint", "objective": "Enter Basin Bridge from Canal Street", "at": [-39, 0, -72], "radius": 5 },
+        { "type": "checkpoint", "objective": "Cross the center span", "at": [0, 0, -72], "radius": 4.8 },
+        { "type": "checkpoint", "objective": "Turn north at Berth Road", "at": [40, 0, -72], "radius": 5 },
+        { "type": "checkpoint", "objective": "Turn west at Rail Exchange", "at": [40, 0, -119], "radius": 6 },
+        { "type": "checkpoint", "objective": "Return south along Canal Street", "at": [-39, 0, -119], "radius": 6 },
+        { "type": "checkpoint", "objective": "Cross the basin finish marker", "at": [-39, 0, -79], "radius": 5 }
+      ]
+    },
+    {
+      "id": "lighthouse_delivery",
+      "title": "Lighthouse Delivery",
+      "briefing": "The lighthouse keeper is waiting on a replacement beacon lamp. Take Lighthouse Drive through the district and park at the service gate.",
+      "kind": "drive",
+      "start": [73, 0, 24],
+      "radius": 6,
+      "timeLimit": 95,
+      "reward": 560,
+      "stages": [
+        { "type": "checkpoint", "objective": "Join Lighthouse Drive from the boulevard", "at": [99, 0, 33], "radius": 6 },
+        { "type": "checkpoint", "objective": "Continue north through Pilot Way", "at": [99, 0, -36], "radius": 6 },
+        { "type": "checkpoint", "objective": "Continue through Rail Exchange", "at": [99, 0, -119], "radius": 6 },
+        { "type": "checkpoint", "objective": "Turn east on Supply Road", "at": [99, 0, -175], "radius": 6 },
+        { "type": "checkpoint", "objective": "Take the lighthouse approach", "at": [133, 0, -175], "radius": 5 },
+        { "type": "park", "objective": "Stop at the lighthouse service gate", "at": [139.4, 0, -170.9], "radius": 4 }
+      ]
+    }
+  ]
+}

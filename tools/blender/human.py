@@ -228,7 +228,8 @@ def bone_table(J):
 
 # ---------------------------------------------------------------- body sculpt
 
-DEFAULT = dict(shoulder=1.0, hip=1.0, bulk=1.0, muscle=1.0, belly=0.0, fem=0.0, height=1.80, head=1.06)
+DEFAULT = dict(shoulder=1.0, hip=1.0, bulk=1.0, muscle=1.0, belly=0.0, fem=0.0, height=1.80, head=1.06,
+               face_width=1.0, jaw_width=1.0, chin_width=1.0, nose_bridge=1.0, nose_width=1.0, nose_depth=1.0)
 
 
 class Blobs:
@@ -302,9 +303,9 @@ def body_parts(p, J):
     hp = lambda c: hc + (Vector(c) - Vector((0, 0, 1.585))) * hs
     H = lambda c, r, rot=None: E(hp(c), tuple(x * hs for x in r), rot)
     H((0, 0.014, 1.705), (0.079, 0.097, 0.099))  # cranium
-    H((0, -0.026, 1.648), (0.064 - 0.004 * fem, 0.072, 0.074))  # face
-    H((0, -0.035, 1.604), (0.055 - 0.008 * fem, 0.05, 0.03))  # jaw
-    H((0, -0.07, 1.597), (0.024 - 0.004 * fem, 0.02, 0.019))  # chin
+    H((0, -0.026, 1.648), ((0.064 - 0.004 * fem) * p["face_width"], 0.072, 0.074))  # face
+    H((0, -0.035, 1.604), ((0.055 - 0.008 * fem) * p["jaw_width"], 0.05, 0.03))  # jaw
+    H((0, -0.07, 1.597), ((0.024 - 0.004 * fem) * p["chin_width"], 0.02, 0.019))  # chin
     for sx in (1, -1):
         H((sx * 0.046, -0.07, 1.673), (0.02, 0.014, 0.013))  # cheekbones
     H((0, -0.083, 1.716), (0.055, 0.015, 0.012 - 0.003 * fem))  # brow
@@ -312,8 +313,10 @@ def body_parts(p, J):
     for sx in (1, -1):
         B.hard.append(ellipsoid(hp((sx * 0.08, 0.012, 1.678)), (0.012 * hs, 0.022 * hs, 0.031 * hs),
                                 rot=Matrix.Rotation(sx * math.radians(12), 3, "Z"), seg=16, name="ear"))
-    B.hard.append(capsule(hp((0, -0.094, 1.707)), hp((0, -0.114, 1.664)), 0.0075 * hs, 0.011 * hs))  # nose bridge
-    B.hard.append(ellipsoid(hp((0, -0.106, 1.657)), (0.017 * hs, 0.012 * hs, 0.0095 * hs), seg=16))  # nose tip
+    B.hard.append(capsule(hp((0, -0.094, 1.707)), hp((0, -0.114 * p["nose_depth"], 1.664)),
+                          0.0075 * hs * p["nose_bridge"], 0.011 * hs * p["nose_bridge"]))
+    B.hard.append(ellipsoid(hp((0, -0.106 * p["nose_depth"], 1.657)),
+                            (0.017 * hs * p["nose_width"], 0.012 * hs, 0.0095 * hs), seg=16))
     # ---- arms
     for s, sx in (("L", 1), ("R", -1)):
         sh, el, wr = J[f"shoulder.{s}"], J[f"elbow.{s}"], J[f"wrist.{s}"]
@@ -367,7 +370,9 @@ def build_body(p, J, voxel=0.0042, target_faces=22000):
     # eye sockets + mouth line
     hs, hc = p["head"], J["head"]
     hp = lambda v: hc + (Vector(v) - Vector((0, 0, 1.585))) * hs
-    cutters = [ellipsoid(hp((sx * 0.033, -0.097, 1.692)), (0.0165 * hs, 0.016 * hs, 0.012 * hs), seg=16) for sx in (1, -1)]
+    eye_height = 0.0096 if p.get("portrait_eye_socket") else 0.012
+    cutters = [ellipsoid(hp((sx * 0.033, -0.097, 1.692)), (0.0165 * hs, 0.016 * hs, eye_height * hs), seg=16)
+               for sx in (1, -1)]
     cutters.append(ellipsoid(hp((0, -0.1005, 1.627)), (0.02 * hs, 0.008 * hs, 0.0016 * hs), seg=16))
     cut = join(cutters, "cutters")
     bo = body.modifiers.new("bool", "BOOLEAN")

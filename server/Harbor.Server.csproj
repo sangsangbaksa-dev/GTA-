@@ -11,6 +11,8 @@
     <Content Include="../data/weapons/*.json" Link="data/weapons/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../data/vehicles/calloway_compact.json" Link="data/vehicles/calloway_compact.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../data/world/harbor_front.json" Link="data/world/harbor_front.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../data/world/harbor_population.json" Link="data/world/harbor_population.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../game/data/missions/harbor_lockdown.json" Link="game/data/missions/harbor_lockdown.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../game/data/missions/harbor_jobs.json" Link="game/data/missions/harbor_jobs.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

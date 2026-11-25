@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Street population",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pedestrianRoutes", "trafficRoutes"],
+  "properties": {
+    "seed": {"type": "integer"},
+    "visibilityRadius": {"type": "number", "exclusiveMinimum": 0, "maximum": 400},
+    "hearingRadius": {"type": "number", "exclusiveMinimum": 0, "maximum": 100},
+    "fleeSeconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 30},
+    "fleeSpeed": {"type": "number", "exclusiveMinimum": 0, "maximum": 12},
+    "pedestrianRoutes": {
+      "type": "array", "maxItems": 24,
+      "items": {
+        "allOf": [
+          {"$ref": "#/$defs/route"},
+          {"properties": {"speed": {"maximum": 4}}}
+        ]
+      }
+    },
+    "trafficRoutes": {
+      "type": "array", "maxItems": 8,
+      "items": {
+        "allOf": [
+          {"$ref": "#/$defs/route"},
+          {"properties": {"loop": {"const": true}, "pauseSeconds": {"const": 0}, "count": {"maximum": 8}}}
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "count", "speed", "loop", "points"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "count": {"type": "integer", "minimum": 1, "maximum": 24},
+        "speed": {"type": "number", "exclusiveMinimum": 0, "maximum": 30},
+        "pauseSeconds": {"type": "number", "minimum": 0, "maximum": 12},
+        "loop": {"type": "boolean"},
+        "points": {
+          "type": "array", "minItems": 2, "maxItems": 64,
+          "items": {
+            "type": "array", "minItems": 3, "maxItems": 3,
+            "items": {"type": "number", "minimum": -2000, "maximum": 2000}
+          }
+        }
+      },
+      "if": {"properties": {"loop": {"const": true}}},
+      "then": {"properties": {"points": {"minItems": 3}, "pauseSeconds": {"const": 0}}}
+    }
+  }
+}

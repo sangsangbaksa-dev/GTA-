@@ -44,9 +44,10 @@ public sealed record Snapshot(uint ServerTick, uint AckSequence, IReadOnlyList<E
 /// <summary>Encoders/decoders for every message. One place so client and server cannot drift.</summary>
 public static class Messages
 {
-    public const ushort ProtocolVersion = 1;
+    public const ushort ProtocolVersion = 2;
     public const int MaxInputsPerPacket = 4;
     public const int MaxEntitiesPerSnapshot = 256;
+    public const int MaxGameEventPayload = 24 * 1024;
 
     public static byte[] Hello(string playerName)
     {
@@ -101,6 +102,9 @@ public static class Messages
     }
 
     public static (ushort type, byte[] payload) ReadTagged(ref NetReader r) => (r.ReadUShort(), r.ReadBytes());
+
+    public static (ushort type, byte[] payload) ReadGameEvent(ref NetReader r) =>
+        (r.ReadUShort(), r.ReadBytes(MaxGameEventPayload));
 
     public static List<InputCmd> ReadInputs(ref NetReader r)
     {

@@ -10,9 +10,8 @@ public partial class HarborLaunch : Node
 
     public override void _Ready()
     {
-        // Preserve the city session's CLI entry points and let the playtest own --connect.
         var city = OS.GetCmdlineUserArgs().Any(arg => arg.Split('=', 2)[0]
-            is "--city" or "--server" or "--offline" or "--host" or "--join");
+            is "--city" or "--offline");
         GetTree().CallDeferred(SceneTree.MethodName.ChangeSceneToFile, city ? CityScene : PlaytestScene);
     }
 }

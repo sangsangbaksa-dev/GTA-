@@ -100,6 +100,9 @@ for name, filename in [
     ('Tug', 'harbor_pilot_tug'), ('Terminal', 'dock_inspection_terminal'), ('Drum', 'barrel_oil'),
     ('Bench', 'bench'), ('Dumpster', 'dumpster'), ('Shelter', 'bus_shelter'),
     ('LifeRing', 'life_ring_stand'), ('Beacon', 'harbor_beacon'),
+    ('Barricade', 'road_barricade'), ('Pallet', 'pallet_stack'), ('Cone', 'traffic_cone'),
+    ('Spool', 'cable_spool'), ('Workbench', 'workbench'), ('Kiosk', 'vending_machine'),
+    ('Newspaper', 'newspaper_box'),
 ]:
     ext(name, f'assets/props/prop_{filename}.glb')
 
@@ -421,6 +424,11 @@ def cover(name, kind, x, z, heading=0, y=0, *, collision=True, scale=1):
         'Dumpster': ((2.00, 1.36, 1.28), 'metal'),
         'Bench': ((1.72, 0.90, 0.55), 'wood'),
         'Shelter': ((3.50, 2.95, 1.60), 'metal'),
+        'Barricade': ((1.50, 1.08, 0.86), 'metal'),
+        'Pallet': ((1.20, 1.20, 1.00), 'wood'),
+        'Spool': ((1.50, 1.50, 0.98), 'wood'),
+        'Workbench': ((1.80, 1.90, 0.91), 'wood'),
+        'Kiosk': ((0.94, 1.85, 0.85), 'metal'),
     }[kind]
     prop(name, kind, (x, y, z), heading, scale)
     if collision:
@@ -683,6 +691,251 @@ for j, (x, z, spacing, angle) in enumerate([(196, -106, 7, -12), (-21, 140, 8, -
 for j, (x, z) in enumerate([(47, -211), (66, -211), (89, -219), (113, -218), (131, -216)]):
     prop(f'RailGantry{j}', 'Gantry', (x, -0.1, z), 0, 1.85)
 deck('FarShore', (29, -227, 149, -202), 'Shore', top=-0.10, thickness=1.5)
+
+def parking_bays(zone, x, z, count, finish, *, angle=0):
+    """Paint discrete roadside parking positions without raising the driving surface."""
+    radians = math.radians(angle)
+    ca, sa = math.cos(radians), math.sin(radians)
+
+    def stripe(u, v, w, d):
+        primitive(zone, finish, (x + ca*u + sa*v, 0.025, z - sa*u + ca*v),
+                  (w, 0.010, d), angle)
+
+    for index in range(count+1):
+        stripe(index*2.73, 0, 0.081, 4.8)
+    stripe(count*2.73/2, 2.37, count*2.73, 0.085)
+
+
+def job_canopy(name, zone, x, z, width, depth, finish, text, *, south=False):
+    """Build an open-front timber or metal canopy as a readable street address."""
+    for side in (-1, 1):
+        sx = x + side*(width/2-0.22)
+        for face in (-1, 1):
+            sz = z + face*(depth/2-0.21)
+            primitive(zone, 'DeepTeal', (sx, 1.62, sz), (0.15, 3.24, 0.15))
+            primitive(zone, 'ConcreteEdge', (sx, 0.125, sz), (0.25, 0.25, 0.25))
+            collider(f'{name}Post{side+1}{face+1}', (sx, 1.5, sz), (0.23, 3.0, 0.23), 'metal')
+        primitive(zone, 'Shutter', (sx, 3.12, z), (0.17, 0.30, depth))
+    primitive(zone, 'DeepTeal', (x, 3.30, z), (width, 0.25, depth))
+    roof_ribs = max(3, round(width/0.39))
+    for index in range(roof_ribs):
+        sx = x + (index+0.5)*width/roof_ribs - width/2
+        primitive(zone, finish, (sx, 3.46, z), (0.27, 0.09, depth+0.20))
+    front = z+(depth/2+0.09)*(1 if south else -1)
+    sign(name+'Sign', text, (x, 3.16, front), 0 if south else 180, width-0.13, 0.51)
+    for sx in (x-width/4, x+width/4):
+        primitive(zone, 'PaintIvory', (sx, 3.14, z-0.63), (0.90, 0.04, 0.15))
+
+
+# East Stackyard. The active freight lanes run between measured existing crate and container cover.
+deck('StackyardJob', (47.2, -109.0, 93.0, -70.7), 'Ballast', top=0.004, thickness=0.057)
+deck('StackyardJob', (48.1, -106.0, 91.1, -73.3), 'Concrete', top=0.009, thickness=0.052)
+job_canopy('StackyardIntake', 'StackyardJob', 52.8, -74.86, 5.6, 3.14, 'PaintAmber', 'EAST STACKYARD', south=True)
+cover('FreightIntakeDesk', 'Workbench', 51.8, -74.4)
+cover('FreightIntakeCart', 'Pallet', 55.4, -74.2)
+for index, (x, z, shape, angle) in enumerate([
+    (51.9, -84.8, 'Barricade', 0), (66.0, -83.9, 'Crates', 0), (64.1, -93.1, 'Pallet', 90),
+    (75.6, -88.3, 'Pallet', 90), (79.5, -81.1, 'Barrier', 0), (88.0, -85.2, 'Drum', 0),
+    (78.57, -102.2, 'Crates', 0), (83.1, -102.7, 'Pallet', 90),
+]):
+    cover(f'FreightWorksiteCover{index}', shape, x, z, angle)
+for x in (52.45, 58.55, 69.59, 74.61):
+    primitive('StackyardJob', 'Joint', (x, 0.020, -91.8), (0.23, 0.015, 28.9))
+    primitive('StackyardJob', 'Shutter', (x, 0.026, -91.8), (0.071, 0.014, 28.9))
+for i in range(8):
+    primitive('StackyardJob', 'PaintAmber', (54.48+i*0.55, 0.028, -79.53),
+              (0.18, 0.011, 0.83), -36)
+sign('FreightHoldSign', 'CARGO HOLD 04', (79.72, 3.44, -103.73), 0, 5.0, 0.56)
+for index, x in enumerate((77.65, 82.32)):
+    prop(f'HoldCone{index}', 'Cone', (x, 0.009, -101.25))
+
+
+# Pilot Quay. Hoses, winches and a short breakwater establish a separate coastal worksite.
+deck('RecoveryJob', (114.0, -30.25, 144.33, -5.9), 'Concrete', top=0.012, thickness=0.11)
+deck('RecoveryJob', (140.1, -30.65, 144.29, -5.8), 'Sidewalk', top=0.075)
+job_canopy('PilotQuayOffice', 'RecoveryJob', 133.35, -25.3, 4.6, 2.90, 'StoneBlue', 'PILOT QUAY 02')
+cover('PilotRecoveryDesk', 'Workbench', 132.77, -25.18)
+cover('PilotQuayWinch', 'Spool', 141.24, -15.7, 90, 0.075)
+for index, (x, z, shape, angle) in enumerate([
+    (125.1, -26.1, 'Crates', 0), (125.1, -17.45, 'Barrier', 90), (127.3, -12.4, 'Pallet', 90),
+    (135.6, -20.8, 'Barricade', 0), (136.2, -8.8, 'Container', 0),
+    (141.9, -8.37, 'Pallet', 90), (123.3, -8.9, 'Drum', 0),
+]):
+    cover(f'PilotRecoveryCover{index}', shape, x, z, angle)
+for index in range(4):
+    prop(f'PilotQuayCone{index}', 'Cone', (142.55, 0.075, -20.4+index*2.01), 22*index)
+for x in (116.0, 126.5, 139.45):
+    primitive('RecoveryJob', 'PaintAmber', (x, 0.024, -21.5), (0.089, 0.009, 14.7))
+prop('PilotQuayLaunch', 'Tug', (154.1, -1.03, -17.4), 13, 1.17)
+
+
+# West Market Dispatch. The bays are separate from westbound traffic and public walkways.
+deck('DispatchJob', (-170.0, 39.61, -160.7, 46.45), 'Pavers', top=0.14)
+job_canopy('WestMarketDispatch', 'DispatchJob', -165.8, 43.12, 8.2, 4.29, 'Terra', 'WEST MARKET DISPATCH')
+cover('MarketCourierWorktop', 'Workbench', -166.5, 44.73, y=0.14)
+cover('MarketCourierKiosk', 'Kiosk', -162.72, 44.6, 180, 0.14)
+prop('MarketDispatchPaperBox', 'Newspaper', (-169.1, 0.16, 40.74), 180)
+for x in (-169.25, -165.77, -162.29):
+    primitive('DispatchJob', 'PaintIvory', (x, 0.156, 41.03), (0.075, 0.01, 1.88))
+primitive('DispatchJob', 'PaintAmber', (-165.8, 0.156, 40.23), (7.0, 0.009, 0.11))
+sign('DispatchBlueAddress', 'SUNDOWN COURIER', (-171.15, 2.12, 42.03), 180, 5.0, 0.48)
+deck('DispatchJob', (-161.01, 8.30, -157.3, 24.45), 'Asphalt', top=0.004, thickness=0.045)
+for z in (8.57, 14.12, 19.91, 24.18):
+    primitive('DispatchJob', 'PaintIvory', (-159.1, 0.024, z), (3.36, 0.010, 0.086))
+primitive('DispatchJob', 'PaintAmber', (-160.85, 0.024, 16.375), (0.078, 0.010, 15.6))
+sign('DispatchReturnSign', 'DISPATCH TURNOUT', (-161.56, 2.58, 19.2), 90, 3.90, 0.49)
+primitive('DispatchJob', 'Shutter', (-161.56, 1.29, 19.2), (0.11, 2.58, 0.11))
+
+
+# Basin time trial. Raised shoulders are visual only and leave both travel lanes centered.
+deck('BridgeWalkway', (-29.30, -76.45, 31.36, -75.2), 'Sidewalk', top=0.062, thickness=0.08)
+deck('BridgeWalkway', (-29.30, -68.85, 31.36, -67.55), 'Sidewalk', top=0.062, thickness=0.08)
+deck('CanalWalkway', (-33.4, -65.5, -30.58, -34.35), 'Sidewalk', top=0.094)
+deck('CanalWalkway', (-33.35, 11.0, -30.56, 26.08), 'Sidewalk', top=0.094)
+for z in (-68.87, -75.18):
+    primitive('BridgeWalkway', 'PaintIvory', (1.0, 0.038, z), (61.0, 0.011, 0.075))
+sign('BasinTimingAddress', 'BASIN TIMING POINT', (-30.42, 2.72, -62.62), -90, 5.40)
+for z in (-64.72, -60.51):
+    primitive('CanalWalkway', 'DeepTeal', (-30.34, 1.37, z), (0.14, 2.74, 0.13))
+    prop(f'TrackTimingCone{str(z).replace("-", "N").replace(".", "_")}', 'Cone', (-34.02, 0.01, z))
+for row in range(2):
+    for i in range(17):
+        if (row+i) % 2 == 0:
+            primitive('BridgeWalkway', 'PaintIvory', (-43.50+i*0.53, 0.024, -71.20+row*0.51),
+                      (0.43, 0.01, 0.40))
+            primitive('BridgeWalkway', 'PaintIvory', (-43.50+i*0.53, 0.024, -79.27+row*0.51),
+                      (0.43, 0.01, 0.40))
+
+
+# A branded loading stop and drop-off bay bookend Lighthouse Delivery.
+deck('BeaconDelivery', (64.8, 19.3, 83.3, 27.65), 'Asphalt', top=0.003, thickness=0.056)
+parking_bays('BeaconDelivery', 67.2, 24.8, 5, 'PaintIvory')
+job_canopy('BondedExpress', 'BeaconDelivery', 67.4, 19.64, 4.8, 3.32, 'Celadon', 'BONDED EXPRESS', south=True)
+cover('BondedExpressCart', 'Pallet', 66.07, 19.2)
+cover('BondedExpressBox', 'Crates', 69.03, 19.46, 90)
+deck('BeaconDelivery', (127.8, -171.78, 142.55, -165.3), 'Asphalt', top=0.004, thickness=0.056)
+parking_bays('BeaconDelivery', 130.7, -168.71, 4, 'PaintAmber')
+sign('BeaconParcelDrop', 'BEACON DELIVERY', (141.8, 2.05, -166.21), 180, 4.75, 0.53)
+prop('BeaconReceivingCone', 'Cone', (141.5, 0.006, -171.10))
+prop('BeaconReceivingParcel', 'Pallet', (140.73, 0.006, -167.27), 90)
+
+# Sundown Market: an outdoor row of food and repair stalls with a separate seating terrace.
+deck('SundownMarket', (-208.15, 75.9, -164.5, 87.1), 'Pavers', top=0.085)
+deck('SundownMarket', (-208.15, 75.45, -164.5, 76.05), 'ConcreteEdge', top=0.10)
+deck('SundownMarket', (-208.15, 83.55, -164.5, 84.1), 'Sidewalk', top=0.088)
+for index, (x, finish, label) in enumerate([
+    (-203.5, 'Terra', 'FISH & CHIPS'), (-195.8, 'BluePaint', 'MARKET COFFEE'),
+    (-187.8, 'Moss', 'GREENSTAND'), (-179.8, 'Dune', 'BIKE REPAIR'), (-171.8, 'Rust', 'FRESH BREAD'),
+]):
+    job_canopy(f'MarketVendor{index}', 'SundownMarket', x, 79.48, 4.68, 4.20, finish, label)
+    for panel in range(8):
+        stripe = finish if panel % 2 else 'OffWhite'
+        primitive('SundownMarket', stripe, (x-2.07+panel*0.59, 3.43, 77.06),
+                  (0.55, 0.11, 0.71), 0)
+    prop(f'MarketVendorBox{index}', 'Crates', (x-1.05, 0.085, 80.8), 90, 0.65)
+    cover(f'MarketVendorCounter{index}', 'Workbench', x+0.45, 79.9, 180, 0.085)
+    cover(f'MarketTerraceBench{index}', 'Bench', x-0.3, 85.65, 0, 0.085)
+    primitive('SundownMarket', 'Dune', (x-0.3, 0.76, 84.65), (0.77, 0.10, 0.77), mesh='Cylinder')
+    primitive('SundownMarket', 'Shutter', (x-0.3, 0.41, 84.65), (0.12, 0.79, 0.12))
+    collider(f'MarketTerraceTable{index}', (x-0.3, 0.43, 84.65), (0.76, 0.76, 0.76), 'wood')
+sign('MarketTerraceAddress', 'SUNDOWN MARKET', (-186.2, 4.55, 76.32), 180, 11.7, 0.74)
+for x in (-191.83, -180.57):
+    primitive('SundownMarket', 'Shutter', (x, 2.23, 76.35), (0.14, 4.46, 0.15))
+node('MarketBunting', 'Node3D')
+poles = [(-206.84, 4.92), (-187.45, 4.88), (-166.49, 4.92)]
+for index, (x, height) in enumerate(poles):
+    primitive('SundownMarket', 'Shutter', (x, height/2, 83.20), (0.14, height, 0.14))
+    collider(f'MarketBuntingPole{index}', (x, height/2, 83.20), (0.16, height, 0.16), 'metal')
+for span, (left, right) in enumerate(zip(poles, poles[1:])):
+    for segment in range(10):
+        x0 = left[0] + (right[0]-left[0])*segment/10
+        x1 = left[0] + (right[0]-left[0])*(segment+1)/10
+        y0 = left[1] - 0.60*math.sin(math.pi*segment/10)
+        y1 = left[1] - 0.60*math.sin(math.pi*(segment+1)/10)
+        x, y = (x0+x1)/2, (y0+y1)/2
+        length = math.hypot(x1-x0, y1-y0)
+        angle = math.degrees(math.atan2(y1-y0, x1-x0))
+        box(f'Cable{span}{segment}', (x, y, 83.2), (length+0.015, 0.032, 0.032),
+            'Shutter', 'MarketBunting', (0, 0, angle))
+        primitive('SundownMarket', ('Terra', 'OffWhite', 'BluePaint', 'PaintAmber')[(span+segment)%4],
+                  (x, y-0.237, 83.20), (0.34, 0.49, 0.026), 9*math.sin(segment))
+
+
+# Foundry Row: colored entry bays and awnings above a residential pocket park south of the market.
+for facade_name, number, tint in [
+    ('SundownSouthBlock00', '12', 'Terra'),
+    ('SundownSouthBlock11', '18', 'Moss'),
+    ('RiveterSouthBlock00', '26', 'BluePaint'),
+    ('RiveterSouthBlock11', '32', 'Rust'),
+]:
+    facade_box = next(obstacle for obstacle in obstacles if obstacle['tag'] == facade_name)
+    x, _, z = facade_box['center']
+    w, h, d = facade_box['size']
+    front_z = z+d/2
+    for entry in (-0.27, 0.0, 0.27):
+        e = x+w*entry
+        primitive('FoundryRow', tint, (e, 1.26, front_z+0.115), (2.06, 2.37, 0.11))
+        primitive('FoundryRow', 'DeepTeal', (e, 1.18, front_z+0.17), (1.19, 2.10, 0.08))
+        primitive('FoundryRow', 'Limestone', (e, 2.49, front_z+0.39), (2.17, 0.13, 0.90))
+        primitive('FoundryRow', tint, (e, 2.47, front_z+0.85), (2.15, 0.15, 0.095))
+    for fraction in (-0.42, 0.42):
+        primitive('FoundryRow', tint, (x+w*fraction, h*0.55, front_z+0.09),
+                  (0.15, h*0.73, 0.11))
+    sign('FoundryRow'+number, 'CANAL ROW  '+number, (x, 3.32, front_z+0.22), 0, 5.15, 0.53)
+
+deck('CanalPark', (-30.0, 77.25, 34.3, 86.65), 'PlanterSoil', top=0.074, thickness=0.085)
+deck('CanalPark', (-30.0, 79.02, 34.3, 81.66), 'Sidewalk', top=0.096, thickness=0.10)
+deck('CanalPark', (-8.24, 76.5, -5.82, 86.7), 'Sidewalk', top=0.101, thickness=0.10)
+deck('CanalPark', (12.0, 76.5, 14.42, 86.7), 'Sidewalk', top=0.101, thickness=0.10)
+for index, (x, z) in enumerate([
+    (-25.5, 84.57), (-16.0, 84.51), (-12.3, 78.0), (8.31, 78.0),
+    (20.1, 84.37), (30.4, 84.55),
+]):
+    tree('CanalPark', f'CanalParkTree{index}', x, z, 3.03+index%3*0.36)
+for index, x in enumerate((-20.9, -10.2, 5.7, 17.1, 25.45)):
+    cover(f'CanalParkBench{index}', 'Bench', x, 83.58, 180, 0.095)
+for index, (start_x, end_x) in enumerate([(-29.4, -21.8), (-19.4, -9.3), (-4.9, -1.2), (3.8, 12.3), (16.2, 33.7)]):
+    cx = (start_x+end_x)/2
+    primitive('CanalPark', 'Moss', (cx, 0.48, 86.17), (end_x-start_x, 0.82, 0.67))
+    collider(f'CanalParkHedge{index}', (cx, 0.48, 86.17), (end_x-start_x, 0.82, 0.67), 'wood')
+pivot = (1.3, 83.9)
+for finish, y, width, height in [('Limestone', 0.25, 4.35, 0.45),
+                                  ('BluePaint', 0.49, 3.94, 0.085),
+                                  ('Limestone', 0.53, 1.13, 0.29),
+                                  ('StoneBlue', 0.92, 0.41, 0.67)]:
+    primitive('CanalPark', finish, (pivot[0], y, pivot[1]), (width, height, width), mesh='Cylinder')
+collider('CanalParkFountain', (pivot[0], 0.34, pivot[1]), (4.20, 0.64, 4.20))
+sign('CanalParkAddress', 'FOUNDRY GARDENS', (-9.8, 2.28, 77.45), 180, 5.4, 0.63)
+primitive('CanalPark', 'Shutter', (-9.8, 1.14, 77.47), (0.09, 2.28, 0.09))
+
+
+# East coast: separate landscaped overlooks on the public path, with a working breakwater offshore.
+for index, z in enumerate((-157.0, -126.6, -91.03, -58.75)):
+    deck('HarborWalk', (137.8, z-3.2, 144.35, z+3.2), 'Sidewalk', top=0.087, thickness=0.102)
+    deck('HarborWalk', (141.6, z-2.46, 144.46, z+2.46), 'Pavers', top=0.105, thickness=0.13)
+    cover(f'OverlookBench{index}', 'Bench', 143.06, z, -90, 0.105)
+    prop(f'OverlookLamp{index}', 'Lamp', (143.79, 0.097, z-2.86), 90)
+    prop(f'OverlookLifeRing{index}', 'LifeRing', (144.13, 0.105, z+2.02), -90)
+    for end in (-1, 1):
+        primitive('HarborWalk', 'ConcreteEdge', (143.02, 0.172, z+end*2.53),
+                  (2.43, 0.18, 0.13))
+for name, z, text in [
+    ('ChannelOverlook', -155, 'CHANNEL LOOKOUT'), ('SouthOverlook', -89, 'HARBOR WALK'),
+]:
+    sign(name, text, (143.81, 2.26, z), -90, 4.37, 0.55)
+    primitive('HarborWalk', 'Shutter', (143.98, 1.12, z), (0.10, 2.24, 0.10))
+for index in range(16):
+    x = 166.5+index*3.15
+    z = -163.0+0.45*index
+    primitive('Breakwater', 'StoneBlue' if index%3 else 'Shore',
+              (x, -0.87, z), (4.0, 2.20, 4.9), 18-index*3.64)
+    primitive('Breakwater', 'Shutter', (x+1.05, -1.09, z+2.5),
+              (2.81, 1.29, 2.67), 31+index*13.6)
+for x, z in ((164.4, -164.0), (213.6, -155.5)):
+    primitive('Breakwater', 'Limestone', (x, 0.43, z), (1.08, 0.45, 1.08), mesh='Cylinder')
+    primitive('Breakwater', 'RedPaint', (x, 1.38, z), (0.51, 1.52, 0.51), mesh='Cylinder')
+    primitive('Breakwater', 'PaintAmber', (x, 2.18, z), (0.41, 0.23, 0.41), mesh='Cylinder')
+
 
 for name, position in [
     ('CarSpawn', (5, 0, 9)),
