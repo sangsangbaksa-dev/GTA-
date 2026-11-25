@@ -30,6 +30,8 @@ public sealed record MapData
 {
     public double[] Bounds { get; init; } = { -1000, -1000, 1000, 1000 };
     public double[] Spawn { get; init; } = { 0, 0, 0 };
+    /// <summary>Sea level boundary: everything with Z below this is water (visual only for now).</summary>
+    public double WaterZ { get; init; } = double.NegativeInfinity;
     public List<RoadDef> Roads { get; init; } = new();
     public List<AreaDef> Areas { get; init; } = new();
     public List<Placement> Placements { get; init; } = new();

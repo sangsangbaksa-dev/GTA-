@@ -272,6 +272,7 @@ mapdata = {
     "_generated": "tools/map/build_map.py — do not edit by hand",
     "bounds": BOUNDS,
     "spawn": spawn,
+    "waterZ": WATER_Z,
     "roads": roads,
     "areas": areas,
     "placements": placements,
