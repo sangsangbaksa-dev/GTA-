@@ -17,6 +17,8 @@ public sealed class CombatSystem : ISimSystem
     public Func<Actor, Vec3d> SpawnPointFor { get; set; } = _ => Vec3d.Zero;
     /// <summary>Whether a downed state applies (co-op vs PvP rules); default: players downed by non-players.</summary>
     public Func<Actor, Actor?, bool> UsesDownedState { get; set; }
+    /// <summary>Multiplier on incoming raw damage (victim, attacker, source) — e.g. NPC riot shields. Default 1.</summary>
+    public Func<Actor, Actor?, string, double>? IncomingDamageScale { get; set; }
 
     private readonly StaticWorld _static;
     private readonly LagCompHistory? _history;
@@ -303,6 +305,8 @@ public sealed class CombatSystem : ISimSystem
     {
         if (!victim.IsAlive) return;
         if (IsProtected(victim, attacker)) return;
+        if (IncomingDamageScale != null) raw *= IncomingDamageScale(victim, attacker, source);
+        if (raw <= 0) return;
         var downed = (victim.Status & ActorFlags.Downed) != 0;
         var r = DamageModel.Apply(ref victim.Vitals, raw, bypassArmor: zone == HitZone.Head || downed, Config);
         _world.Events.Publish(new ActorDamaged(victim.Id, attacker?.Id ?? -1, r.HealthLost, r.ArmorLost, zone, source));

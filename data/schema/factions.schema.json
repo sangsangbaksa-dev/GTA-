@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "factions",
+  "type": "object",
+  "properties": {
+    "factions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "team": {
+            "type": "integer",
+            "maximum": -1
+          },
+          "players": {
+            "enum": [
+              "always",
+              "wanted",
+              "never"
+            ]
+          },
+          "enemies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "killCrime": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "team"
+        ]
+      }
+    }
+  },
+  "required": [
+    "factions"
+  ]
+}

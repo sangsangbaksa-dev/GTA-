@@ -24,7 +24,14 @@ public static class WireEventType
     public const ushort Notice = 40;
     public const ushort RequestRejected = 41;
     public const ushort Wanted = 42;
+    /// <summary>Presentation info for an actor (model, display name, team) — sent on spawn/join.</summary>
+    public const ushort ActorInfo = 50;
+    public const ushort ActorRemoved = 51;
+    public const ushort Travelled = 52;
 }
+
+/// <summary>What a client needs to draw an actor that snapshots don't carry.</summary>
+public readonly record struct ActorInfoMsg(int Id, Sim.ActorKind Kind, string Model, string Name, int Team);
 
 /// <summary>Encoders shared by server and client. Clients decode with <see cref="NetReader"/> in the same order.</summary>
 public static class WireEvents
@@ -89,6 +96,25 @@ public static class WireEvents
         return w.ToArray();
     }
 
+    public static ShotFired ReadShot(byte[] p)
+    {
+        var r = new NetReader(p);
+        return new ShotFired((int)r.ReadVarUInt32(), r.ReadString(), r.ReadPosition(), r.ReadPosition(), 0);
+    }
+
+    public static byte[] ActorInfo(ActorInfoMsg m)
+    {
+        var w = new NetWriter(32);
+        w.WriteVarUInt((uint)m.Id); w.WriteByte((byte)m.Kind); w.WriteString(m.Model); w.WriteString(m.Name); w.WriteVarInt(m.Team);
+        return w.ToArray();
+    }
+
+    public static ActorInfoMsg ReadActorInfo(byte[] p)
+    {
+        var r = new NetReader(p);
+        return new ActorInfoMsg((int)r.ReadVarUInt32(), (Sim.ActorKind)r.ReadByte(), r.ReadString(), r.ReadString(), (int)r.ReadVarInt());
+    }
+
     public static byte[] Text(string s)
     {
         var w = new NetWriter(s.Length + 4);
@@ -103,6 +129,12 @@ public static class WireEvents
         var w = new NetWriter(16);
         w.WriteString(weaponId); w.WriteVarUInt((uint)inMagazine); w.WriteVarUInt((uint)reserve);
         return w.ToArray();
+    }
+
+    public static (string WeaponId, int InMagazine, int Reserve) ReadAmmo(byte[] p)
+    {
+        var r = new NetReader(p);
+        return (r.ReadString(), (int)r.ReadVarUInt32(), (int)r.ReadVarUInt32());
     }
 
     // ------------------------------------------------------------------ activities

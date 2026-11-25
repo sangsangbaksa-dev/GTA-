@@ -1,0 +1,52 @@
+{
+  "archetypes": [
+    {
+      "id": "saltline_brawler", "faction": "saltline", "model": "chr_enemy_brawler", "style": "charge",
+      "health": 160, "armor": 0, "weapon": "", "speedMultiplier": 1.05,
+      "sightRange": 45, "fovDeg": 150, "reactionSeconds": 0.45,
+      "meleeDamage": 28, "meleeRange": 1.7, "meleeCooldown": 0.9,
+      "cashDrop": [120, 320]
+    },
+    {
+      "id": "velvet_gunman", "faction": "velvet", "model": "chr_enemy_gunman", "style": "cover",
+      "health": 100, "armor": 25, "weapon": "wasp_smg", "speedMultiplier": 1.0,
+      "sightRange": 60, "fovDeg": 120, "reactionSeconds": 0.6,
+      "attackRange": 35, "preferredRange": 16, "aimErrorDeg": 3.5, "burstSeconds": 0.7, "burstPauseSeconds": 1.1,
+      "cashDrop": [200, 450]
+    },
+    {
+      "id": "saltline_gunman", "faction": "saltline", "model": "chr_enemy_gunman", "style": "cover",
+      "health": 100, "armor": 0, "weapon": "kestrel_p10", "speedMultiplier": 1.0,
+      "sightRange": 50, "fovDeg": 120, "reactionSeconds": 0.7,
+      "attackRange": 30, "preferredRange": 14, "aimErrorDeg": 4.0, "burstSeconds": 0.9, "burstPauseSeconds": 1.0,
+      "cashDrop": [150, 300]
+    },
+    {
+      "id": "ironclad_enforcer", "faction": "ironclad", "model": "chr_enemy_enforcer", "style": "advance",
+      "health": 140, "armor": 100, "weapon": "halberd_ar", "speedMultiplier": 0.7,
+      "sightRange": 70, "fovDeg": 110, "reactionSeconds": 0.8,
+      "attackRange": 45, "preferredRange": 12, "aimErrorDeg": 2.5, "burstSeconds": 0.5, "burstPauseSeconds": 1.4,
+      "shieldFrontScale": 0.15, "shieldConeDeg": 70,
+      "cashDrop": [300, 600]
+    },
+    {
+      "id": "police_officer", "faction": "police", "model": "chr_enemy_gunman", "style": "cover",
+      "health": 100, "armor": 50, "weapon": "kestrel_p10", "speedMultiplier": 1.05,
+      "sightRange": 70, "fovDeg": 140, "reactionSeconds": 0.5,
+      "attackRange": 35, "preferredRange": 15, "aimErrorDeg": 3.0, "burstSeconds": 1.0, "burstPauseSeconds": 0.9,
+      "cashDrop": [0, 0]
+    },
+    {
+      "id": "police_swat", "faction": "police", "model": "chr_enemy_enforcer", "style": "advance",
+      "health": 130, "armor": 100, "weapon": "halberd_ar", "speedMultiplier": 0.85,
+      "sightRange": 80, "fovDeg": 140, "reactionSeconds": 0.5,
+      "attackRange": 45, "preferredRange": 14, "aimErrorDeg": 2.2, "burstSeconds": 0.6, "burstPauseSeconds": 1.0,
+      "shieldFrontScale": 0.25, "shieldConeDeg": 60,
+      "cashDrop": [0, 0]
+    }
+  ],
+  "corpseSeconds": 12,
+  "thinkHz": 10,
+  "activationRadius": 220,
+  "deactivationRadius": 320
+}

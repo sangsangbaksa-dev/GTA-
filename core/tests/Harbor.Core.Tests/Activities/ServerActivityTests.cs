@@ -20,7 +20,7 @@ public class ServerActivityTests
         public Rig()
         {
             var ep = Net.CreateServer();
-            Server = new GameServer(Repo.Data, ep, new NullLog());
+            Server = new GameServer(Repo.DataWithoutNpcs, ep, new NullLog());
             Client = new ClientSession(Net.Connect(ep), "rook");
             Run(1);
         }
