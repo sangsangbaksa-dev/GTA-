@@ -1,0 +1,10 @@
+{
+  "materials": [
+    { "id": "concrete",   "penetrableBy": [],                         "damageScale": 0.0,  "maxThickness": 0.0 },
+    { "id": "metal",      "penetrableBy": [],                         "damageScale": 0.0,  "maxThickness": 0.0 },
+    { "id": "earth",      "penetrableBy": [],                         "damageScale": 0.0,  "maxThickness": 0.0 },
+    { "id": "wood",       "penetrableBy": ["rifle"],                  "damageScale": 0.5,  "maxThickness": 1.3 },
+    { "id": "thin_metal", "penetrableBy": ["rifle", "smg"],           "damageScale": 0.6,  "maxThickness": 1.0 },
+    { "id": "glass",      "penetrableBy": ["pistol", "smg", "rifle", "shotgun"], "damageScale": 0.85, "maxThickness": 0.2 }
+  ]
+}

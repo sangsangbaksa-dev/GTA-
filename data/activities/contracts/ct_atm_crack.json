@@ -1,0 +1,61 @@
+{
+  "id": "ct_atm_crack",
+  "displayName": "ATM Crack",
+  "kind": "contract",
+  "district": "glass_heights",
+  "minRep": 1,
+  "minPlayers": 1,
+  "maxPlayers": 4,
+  "timeLimitSeconds": 600,
+  "cooldownSeconds": 300,
+  "partyRadius": 60,
+  "reward": {
+    "currency": "dirty",
+    "min": 3200,
+    "max": 4000,
+    "xp": 220
+  },
+  "objectives": [
+    {
+      "type": "reach",
+      "label": "obj.reach_atm",
+      "at": [
+        820,
+        0,
+        600
+      ],
+      "radius": 6
+    },
+    {
+      "type": "interact",
+      "label": "obj.hack_atm",
+      "at": [
+        821,
+        0,
+        601
+      ],
+      "radius": 2.5,
+      "seconds": 45,
+      "crime": "atm_hack"
+    },
+    {
+      "type": "deliver",
+      "label": "obj.bag_cash",
+      "item": "prop_cash_stack",
+      "at": [
+        821,
+        0,
+        602
+      ],
+      "to": [
+        700,
+        0,
+        520
+      ],
+      "count": 1,
+      "valueEach": 0,
+      "radius": 6,
+      "crime": "atm_hack"
+    }
+  ]
+}

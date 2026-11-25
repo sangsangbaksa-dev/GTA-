@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Businesses",
+  "type": "object",
+  "required": ["businesses"],
+  "properties": {
+    "businesses": { "type": "array", "items": {
+      "type": "object",
+      "required": ["id", "displayName", "district", "feeRate", "throughputPerHour", "price"],
+      "properties": {
+        "feeRate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "throughputPerHour": { "type": "integer", "minimum": 1 },
+        "price": { "type": "integer", "minimum": 0 },
+        "dailyUpkeepRate": { "type": "number", "minimum": 0 }
+      }
+    } }
+  }
+}

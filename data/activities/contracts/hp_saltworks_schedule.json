@@ -1,0 +1,53 @@
+{
+  "id": "hp_saltworks_schedule",
+  "displayName": "Saltworks: Guard Rota",
+  "kind": "heistPrep",
+  "district": "old_mill",
+  "minRep": 0,
+  "minPlayers": 1,
+  "maxPlayers": 4,
+  "timeLimitSeconds": 600,
+  "cooldownSeconds": 300,
+  "partyRadius": 60,
+  "reward": {
+    "currency": "dirty",
+    "min": 800,
+    "max": 1200,
+    "xp": 150
+  },
+  "objectives": [
+    {
+      "type": "reach",
+      "label": "obj.reach_office",
+      "at": [
+        -520,
+        0,
+        380
+      ],
+      "radius": 6
+    },
+    {
+      "type": "interact",
+      "label": "obj.copy_rota",
+      "at": [
+        -521,
+        0,
+        381
+      ],
+      "radius": 2.0,
+      "seconds": 30,
+      "crime": "atm_hack"
+    },
+    {
+      "type": "escape",
+      "label": "obj.leave_area",
+      "at": [
+        -520,
+        0,
+        380
+      ],
+      "radius": 10,
+      "distance": 150
+    }
+  ]
+}

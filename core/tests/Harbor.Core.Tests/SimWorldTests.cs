@@ -8,12 +8,6 @@ namespace Harbor.Core.Tests;
 
 public class SimWorldTests
 {
-    private sealed class NullLog : ILog
-    {
-        public void Info(string m) { }
-        public void Warn(string m) { }
-        public void Error(string m) { }
-    }
 
     private sealed record Honk(int PlayerId) : PlayerCommand(PlayerId);
     private sealed record Honked(int PlayerId) : ISimEvent;

@@ -1,10 +1,17 @@
 {
   "decayPerSecond": 0.5,
+  "decayDelaySeconds": 15,
+  "repeatCrimeSeconds": 5,
   "crimeHeat": {
     "trespass": 5,
     "vehicle_theft": 20,
     "assault": 30,
     "shots_fired": 40,
+    "murder": 70,
+    "robbery": 120,
+    "atm_hack": 60,
+    "smuggling": 40,
+    "heist": 230,
     "attack_police": 80
   },
   "levels": [

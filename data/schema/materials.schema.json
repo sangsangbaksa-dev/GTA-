@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SurfaceMaterials",
+  "type": "object",
+  "required": ["materials"],
+  "properties": {
+    "materials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "penetrableBy", "damageScale", "maxThickness"],
+        "properties": {
+          "id": { "enum": ["concrete", "metal", "earth", "wood", "thin_metal", "glass"] },
+          "penetrableBy": { "type": "array", "items": { "enum": ["pistol", "smg", "rifle", "shotgun", "melee"] } },
+          "damageScale": { "type": "number", "minimum": 0, "maximum": 1 },
+          "maxThickness": { "type": "number", "minimum": 0, "description": "meters of material a bullet can pass" }
+        }
+      }
+    }
+  }
+}

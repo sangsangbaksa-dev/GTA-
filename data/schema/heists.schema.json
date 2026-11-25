@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Heists",
+  "type": "object",
+  "required": [
+    "heists"
+  ],
+  "properties": {
+    "heists": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "preps",
+          "finale"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          },
+          "preps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "contract ids of kind heistPrep"
+          },
+          "finale": {
+            "type": "string",
+            "description": "contract id of kind heistFinale"
+          },
+          "minPlayers": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "minSharePercent": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 25
+          },
+          "splitTimeoutSeconds": {
+            "type": "number"
+          },
+          "crewRep": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "health": { "max": 100, "regenDelaySeconds": 6.0, "regenPerSecond": 8.0, "regenCap": 50 },
+  "armor": { "max": 100, "absorb": 0.6 },
+  "zones": { "head": 0.0, "torso": 1.0, "limbs": 0.75 },
+  "downed": { "seconds": 20.0, "reviveSeconds": 3.0, "reviveHealth": 30, "reviveRange": 1.8, "bleedOutDamageImmune": false },
+  "respawnSeconds": 10.0,
+  "suppression": { "radius": 1.5, "perShot": 0.25, "decayPerSecond": 0.5, "spreadMultiplierAtMax": 1.5 },
+  "explosive": { "health": 30, "radius": 5.0, "innerDamage": 120, "outerDamage": 20, "chainDelaySeconds": 0.2 },
+  "eyeHeight": 1.6,
+  "eyeHeightCrouched": 1.1,
+  "repeatKillWindowSeconds": 600,
+  "repeatKillLimit": 3,
+  "carryAllowedClasses": ["pistol"]
+}

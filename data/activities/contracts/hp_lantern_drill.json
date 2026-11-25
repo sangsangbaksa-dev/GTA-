@@ -1,0 +1,49 @@
+{
+  "id": "hp_lantern_drill",
+  "displayName": "Lantern Trust: Thermal Drill",
+  "kind": "heistPrep",
+  "district": "glass_heights",
+  "minRep": 10,
+  "minPlayers": 1,
+  "maxPlayers": 4,
+  "timeLimitSeconds": 720,
+  "cooldownSeconds": 300,
+  "partyRadius": 60,
+  "reward": {
+    "currency": "dirty",
+    "min": 1500,
+    "max": 2000,
+    "xp": 300
+  },
+  "objectives": [
+    {
+      "type": "reach",
+      "label": "obj.reach_site",
+      "at": [
+        760,
+        0,
+        720
+      ],
+      "radius": 6
+    },
+    {
+      "type": "deliver",
+      "label": "obj.take_drill",
+      "item": "prop_weapon_crate",
+      "at": [
+        762,
+        0,
+        722
+      ],
+      "to": [
+        880,
+        0,
+        640
+      ],
+      "count": 1,
+      "valueEach": 0,
+      "radius": 8,
+      "crime": "vehicle_theft"
+    }
+  ]
+}

@@ -7,4 +7,7 @@
     <RootNamespace>Harbor.Core</RootNamespace>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Harbor.Core.Tests" />
+  </ItemGroup>
 </Project>

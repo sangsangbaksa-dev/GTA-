@@ -1,0 +1,109 @@
+{
+  "captureSeconds": 60,
+  "shopDiscount": 0.1,
+  "attackIntervalSeconds": 1800,
+  "attackNoticeSeconds": 120,
+  "attackWindowSeconds": 300,
+  "payoutIntervalSeconds": 60,
+  "zones": [
+    {
+      "id": "tz_mill_yard",
+      "district": "old_mill",
+      "at": [
+        -480,
+        0,
+        260
+      ],
+      "radius": 15,
+      "incomePerHour": 6000
+    },
+    {
+      "id": "tz_mill_canal",
+      "district": "old_mill",
+      "at": [
+        -350,
+        0,
+        400
+      ],
+      "radius": 15,
+      "incomePerHour": 6000
+    },
+    {
+      "id": "tz_mill_rail",
+      "district": "old_mill",
+      "at": [
+        -600,
+        0,
+        330
+      ],
+      "radius": 15,
+      "incomePerHour": 6000
+    },
+    {
+      "id": "tz_harbor_pier9",
+      "district": "harbor_front",
+      "at": [
+        220,
+        0,
+        -220
+      ],
+      "radius": 15,
+      "incomePerHour": 6000
+    },
+    {
+      "id": "tz_harbor_fishmarket",
+      "district": "harbor_front",
+      "at": [
+        340,
+        0,
+        -140
+      ],
+      "radius": 15,
+      "incomePerHour": 6000
+    },
+    {
+      "id": "tz_harbor_drydock",
+      "district": "harbor_front",
+      "at": [
+        150,
+        0,
+        -360
+      ],
+      "radius": 15,
+      "incomePerHour": 6000
+    },
+    {
+      "id": "tz_heights_plaza",
+      "district": "glass_heights",
+      "at": [
+        900,
+        0,
+        600
+      ],
+      "radius": 15,
+      "incomePerHour": 6000
+    },
+    {
+      "id": "tz_heights_garage",
+      "district": "glass_heights",
+      "at": [
+        800,
+        0,
+        680
+      ],
+      "radius": 15,
+      "incomePerHour": 6000
+    },
+    {
+      "id": "tz_heights_skybridge",
+      "district": "glass_heights",
+      "at": [
+        980,
+        0,
+        560
+      ],
+      "radius": 15,
+      "incomePerHour": 6000
+    }
+  ]
+}

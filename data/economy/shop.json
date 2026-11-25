@@ -1,0 +1,14 @@
+{
+  "items": [
+    { "id": "wpn_wasp_smg",        "kind": "weapon", "ref": "wasp_smg",     "amount": 1,  "price": 2400, "currencies": ["clean"],          "minRep": 1 },
+    { "id": "wpn_breaker_12",      "kind": "weapon", "ref": "breaker_12",   "amount": 1,  "price": 3100, "currencies": ["clean"],          "minRep": 2 },
+    { "id": "wpn_halberd_ar",      "kind": "weapon", "ref": "halberd_ar",   "amount": 1,  "price": 5800, "currencies": ["clean"],          "minRep": 3 },
+    { "id": "ammo_pistol",         "kind": "ammo",   "ref": "pistol",       "amount": 15, "price": 40,   "currencies": ["dirty", "clean"], "minRep": 0 },
+    { "id": "ammo_smg",            "kind": "ammo",   "ref": "smg",          "amount": 30, "price": 80,   "currencies": ["dirty", "clean"], "minRep": 0 },
+    { "id": "ammo_shotgun",        "kind": "ammo",   "ref": "shotgun",      "amount": 6,  "price": 60,   "currencies": ["dirty", "clean"], "minRep": 0 },
+    { "id": "ammo_rifle",          "kind": "ammo",   "ref": "rifle",        "amount": 30, "price": 120,  "currencies": ["dirty", "clean"], "minRep": 0 },
+    { "id": "armor_plate",         "kind": "armor",  "ref": "",             "amount": 50, "price": 350,  "currencies": ["dirty", "clean"], "minRep": 0 },
+    { "id": "armor_full",          "kind": "armor",  "ref": "",             "amount": 100,"price": 650,  "currencies": ["dirty", "clean"], "minRep": 1 },
+    { "id": "medkit",              "kind": "medkit", "ref": "",             "amount": 50, "price": 200,  "currencies": ["dirty", "clean"], "minRep": 0 }
+  ]
+}

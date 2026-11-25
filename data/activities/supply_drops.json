@@ -1,0 +1,70 @@
+{
+  "intervalSeconds": 900,
+  "firstDropSeconds": 300,
+  "noticeSeconds": 60,
+  "openSeconds": 10,
+  "openRadius": 2.0,
+  "lifetimeSeconds": 300,
+  "cash": 6000,
+  "items": [
+    "ammo_rifle",
+    "ammo_smg",
+    "armor_plate"
+  ],
+  "sites": [
+    {
+      "id": "sd_mill_lot",
+      "district": "old_mill",
+      "at": [
+        -450,
+        0,
+        360
+      ]
+    },
+    {
+      "id": "sd_rail_bridge",
+      "district": "old_mill",
+      "at": [
+        -620,
+        0,
+        250
+      ]
+    },
+    {
+      "id": "sd_pier_roof",
+      "district": "harbor_front",
+      "at": [
+        200,
+        0,
+        -300
+      ]
+    },
+    {
+      "id": "sd_fish_yard",
+      "district": "harbor_front",
+      "at": [
+        360,
+        0,
+        -90
+      ]
+    },
+    {
+      "id": "sd_heights_park",
+      "district": "glass_heights",
+      "at": [
+        860,
+        0,
+        520
+      ]
+    },
+    {
+      "id": "sd_heights_helipad",
+      "district": "glass_heights",
+      "at": [
+        1000,
+        0,
+        640
+      ]
+    }
+  ]
+}

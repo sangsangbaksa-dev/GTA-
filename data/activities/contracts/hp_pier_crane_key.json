@@ -1,0 +1,52 @@
+{
+  "id": "hp_pier_crane_key",
+  "displayName": "Blue Pier: Crane Key",
+  "kind": "heistPrep",
+  "district": "harbor_front",
+  "minRep": 5,
+  "minPlayers": 1,
+  "maxPlayers": 4,
+  "timeLimitSeconds": 600,
+  "cooldownSeconds": 300,
+  "partyRadius": 60,
+  "reward": {
+    "currency": "dirty",
+    "min": 1000,
+    "max": 1500,
+    "xp": 200
+  },
+  "objectives": [
+    {
+      "type": "reach",
+      "label": "obj.reach_crane",
+      "at": [
+        320,
+        0,
+        -340
+      ],
+      "radius": 6
+    },
+    {
+      "type": "hold",
+      "label": "obj.defend_crane_cab",
+      "at": [
+        320,
+        0,
+        -340
+      ],
+      "radius": 12,
+      "seconds": 45,
+      "crime": "assault"
+    },
+    {
+      "type": "reach",
+      "label": "obj.take_key_home",
+      "at": [
+        260,
+        0,
+        -180
+      ],
+      "radius": 10
+    }
+  ]
+}

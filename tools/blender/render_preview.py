@@ -20,6 +20,9 @@ for f in files:
     before = set(bpy.data.objects)
     bpy.ops.import_scene.gltf(filepath=f)
     new = [o for o in bpy.data.objects if o not in before]
+    for o in [o for o in new if o.name.endswith("-colonly")]:  # collision hulls are not visual
+        bpy.data.objects.remove(o)
+        new.remove(o)
     roots = [o for o in new if o.parent is None]
     bpy.context.view_layer.update()
     pts = [o.matrix_world @ Vector(c) for o in new if o.type == "MESH" for c in o.bound_box]
