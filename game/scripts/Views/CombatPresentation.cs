@@ -38,7 +38,8 @@ public partial class CombatPresentation : Node3D
     private CoreHost _host = null!;
     private ThirdPersonController _player = null!;
     private WeaponPose? _playerPose;
-    private AudioStreamPlayer3D _siren = null!;
+    private AudioStreamPlayer? _ambience;
+    private AudioStreamPlayer3D? _siren;
     private string _weaponId = "";
     private float _playerFlinch;
     private float _weaponKick;
@@ -59,6 +60,15 @@ public partial class CombatPresentation : Node3D
         foreach (var (id, path) in Weapons)
             _weapons[id] = GD.Load<PackedScene>(AssetRoot + "weapons/" + path + ".glb");
 
+        if (DisplayServer.GetName() != "headless") InitializeAudio();
+
+        _host.ShotFired += OnShot;
+        _host.ActorDamaged += OnDamage;
+        _host.ActorKilled += OnDeath;
+    }
+
+    private void InitializeAudio()
+    {
         foreach (var name in new[]
                  {
                      "dock_ambience", "district_alert", "kestrel", "wasp", "halberd", "breaker", "impact", "hit",
@@ -70,23 +80,21 @@ public partial class CombatPresentation : Node3D
             _sounds[name] = stream;
         }
 
-        var ambience = new AudioStreamPlayer { Stream = _sounds["dock_ambience"], VolumeDb = -3.0f };
-        AddChild(ambience);
-        ambience.Play();
+        _ambience = new AudioStreamPlayer { Stream = _sounds["dock_ambience"], VolumeDb = -3.0f };
+        AddChild(_ambience);
+        _ambience.Play();
 
         _siren = new AudioStreamPlayer3D
         {
             Stream = _sounds["district_alert"], VolumeDb = -60, UnitSize = 8, MaxDistance = 145
         };
         AddChild(_siren);
-
-        _host.ShotFired += OnShot;
-        _host.ActorDamaged += OnDamage;
-        _host.ActorKilled += OnDeath;
     }
 
     public override void _ExitTree()
     {
+        _ambience?.Stop();
+        _siren?.Stop();
         if (!GodotObject.IsInstanceValid(_host)) return;
 
         _host.ShotFired -= OnShot;
@@ -250,6 +258,8 @@ public partial class CombatPresentation : Node3D
 
     private void UpdateSiren(Vector3? patrolPosition, float dt)
     {
+        if (_siren == null) return;
+
         if (patrolPosition is { } position && _host.WantedLevel > 0 && !_host.IsPaused)
         {
             if (!_siren.Playing) _siren.Play();
@@ -430,7 +440,8 @@ public partial class CombatPresentation : Node3D
 
     private void PlayLocal(string cue, float db)
     {
-        var player = new AudioStreamPlayer { Stream = _sounds[cue], VolumeDb = db, PitchScale = RandomPitch() };
+        if (!_sounds.TryGetValue(cue, out var sound)) return;
+        var player = new AudioStreamPlayer { Stream = sound, VolumeDb = db, PitchScale = RandomPitch() };
         AddChild(player);
         player.Finished += player.QueueFree;
         player.Play();
@@ -438,9 +449,10 @@ public partial class CombatPresentation : Node3D
 
     private void PlayAt(string cue, Vector3 position, float db)
     {
+        if (!_sounds.TryGetValue(cue, out var sound)) return;
         var player = new AudioStreamPlayer3D
         {
-            Stream = _sounds[cue], VolumeDb = db, Position = position, UnitSize = 6.5f, MaxDistance = 105,
+            Stream = sound, VolumeDb = db, Position = position, UnitSize = 6.5f, MaxDistance = 105,
             PitchScale = RandomPitch()
         };
         AddChild(player);
