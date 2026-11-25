@@ -1,0 +1,76 @@
+name: release
+# Exports desktop builds. PRs: build + upload as workflow artifacts.
+# main: also publish to the rolling "latest" GitHub Release. See docs/adr/0007-desktop-release-pipeline.md
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  GODOT_VERSION: 4.4.1
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Cache Godot
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-mono-${{ env.GODOT_VERSION }}
+      - name: Install Godot (.NET) + export templates
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          base=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          mkdir -p ~/godot && cd ~/godot
+          curl -fsSLO $base/Godot_v${GODOT_VERSION}-stable_mono_linux_x86_64.zip
+          unzip -q Godot_v${GODOT_VERSION}-stable_mono_linux_x86_64.zip && rm *.zip
+          curl -fsSLO $base/Godot_v${GODOT_VERSION}-stable_mono_export_templates.tpz
+          tdir=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable.mono
+          mkdir -p "$tdir"
+          unzip -q Godot_v${GODOT_VERSION}-stable_mono_export_templates.tpz
+          mv templates/* "$tdir"/ && rm -rf templates *.tpz
+      - name: Export
+        run: |
+          GODOT=$(ls ~/godot/Godot_v*_mono_linux_x86_64/Godot_v*_mono_linux.x86_64)
+          cd game
+          dotnet new sln -n Harbor --force
+          dotnet sln Harbor.sln add Harbor.csproj ../core/src/Harbor.Core/Harbor.Core.csproj
+          "$GODOT" --headless --import || true
+          mkdir -p ../build/windows ../build/linux
+          "$GODOT" --headless --export-release "Windows" ../build/windows/Harbor.exe
+          "$GODOT" --headless --export-release "Linux" ../build/linux/Harbor.x86_64
+          test -f ../build/windows/Harbor.exe && test -f ../build/linux/Harbor.x86_64
+      - name: Package
+        run: |
+          for p in windows linux; do cp -r data build/$p/data; done
+          cd build
+          (cd windows && zip -qr ../Harbor-windows-x86_64.zip .)
+          tar -czf Harbor-linux-x86_64.tar.gz -C linux .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: harbor-desktop
+          path: |
+            build/Harbor-windows-x86_64.zip
+            build/Harbor-linux-x86_64.tar.gz
+      - name: Publish rolling release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest --prerelease --target "$GITHUB_SHA" \
+            --title "Latest build (${GITHUB_SHA::7})" \
+            --notes "main 최신 커밋 자동 빌드. 실행: Windows는 Harbor.exe, Linux는 Harbor.x86_64 (.NET 8 런타임 포함)." \
+            build/Harbor-windows-x86_64.zip build/Harbor-linux-x86_64.tar.gz

@@ -248,6 +248,11 @@ Godot: 이벤트 받아 피격 애니메이션·이펙트·HUD
 
 ---
 
+## 배포
+main 머지 → `release` 워크플로가 Windows/Linux 빌드를 GitHub Release `latest`에 올린다. 웹 export는 C# 미지원으로 없음. [ADR 0007](docs/adr/0007-desktop-release-pipeline.md)
+
+---
+
 ## 6. 변경 규칙
 - 구조 변경(모듈 추가, 의존 방향, 외부 라이브러리 도입) → `docs/adr/NNNN-*.md`.
 - 데이터 포맷 변경 → `data/schema/` 갱신.

@@ -1,7 +1,6 @@
 # Godot
 .godot/
 *.import.tmp
-export_presets.cfg
 # .NET
 bin/
 obj/
@@ -12,3 +11,4 @@ TestResults/
 # OS
 .DS_Store
 Thumbs.db
+build/
