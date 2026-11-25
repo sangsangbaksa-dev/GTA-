@@ -14,7 +14,7 @@ public enum Delivery
 }
 
 /// <summary>Network transport port. Implementations: InMemoryNetwork (tests, local play),
-/// Godot ENet adapter (client), UDP library on the dedicated server (ADR 0004).</summary>
+/// TcpTransport (LAN desktop and dedicated server).</summary>
 public interface ITransport
 {
     void Send(int peer, byte[] data, Delivery delivery);

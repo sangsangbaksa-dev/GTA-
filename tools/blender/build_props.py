@@ -10,7 +10,8 @@ Quality rules (higher than the first placeholder pass):
     (Godot builds a static collider from them and drops the visual). Pickups use the
     same hull as their trigger volume.
   * 1 unit = 1 m, ground at z=0, origin at footprint centre, front faces -Y (Blender).
-  * Godot generates LODs on import; keep visual meshes < ~6k tris.
+    The pilot tug uses the waterline at z=0 for placement.
+  * Godot generates LODs on import; target ~6k visual tris for props and ~10k for landmarks.
 
 Each prop is registered in PROPS with category + gameplay tag; the Set README table and
 data/props/props.json in Harbor are derived from the same list.
@@ -1005,6 +1006,447 @@ def prop_road_barricade():
     col("prop_road_barricade", (1.5, 0.12, 1.0), (0, -0.12, 0.5))
 
 
+# ================================================================ DOCK KIT
+
+
+def dock_finish(parts, name):
+    visual = join(parts, name)
+    _active(visual)
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+
+
+def prop_dock_power_pedestal():
+    reset()
+    p = P()
+    parts = [
+        box((0.52, 0.42, 0.06), (0, 0, 0.03), p["gunmetal"], bevel=0.012),
+        box((0.29, 0.24, 0.72), (0, 0.035, 0.42), p["teal"], bevel=0.018),
+        box((0.46, 0.35, 0.53), (0, 0.02, 0.865), p["teal"], bevel=0.025),
+        box((0.49, 0.38, 0.05), (0, 0.015, 1.135), p["galv"], bevel=0.015),
+        box((0.395, 0.032, 0.425), (0, -0.155, 0.872), p["gunmetal"], bevel=0.012),
+        box((0.20, 0.023, 0.063), (0, -0.174, 1.005), p["hazard"], bevel=0.005),
+    ]
+    for x in (-0.11, 0.11):
+        socket_axis = (math.pi / 2, 0, 0)
+        parts.extend((
+            cyl(0.064, 0.024, (x, -0.178, 0.865), p["galv"], rot=socket_axis, verts=16),
+            cyl(0.045, 0.022, (x, -0.195, 0.865), p["black"], rot=socket_axis, verts=16),
+            box((0.048, 0.018, 0.02), (x, -0.179, 0.774), p["screen"], bevel=0.004),
+        ))
+    for x in (-0.20, 0.20):
+        for y in (-0.15, 0.15):
+            parts.append(cyl(0.023, 0.02, (x, y, 0.061), p["galv"], verts=6))
+    dock_finish(parts, "prop_dock_power_pedestal")
+    col("prop_dock_power_pedestal", (0.52, 0.42, 1.16), (0, 0, 0.58))
+
+
+def prop_dock_access_gate():
+    reset()
+    p = P()
+    parts = []
+    for x in (-1.17, 1.17):
+        parts.extend((
+            box((0.26, 0.36, 0.07), (x, 0, 0.035), p["gunmetal"], bevel=0.01),
+            box((0.14, 0.14, 1.93), (x, 0, 1.005), p["galv"], bevel=0.012),
+            box((0.16, 0.16, 0.04), (x, 0, 1.98), p["hazard"], bevel=0.005),
+            box((0.13, 0.018, 0.26), (x, -0.075, 0.96), p["hazard"], bevel=0.004),
+        ))
+    for x in (-1.04, 1.04):
+        parts.append(box((0.07, 0.09, 1.53), (x, 0, 0.97), p["teal"], bevel=0.006))
+    for z in (0.23, 0.92, 1.71):
+        parts.append(box((2.08, 0.09, 0.07), (0, 0, z), p["teal"], bevel=0.006))
+    for i in range(-7, 8):
+        parts.append(box((0.025, 0.04, 1.43), (i * 0.13, 0, 0.97), p["galv"], bevel=0.003))
+    parts.extend((
+        box((0.45, 0.035, 0.27), (0.70, -0.046, 1.18), p["gunmetal"], bevel=0.012),
+        box((0.37, 0.012, 0.065), (0.70, -0.067, 1.24), p["hazard"], bevel=0.004),
+        box((0.12, 0.01, 0.045), (0.70, -0.068, 1.12), p["reflect"], bevel=0.003),
+    ))
+    dock_finish(parts, "prop_dock_access_gate")
+    col("prop_dock_access_gate", (2.60, 0.36, 2.00), (0, 0, 1.00))
+
+
+def prop_dock_safety_rail():
+    reset()
+    p = P()
+    parts = []
+    for x in (-1.08, 0, 1.08):
+        parts.extend((
+            box((0.24, 0.30, 0.055), (x, 0, 0.0275), p["gunmetal"], bevel=0.009),
+            box((0.08, 0.08, 1.01), (x, 0, 0.545), p["hazard"], bevel=0.014),
+            box((0.095, 0.095, 0.16), (x, 0, 0.14), p["teal"], bevel=0.01),
+        ))
+    for z in (0.53, 1.06):
+        parts.append(box((2.32, 0.08, 0.08), (0, 0, z), p["hazard"], bevel=0.025, seg=3))
+        for x in (-1.09, 1.09):
+            parts.append(box((0.09, 0.085, 0.085), (x, 0, z), p["gunmetal"], bevel=0.015))
+    parts.append(box((2.29, 0.035, 0.12), (0, -0.02, 0.15), p["teal"], bevel=0.01))
+    dock_finish(parts, "prop_dock_safety_rail")
+    col("prop_dock_safety_rail", (2.40, 0.30, 1.10), (0, 0, 0.55))
+
+
+def prop_mooring_fender():
+    reset()
+    p = P()
+    parts = [
+        box((1.18, 0.14, 0.08), (0, 0.15, 0.04), p["gunmetal"], bevel=0.015),
+        box((1.09, 0.13, 0.75), (0, 0.145, 0.445), p["galv"], bevel=0.025),
+        box((1.08, 0.27, 0.66), (0, -0.052, 0.39), p["black"], bevel=0.063, seg=3),
+    ]
+    for x in (-0.39, -0.13, 0.13, 0.39):
+        parts.append(box((0.18, 0.12, 0.54), (x, -0.22, 0.39), p["plastic_k"], bevel=0.04, seg=3))
+    for x in (-0.47, 0.47):
+        parts.extend((
+            box((0.10, 0.13, 0.095), (x, 0.065, 0.7525), p["hazard"], bevel=0.012),
+            cyl(0.031, 0.046, (x, 0.075, 0.792), p["steel"], verts=8),
+        ))
+    dock_finish(parts, "prop_mooring_fender")
+    col("prop_mooring_fender", (1.18, 0.50, 0.82), (0, -0.03, 0.41))
+
+
+def prop_loading_ramp():
+    reset()
+    p = P()
+    ramp_shape = [(-1.20, 0), (1.20, 0), (1.20, 0.48), (0.88, 0.48), (-1.20, 0.025)]
+    parts = [profile(ramp_shape, 1.45, p["gunmetal"], axis="X", bevel=0.012)]
+    slope = 0.455 / 2.08
+    for i in range(9):
+        y = -1.03 + i * 0.24
+        height = 0.035 + (y + 1.20) * slope
+        parts.append(box((1.24, 0.065, 0.021), (0, y, height), p["galv"], bevel=0.004))
+    for x in (-0.685, 0.685):
+        parts.append(profile([(-1.16, 0.04), (0.88, 0.49), (1.20, 0.49),
+                              (1.20, 0.54), (0.88, 0.54), (-1.16, 0.08)],
+                             0.067, p["hazard"], (x, 0, 0), bevel=0.004, axis="X"))
+    parts.append(box((1.32, 0.23, 0.018), (0, 1.045, 0.485), p["galv"], bevel=0.005))
+    dock_finish(parts, "prop_loading_ramp")
+    collision = profile(ramp_shape, 1.45, axis="X", name="prop_loading_ramp-colonly")
+    collision.data.name = collision.name
+
+
+def prop_dock_cargo_net():
+    reset()
+    p = P()
+    parts = []
+    for x in (-0.52, 0, 0.52):
+        parts.append(box((0.10, 1.00, 0.11), (x, 0, 0.055), p["wood_dark"], bevel=0.008))
+    for y in (-0.4, -0.2, 0, 0.2, 0.4):
+        parts.append(box((1.24, 0.16, 0.045), (0, y, 0.1325), p["wood_raw"], bevel=0.005))
+    parts.extend((
+        box((1.09, 0.85, 0.40), (0, 0, 0.355), p["canvas"], bevel=0.036),
+        box((0.87, 0.69, 0.24), (0.06, 0.01, 0.675), p["teal"], bevel=0.032),
+    ))
+    for y in (-0.32, -0.16, 0, 0.16, 0.32):
+        points = [(-0.56, y, 0.16), (-0.56, y, 0.52), (-0.36, y, 0.806),
+                  (0.48, y, 0.806), (0.56, y, 0.52), (0.56, y, 0.16)]
+        for start, end in zip(points, points[1:]):
+            parts.append(rod(start, end, 0.014, p["orange"], verts=8))
+    for x in (-0.35, -0.18, 0, 0.18, 0.35, 0.47):
+        points = [(x, -0.44, 0.16), (x, -0.44, 0.52), (x, -0.324, 0.814),
+                  (x, 0.344, 0.814), (x, 0.44, 0.52), (x, 0.44, 0.16)]
+        for start, end in zip(points, points[1:]):
+            parts.append(rod(start, end, 0.014, p["orange"], verts=8))
+    dock_finish(parts, "prop_dock_cargo_net")
+    col("prop_dock_cargo_net_base", (1.24, 1.00, 0.555), (0, 0, 0.2775))
+    col("prop_dock_cargo_net_top", (0.87, 0.69, 0.27), (0.06, 0.01, 0.69))
+
+
+def prop_harbor_gantry_crane():
+    reset()
+    p = P()
+    paint = mat("crane_mustard", (0.68, 0.40, 0.048), metal=0.36, rough=0.49)
+    shadow = mat("crane_oxide", (0.36, 0.16, 0.036), metal=0.38, rough=0.63)
+    parts = []
+    for column, x in enumerate((-2.63, 2.63)):
+        for side, y in enumerate((-1.62, 1.62)):
+            parts.extend((
+                box((0.98, 0.86, 0.24), (x, y, 0.12), p["concrete_dark"], bevel=0.032),
+                box((0.72, 0.64, 0.085), (x, y, 0.25), p["gunmetal"], bevel=0.018),
+                box((0.37, 0.43, 6.59), (x, y, 3.56), paint, bevel=0.034),
+                box((0.39, 0.18, 5.7), (x, y, 3.43), shadow, bevel=0.014),
+                box((0.49, 0.51, 0.20), (x, y, 6.62), p["gunmetal"], bevel=0.015),
+            ))
+            for dx in (-0.28, 0.28):
+                for dy in (-0.24, 0.24):
+                    parts.append(cyl(0.052, 0.060, (x + dx, y + dy, 0.315), p["galv"], verts=6))
+            for i in range(3):
+                parts.append(box((0.30, 0.016, 0.15), (x, y - 0.219, 0.66 + 0.26 * i),
+                                 p["gunmetal"], rot=(0, -0.38, 0), bevel=0.004))
+            col(f"crane_leg_{column}_{side}", (0.98, 0.86, 0.48), (x, y, 0.24))
+            col(f"crane_column_{column}_{side}", (0.40, 0.46, 6.45), (x, y, 3.56))
+        parts.append(box((0.48, 3.68, 0.54), (x, 0, 6.49), paint, bevel=0.03))
+        for sign in (-1, 1):
+            parts.append(rod((x, sign * 1.62, 4.54), (x, sign * 0.62, 6.45), 0.095, shadow, verts=8))
+    for y in (-1.42, 1.42):
+        for z in (6.58, 7.10):
+            parts.append(box((6.4, 0.29, 0.19), (0, y, z), paint, bevel=0.024))
+        for i in range(8):
+            x = -2.9 + i * 0.725
+            lower, upper = (6.60, 7.08) if i % 2 == 0 else (7.08, 6.60)
+            parts.append(rod((x, y, lower), (x + 0.725, y, upper), 0.051, shadow, verts=8))
+        for x in (-2.97, -1.45, 0, 1.45, 2.97):
+            parts.append(box((0.10, 0.31, 0.51), (x, y, 6.84), paint, bevel=0.01))
+    for x in (-2.9, -1.45, 0, 1.45, 2.9):
+        parts.append(box((0.16, 3.05, 0.14), (x, 0, 7.1), shadow, bevel=0.016))
+    for y in (-0.54, 0.54):
+        parts.append(box((5.35, 0.11, 0.11), (0, y, 7.19), p["gunmetal"], bevel=0.013))
+    parts.extend((
+        box((0.92, 1.41, 0.26), (0.65, 0, 7.27), p["gunmetal"], bevel=0.037),
+        box((0.64, 0.57, 0.50), (0.65, 0, 6.93), p["teal"], bevel=0.06),
+        cyl(0.23, 0.54, (0.65, 0, 6.61), p["gunmetal"], rot=(math.pi / 2, 0, 0), verts=20),
+    ))
+    for y in (-0.17, 0.17):
+        parts.append(rod((0.65, y, 6.61), (0.65, y, 4.76), 0.025, p["gunmetal"], verts=8))
+    parts.append(box((0.36, 0.49, 0.27), (0.65, 0, 4.69), p["hazard"], bevel=0.04))
+    hook = [(0.50, 4.62), (0.69, 4.62), (0.69, 4.46), (0.58, 4.38), (0.58, 4.28),
+            (0.65, 4.22), (0.78, 4.24), (0.85, 4.32), (0.93, 4.39), (0.93, 4.18),
+            (0.80, 4.07), (0.59, 4.07), (0.44, 4.19), (0.41, 4.39), (0.50, 4.50)]
+    parts.append(profile(hook, 0.13, p["gunmetal"], bevel=0.016))
+    # Service ladder stays inside one leg assembly.
+    for y in (1.38, 1.81):
+        parts.append(rod((2.39, y, 0.38), (2.39, y, 6.49), 0.031, p["galv"], verts=8))
+    for z in [0.56 + i * 0.33 for i in range(18)]:
+        parts.append(rod((2.39, 1.38, z), (2.39, 1.81, z), 0.028, p["galv"], verts=8))
+    parts.extend((
+        box((0.48, 0.24, 0.67), (2.36, -1.71, 1.30), p["teal"], bevel=0.026),
+        box((0.29, 0.025, 0.20), (2.36, -1.84, 1.42), p["gunmetal"], bevel=0.009),
+        box((0.72, 0.07, 0.34), (-2.33, -1.59, 6.82), p["gunmetal"], bevel=0.016),
+        box((0.55, 0.018, 0.072), (-2.33, -1.63, 6.87), p["hazard"], bevel=0.008),
+    ))
+    for x in (-2.63, 2.63):
+        parts.append(box((0.24, 0.18, 0.13), (x, -1.59, 6.25), p["lamp"], bevel=0.018))
+    dock_finish(parts, "prop_harbor_gantry_crane")
+    col("crane_overhead", (6.4, 3.30, 1.02), (0, 0, 6.90))
+
+
+def tug_hull(stations, palette):
+    """Loft transom-to-stem sections in Blender coordinates and assign painted strakes."""
+    # The angular lower two rows suggest chines without smoothing away the hull shape.
+    sections = []
+    for y, beam, sheer, keel in stations:
+        depth = 0.035 - keel
+        rings = [(0, keel), (beam * 0.69, keel + depth * 0.31), (beam * 0.91, keel + depth * 0.70),
+                 (beam, 0.035), (beam * 0.99, 0.19), (beam * 0.90, sheer)]
+        sections.append([(-x, y, z) for x, z in reversed(rings[1:])] +
+                        [(x, y, z) for x, z in rings])
+    mesh = bpy.data.meshes.new("pilot_tug_loft")
+    row = len(sections[0])
+    faces = [tuple(reversed(range(row)))]
+    material_ids = [2]
+    bands = (2, 3, 1, 0, 0, 0, 0, 1, 3, 2)
+    for i in range(len(sections) - 1):
+        a, b = i * row, (i + 1) * row
+        for j in range(row - 1):
+            faces.append((a + j, b + j, b + j + 1, a + j + 1))
+            material_ids.append(bands[j])
+        faces.append((a, a + row - 1, b + row - 1, b))
+        material_ids.append(4)
+    faces.append(tuple(range((len(sections) - 1) * row, len(sections) * row)))
+    material_ids.append(2)
+    mesh.from_pydata([point for section in sections for point in section], [], faces)
+    for material in palette:
+        mesh.materials.append(material)
+    for face, index in zip(mesh.polygons, material_ids):
+        face.material_index = index
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new("pilot_tug_loft", mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    return _finish(obj, None, 0.026)
+
+
+def prop_harbor_pilot_tug():
+    reset()
+    p = P()
+    red = mat("tug_antifouling", (0.30, 0.06, 0.039), rough=0.63)
+    blue = mat("tug_deep_blue", (0.035, 0.145, 0.20), metal=0.29, rough=0.48)
+    cream = mat("tug_warm_white", (0.79, 0.72, 0.56), rough=0.5)
+    deck = mat("tug_deck_gray", (0.19, 0.23, 0.23), rough=0.86)
+    windows = mat("tug_glazing", (0.046, 0.13, 0.18), metal=0.29, rough=0.2, clearcoat=0.6)
+    green_light = mat("navigation_green", (0.025, 0.45, 0.09), emit=(0.025, 0.45, 0.09))
+    stations = [(4.68, 1.36, 0.78, -0.36), (4.22, 1.56, 0.75, -0.55),
+                (2.65, 1.64, 0.70, -0.76), (0, 1.67, 0.70, -0.80),
+                (-2.45, 1.55, 0.86, -0.72), (-3.62, 1.19, 1.02, -0.54),
+                (-4.48, 0.63, 1.19, -0.37), (-4.94, 0.13, 1.30, -0.25)]
+    parts = [tug_hull(stations, (red, p["black"], blue, cream, deck))]
+    for sign in (-1, 1):
+        # Dark rubbing strip follows the hull; thin white line is the painted boot top.
+        rim = [(sign * beam * 0.90, y, sheer - 0.035) for y, beam, sheer, _ in stations]
+        for a, b in zip(rim, rim[1:]):
+            parts.append(rod(a, b, 0.062, p["black"], verts=10))
+        posts = [(sign * (beam * 0.90 - 0.08), y, sheer) for y, beam, sheer, _ in stations[1:-1]]
+        for x, y, z in posts:
+            parts.append(rod((x, y, z), (x, y, z + 0.67), 0.029, p["galv"], verts=8))
+        for a, b in zip(posts, posts[1:]):
+            for h in (0.37, 0.67):
+                parts.append(rod((a[0], a[1], a[2] + h), (b[0], b[1], b[2] + h),
+                                 0.025, p["galv"], verts=8))
+        for y in (2.25, 1.11, -0.38, -1.55):
+            parts.append(torus(0.205, 0.075, (sign * 1.53, y, 0.52), p["black"],
+                               rot=(0, math.pi / 2, 0), major=20, minor=6, name="rubber_fender"))
+            parts.append(rod((sign * 1.52, y, 0.77), (sign * 1.41, y, 0.94),
+                             0.022, p["gunmetal"], verts=8))
+    # Wheelhouse volume and raked windscreen, with a separate roof overhang.
+    lower = [(-1.77, 0.68), (1.64, 0.68), (1.64, 1.59), (-1.47, 1.59), (-1.77, 1.34)]
+    upper = [(-1.40, 1.53), (0.96, 1.53), (0.96, 2.78), (-1.03, 2.78), (-1.40, 2.19)]
+    parts.extend((
+        profile(lower, 2.31, cream, axis="X", bevel=0.055, seg=3),
+        profile(upper, 1.95, cream, axis="X", bevel=0.044, seg=3),
+        box((2.17, 2.19, 0.16), (0, -0.09, 2.79), blue, bevel=0.056, seg=3),
+        box((2.29, 2.32, 0.063), (0, -0.1, 2.88), cream, bevel=0.025),
+    ))
+    windscreen_angle = math.atan2(0.37, 0.59)
+    for x in (-0.61, 0, 0.61):
+        parts.append(box((0.53, 0.045, 0.57), (x, -1.30, 2.41), windows,
+                         rot=(-windscreen_angle, 0, 0), bevel=0.02))
+    for sign in (-1, 1):
+        for y in (-0.67, 0.05, 0.66):
+            parts.append(box((0.034, 0.51, 0.48), (sign * 0.979, y, 2.34), windows, bevel=0.03))
+        parts.extend((
+            box((0.047, 0.59, 0.68), (sign * 1.159, 0.95, 1.14), blue, bevel=0.027),
+            box((0.059, 0.19, 0.055), (sign * 1.18, 0.78, 1.16), p["galv"], bevel=0.014),
+            box((0.042, 0.90, 0.24), (sign * 1.163, -0.43, 1.15), p["teal"], bevel=0.021),
+            box((0.04, 0.45, 0.037), (sign * 1.18, -0.45, 1.16), cream, bevel=0.008),
+        ))
+    for x in (-0.53, 0.53):
+        parts.append(box((0.77, 0.044, 0.37), (x, 0.983, 2.29), windows, bevel=0.024))
+    # Foredeck and stern fittings, aerials, and navigation lights.
+    for y, z in ((-3.39, 0.99), (3.56, 0.77)):
+        parts.extend((
+            box((0.71, 0.39, 0.12), (0, y, z + 0.035), p["gunmetal"], bevel=0.022),
+            cyl(0.22, 0.30, (0, y, z + 0.22), p["galv"], verts=18, bevel=0.018),
+            cyl(0.26, 0.075, (0, y, z + 0.37), p["gunmetal"], verts=18, bevel=0.015),
+        ))
+    parts.extend((
+        box((0.71, 0.35, 0.12), (0, 0.18, 3.0), blue, bevel=0.03),
+        rod((0, 0.18, 2.97), (0, 0.18, 3.88), 0.067, p["gunmetal"]),
+        rod((-0.65, 0.18, 3.64), (0.65, 0.18, 3.64), 0.032, p["gunmetal"], verts=8),
+        box((0.85, 0.15, 0.072), (0, 0.18, 3.86), cream, bevel=0.026),
+        rod((0.22, 0.26, 3.89), (0.26, 0.30, 4.37), 0.018, p["galv"], verts=8),
+        cyl(0.096, 0.13, (0, 0.18, 4.0), p["lamp"], verts=12),
+        cyl(0.19, 0.57, (0.67, 1.55, 2.61), p["gunmetal"], verts=16, bevel=0.018),
+        cyl(0.21, 0.09, (0.67, 1.55, 2.94), p["black"], verts=16, bevel=0.013),
+        box((0.16, 0.13, 0.09), (-0.63, 0.18, 3.70), p["red"], bevel=0.017),
+        box((0.16, 0.13, 0.09), (0.63, 0.18, 3.70), green_light, bevel=0.017),
+    ))
+    dock_finish(parts, "prop_harbor_pilot_tug")
+    col("tug_deck", (2.8, 6.8, 0.93), (0, 0.78, 0.24))
+    col("tug_foredeck", (1.40, 2.20, 1.05), (0, -3.10, 0.40))
+    col("tug_cabin", (2.34, 3.27, 2.30), (0, -0.05, 1.78))
+    marker("boarding_port", (-1.45, 2.62, 0.76))
+    marker("boarding_starboard", (1.45, 2.62, 0.76))
+
+
+def prop_dock_inspection_terminal():
+    reset()
+    p = P()
+    parts = [
+        box((0.82, 0.68, 0.10), (0, 0, 0.05), p["gunmetal"], bevel=0.047, seg=3),
+        box((0.49, 0.39, 0.11), (0, 0.045, 0.125), p["galv"], bevel=0.025),
+        box((0.36, 0.33, 0.82), (0, 0.075, 0.515), p["teal"], bevel=0.058, seg=3),
+        box((0.30, 0.045, 0.64), (0, -0.109, 0.49), p["gunmetal"], bevel=0.024),
+        box((0.70, 0.51, 0.60), (0, -0.027, 1.105), p["teal"], bevel=0.053, seg=3),
+        box((0.635, 0.043, 0.495), (0, -0.271, 1.112), p["gunmetal"], bevel=0.032, seg=3),
+        box((0.548, 0.023, 0.320), (0, -0.296, 1.172), p["black"], bevel=0.015),
+        box((0.482, 0.018, 0.266), (0, -0.309, 1.172), p["screen"], bevel=0.012),
+        box((0.78, 0.62, 0.082), (0, -0.018, 1.459), p["galv"], bevel=0.026, seg=3),
+        box((0.12, 0.034, 0.075), (-0.22, -0.305, 0.937), p["hazard"], bevel=0.011),
+        box((0.16, 0.032, 0.037), (0.20, -0.304, 0.956), p["plastic_w"], bevel=0.007),
+    ]
+    for x in (-0.32, 0.32):
+        for y in (-0.23, 0.23):
+            parts.append(cyl(0.031, 0.024, (x, y, 0.111), p["steel"], verts=6))
+        parts.append(box((0.09, 0.056, 0.085), (x, -0.294, 1.457), p["hazard"], bevel=0.012))
+    for i in range(5):
+        parts.append(box((0.015, 0.22, 0.021), (0.344, 0.019, 0.964 + i * 0.052),
+                         p["gunmetal"], bevel=0.005))
+    dock_finish(parts, "prop_dock_inspection_terminal")
+    col("prop_dock_inspection_terminal", (0.82, 0.68, 1.50), (0, 0, 0.75))
+    marker("inspection_screen", (0, -0.325, 1.172))
+    marker("inspection_stand", (0, -0.85, 0))
+
+
+def prop_harbor_beacon():
+    reset()
+    p = P()
+    enamel = mat("beacon_sea_enamel", (0.019, 0.25, 0.26), metal=0.36, rough=0.55)
+    cream = mat("beacon_aged_white", (0.76, 0.72, 0.60), rough=0.79)
+    copper = mat("beacon_copper_roof", (0.21, 0.35, 0.31), metal=0.68, rough=0.5)
+    bronze = mat("beacon_brass", (0.55, 0.37, 0.13), metal=0.73, rough=0.31)
+    glazing = mat("beacon_lantern_glass", (0.29, 0.57, 0.64), rough=0.12, alpha=0.18)
+    lens = mat("beacon_fresnel_lens", (0.92, 0.57, 0.13), metal=0.12, rough=0.20,
+               emit=(1.0, 0.68, 0.24), emit_strength=3.3)
+    parts = [
+        cyl(2.28, 0.21, (0, 0, 0.105), p["concrete_dark"], verts=12, bevel=0.045),
+        lathe([(2.12, 0.20), (2.12, 0.36), (1.99, 0.48), (1.94, 0.93),
+               (1.85, 1.10), (1.70, 1.14)], p["concrete"], verts=32),
+    ]
+    # Tapered enamel panels are separated by structural collars and a gallery cornice.
+    cladding = [
+        (1.12, 2.45, 1.72, 1.53, enamel), (2.45, 4.63, 1.53, 1.42, cream),
+        (4.63, 5.89, 1.42, 1.35, enamel), (5.89, 8.29, 1.35, 1.22, cream),
+        (8.29, 9.56, 1.22, 1.15, enamel), (9.56, 11.17, 1.15, 1.06, cream),
+    ]
+    for low, high, radius_base, radius_top, surface in cladding:
+        parts.append(lathe([(radius_base, low), (radius_top, high)], surface, verts=40))
+        parts.append(lathe([(radius_top + 0.018, high - 0.062), (radius_top + 0.022, high),
+                            (radius_top + 0.008, high + 0.028)], surface, verts=40))
+    for i in range(4):
+        z = 0.10 + 0.19 * i
+        parts.append(box((1.36, 0.96 - 0.16 * i, z + 0.08), (0, -2.08 + 0.08 * i, (z + 0.08) / 2),
+                         p["concrete"], bevel=0.025))
+    doorway = [(-0.52, 0.77), (0.52, 0.77), (0.52, 2.15), (0.39, 2.34), (0.22, 2.43),
+               (-0.22, 2.43), (-0.39, 2.34), (-0.52, 2.15)]
+    parts.append(profile(doorway, 0.21, p["gunmetal"], (0, -1.61, 0), bevel=0.025))
+    parts.append(profile([(x * 0.86, 0.81 + (z - 0.77) * 0.92) for x, z in doorway], 0.07,
+                         enamel, (0, -1.75, 0), bevel=0.018))
+    parts.append(cyl(0.162, 0.03, (0, -1.793, 1.92), bronze, rot=(math.pi / 2, 0, 0), verts=20))
+    parts.append(cyl(0.123, 0.035, (0, -1.814, 1.92), p["screen"], rot=(math.pi / 2, 0, 0), verts=20))
+    parts.append(box((0.19, 0.063, 0.033), (0.27, -1.808, 1.43), bronze, bevel=0.009))
+    for angle, z, r in ((0, 3.54, 1.49), (math.pi, 6.75, 1.31), (0, 9.55, 1.16)):
+        y = -r * math.cos(angle)
+        parts.extend((
+            box((0.44, 0.14, 0.84), (0, y, z), bronze, bevel=0.06, seg=3),
+            box((0.30, 0.08, 0.65), (0, y - 0.075 * math.cos(angle), z), p["gunmetal"], bevel=0.044),
+            box((0.21, 0.023, 0.49), (0, y - 0.12 * math.cos(angle), z), p["screen"], bevel=0.026),
+        ))
+    parts.extend((
+        lathe([(1.04, 11.01), (1.20, 11.16), (1.43, 11.20), (1.44, 11.32),
+               (1.78, 11.39), (1.90, 11.49), (1.90, 11.65), (0, 11.65)], copper, verts=40),
+        cyl(1.14, 0.20, (0, 0, 11.71), enamel, verts=32, bevel=0.028),
+        lathe([(1.022, 11.78), (1.022, 13.32), (0.995, 13.32), (0.995, 11.78)], glazing, verts=24),
+        cyl(0.74, 0.14, (0, 0, 11.91), bronze, verts=32, bevel=0.025),
+        lathe([(0, 12.0), (0.36, 12.0), (0.45, 12.18), (0.49, 12.44), (0.49, 12.78),
+               (0.43, 12.99), (0.31, 13.15), (0, 13.16)], lens, verts=32),
+        lathe([(1.27, 13.25), (1.40, 13.29), (1.42, 13.38), (1.17, 13.47),
+               (0.87, 13.76), (0.49, 14.03), (0.18, 14.17), (0.05, 14.20)], copper, verts=32),
+        cyl(0.14, 0.40, (0, 0, 14.31), bronze, verts=16),
+        rod((0, 0, 14.37), (0, 0, 14.80), 0.027, p["gunmetal"], verts=8),
+    ))
+    for z, radius in ((12.13, 0.43), (12.27, 0.49), (12.42, 0.52), (12.57, 0.526),
+                      (12.72, 0.52), (12.87, 0.49), (13.02, 0.44)):
+        parts.append(torus(radius, 0.026, (0, 0, z), lens, major=24, minor=6))
+
+    for i in range(12):
+        angle = i * math.tau / 12
+        x, y = math.cos(angle), math.sin(angle)
+        parts.extend((
+            rod((1.038 * x, 1.038 * y, 11.79), (1.038 * x, 1.038 * y, 13.33), 0.032, bronze, verts=8),
+            rod((1.79 * x, 1.79 * y, 11.58), (1.79 * x, 1.79 * y, 12.41), 0.032, p["gunmetal"], verts=8),
+        ))
+    for z in (11.97, 12.40):
+        parts.append(torus(1.79, 0.039, (0, 0, z), p["gunmetal"], major=32, minor=6))
+    dock_finish(parts, "prop_harbor_beacon")
+    col_cyl("beacon_plinth", 2.28, 0.43, (0, 0, 0.215))
+    col_cyl("beacon_tower", 1.69, 11.20, (0, 0, 5.60))
+    col_cyl("beacon_gallery", 1.9, 0.42, (0, 0, 11.50))
+    col("beacon_stoep", (1.36, 1.06, 0.66), (0, -2.05, 0.33))
+    marker("beacon_light", (0, 0, 12.59))
+
+
 # ---------------------------------------------------------------- registry
 
 # id -> (builder, category, gameplay tag, short Korean description)
@@ -1045,6 +1487,16 @@ PROPS = {
     "prop_dock_bollard": (prop_dock_bollard, "port", "cover_low", "부두 계류주 — 로우 커버"),
     "prop_life_ring_stand": (prop_life_ring_stand, "port", "decor", "구명환 거치대"),
     "prop_road_barricade": (prop_road_barricade, "street", "decor_physics", "도로 바리케이드 — 경찰 검문"),
+    "prop_dock_power_pedestal": (prop_dock_power_pedestal, "port", "decor", "부두 전원함"),
+    "prop_dock_access_gate": (prop_dock_access_gate, "port", "decor", "부두 출입문 — 닫힌 고정형"),
+    "prop_dock_safety_rail": (prop_dock_safety_rail, "port", "decor", "부두 안전 난간"),
+    "prop_mooring_fender": (prop_mooring_fender, "port", "cover_low", "접안용 고무 방충재"),
+    "prop_loading_ramp": (prop_loading_ramp, "port", "decor", "강철 하역 경사판"),
+    "prop_dock_cargo_net": (prop_dock_cargo_net, "port", "cover_low", "그물로 고정한 팔레트 화물"),
+    "prop_harbor_gantry_crane": (prop_harbor_gantry_crane, "port", "decor", "부두 갠트리 크레인 — 하부 통행 가능"),
+    "prop_harbor_pilot_tug": (prop_harbor_pilot_tug, "port", "decor", "부두 작업선 — 원점은 수선, 선수는 Blender -Y / glTF +Z"),
+    "prop_dock_inspection_terminal": (prop_dock_inspection_terminal, "port", "decor", "부두 점검 단말기 — 화면 및 점검 위치 마커 포함"),
+    "prop_harbor_beacon": (prop_harbor_beacon, "port", "decor", "항만 등대 — 프레넬 렌즈와 등화 마커 포함"),
 }
 
 

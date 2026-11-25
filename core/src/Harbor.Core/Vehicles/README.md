@@ -1,5 +1,5 @@
 # Vehicles
 
-차량 스펙·소유·손상. 원거리 차량은 도로 그래프 위 kinematic 이동, 근거리는 엔진 물리가 상태를 되써 준다.
+`ArcadeVehicle`은 고정 틱에서 평면 차량 이동, 후진, 제동, 속도에 따른 조향을 처리한다. `StaticWorld`와 차량의 회전 경계를 검사하여 벽과 배치 소품을 통과하지 않는다.
 
-아직 구현 전 (M0 스켈레톤). ARCHITECTURE.md 3장 참고.
+처음 구현한 차량은 `data/vehicles/calloway_compact.json`의 Calloway Pip이다. 차량의 위치, 방향, 속도, 조향각 및 누적 이동 거리를 복제할 수 있다.

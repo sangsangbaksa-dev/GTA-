@@ -13,6 +13,8 @@ public sealed class CombatSystem : ISimSystem
     public MaterialTable Materials { get; }
     public IReadOnlyDictionary<string, WeaponDef> Weapons { get; }
     public string DefaultWeaponId { get; set; } = "kestrel_p10";
+    /// <summary>Whether defeated players return on a timer or wait for the host to redeploy them.</summary>
+    public bool AutoRespawn { get; init; } = true;
     /// <summary>Where a player respawns (activities/safehouses override).</summary>
     public Func<Actor, Vec3d> SpawnPointFor { get; set; } = _ => Vec3d.Zero;
     /// <summary>Whether a downed state applies (co-op vs PvP rules); default: players downed by non-players.</summary>
@@ -68,6 +70,7 @@ public sealed class CombatSystem : ISimSystem
         _suppression.Remove(actorId);
         _respawnTimers.Remove(actorId);
         _revives.Remove(actorId);
+        _regenCarry.Remove(actorId);
     }
 
     public Loadout? LoadoutOf(int actorId) => _loadouts.GetValueOrDefault(actorId);
@@ -335,7 +338,7 @@ public sealed class CombatSystem : ISimSystem
         victim.Vitals.Health = 0;
         victim.Status = (victim.Status | ActorFlags.Dead) & ~ActorFlags.Downed;
         victim.Move.Velocity = Vec3d.Zero;
-        if (victim.Kind == ActorKind.Player) _respawnTimers[victim.Id] = Config.RespawnSeconds;
+        if (AutoRespawn && victim.Kind == ActorKind.Player) _respawnTimers[victim.Id] = Config.RespawnSeconds;
         _world.Events.Publish(new ActorKilled(victim.Id, killerId, source, headshot));
         TrackRepeatKills(killerId, victim);
     }

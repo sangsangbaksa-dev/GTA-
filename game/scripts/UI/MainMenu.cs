@@ -42,6 +42,7 @@ public partial class MainMenu(GameSession session) : CanvasLayer
         v.AddChild(addr);
         v.AddChild(port);
         Add("접속", () => session.Start(GameSession.Mode.Join, name.Text, addr.Text, (int)port.Value));
+        Add("항만 플레이테스트", () => GetTree().ChangeSceneToFile(HarborLaunch.PlaytestScene));
         Add("종료", () => GetTree().Quit());
         v.AddChild(new Label
         {

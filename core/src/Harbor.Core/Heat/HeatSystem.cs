@@ -60,6 +60,13 @@ public sealed class HeatSystem(HeatConfig config) : ISimSystem
 
     public int LevelOf(int actorId) => _states.TryGetValue(actorId, out var s) ? s.Level : 0;
     public double HeatOf(int actorId) => _states.TryGetValue(actorId, out var s) ? s.Heat : 0;
+
+    /// <summary>Delay decay while an active response can see the actor without adding heat.</summary>
+    public void KeepPursuit(int actorId)
+    {
+        if (_states.TryGetValue(actorId, out var state) && state.Level > 0)
+            state.LastCrimeAt = _now;
+    }
     /// <summary>Seconds the actor has been at its current level (0 if not wanted).</summary>
     public double SecondsAtLevel(int actorId) => _states.TryGetValue(actorId, out var s) && s.Level > 0 ? _now - s.LevelSince : 0;
 
