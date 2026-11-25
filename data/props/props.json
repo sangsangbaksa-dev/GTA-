@@ -251,6 +251,76 @@
       "tag": "decor_physics",
       "description": "도로 바리케이드 — 경찰 검문",
       "asset": "props/prop_road_barricade.glb"
+    },
+    {
+      "id": "prop_dock_power_pedestal",
+      "category": "port",
+      "tag": "decor",
+      "description": "부두 전원함",
+      "asset": "props/prop_dock_power_pedestal.glb"
+    },
+    {
+      "id": "prop_dock_access_gate",
+      "category": "port",
+      "tag": "decor",
+      "description": "부두 출입문 — 닫힌 고정형",
+      "asset": "props/prop_dock_access_gate.glb"
+    },
+    {
+      "id": "prop_dock_safety_rail",
+      "category": "port",
+      "tag": "decor",
+      "description": "부두 안전 난간",
+      "asset": "props/prop_dock_safety_rail.glb"
+    },
+    {
+      "id": "prop_mooring_fender",
+      "category": "port",
+      "tag": "cover_low",
+      "description": "접안용 고무 방충재",
+      "asset": "props/prop_mooring_fender.glb"
+    },
+    {
+      "id": "prop_loading_ramp",
+      "category": "port",
+      "tag": "decor",
+      "description": "강철 하역 경사판",
+      "asset": "props/prop_loading_ramp.glb"
+    },
+    {
+      "id": "prop_dock_cargo_net",
+      "category": "port",
+      "tag": "cover_low",
+      "description": "그물로 고정한 팔레트 화물",
+      "asset": "props/prop_dock_cargo_net.glb"
+    },
+    {
+      "id": "prop_harbor_gantry_crane",
+      "category": "port",
+      "tag": "decor",
+      "description": "부두 갠트리 크레인 — 하부 통행 가능",
+      "asset": "props/prop_harbor_gantry_crane.glb"
+    },
+    {
+      "id": "prop_harbor_pilot_tug",
+      "category": "port",
+      "tag": "decor",
+      "description": "부두 작업선 — 원점은 수선, 선수는 Blender -Y / glTF +Z",
+      "asset": "props/prop_harbor_pilot_tug.glb"
+    },
+    {
+      "id": "prop_dock_inspection_terminal",
+      "category": "port",
+      "tag": "decor",
+      "description": "부두 점검 단말기 — 화면 및 점검 위치 마커 포함",
+      "asset": "props/prop_dock_inspection_terminal.glb"
+    },
+    {
+      "id": "prop_harbor_beacon",
+      "category": "port",
+      "tag": "decor",
+      "description": "항만 등대 — 프레넬 렌즈와 등화 마커 포함",
+      "asset": "props/prop_harbor_beacon.glb"
     }
   ]
 }

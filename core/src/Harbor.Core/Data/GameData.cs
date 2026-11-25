@@ -23,7 +23,7 @@ public sealed class GameData
     private sealed record HeistFile(List<HeistDef> Heists);
     private sealed record MaterialEntry(string Id, List<WeaponClass> PenetrableBy, double DamageScale, double MaxThickness);
 
-    public static GameData Load(IFileSystem fs, string root = "data")
+    public static GameData LoadCombat(IFileSystem fs, string root = "data")
     {
         var weapons = new Dictionary<string, WeaponDef>();
         foreach (var path in fs.ListFiles($"{root}/weapons", ".json"))
@@ -37,6 +37,12 @@ public sealed class GameData
             new MaterialRule(MaterialTable.ParseId(m.Id), m.PenetrableBy.ToHashSet(), m.DamageScale, m.MaxThickness)));
         var combat = Json.Read<CombatConfig>(fs, $"{root}/combat/combat.json");
         Json.Require(combat.Armor.Absorb is >= 0 and <= 1, "combat.armor.absorb must be 0..1");
+        return new GameData { Weapons = weapons, Combat = combat, Materials = table };
+    }
+
+    public static GameData Load(IFileSystem fs, string root = "data")
+    {
+        var combat = LoadCombat(fs, root);
         var economy = new EconomyData(
             Json.Read<EconomyConfig>(fs, $"{root}/economy/economy.json"),
             Json.Read<ShopFile>(fs, $"{root}/economy/shop.json").Items.ToDictionary(i => i.Id),
@@ -44,7 +50,7 @@ public sealed class GameData
             Json.Read<SafehouseFile>(fs, $"{root}/world/safehouses.json").Safehouses);
         economy.Validate();
         foreach (var i in economy.Shop.Values.Where(i => i.Kind == ShopItemKind.Weapon))
-            Json.Require(weapons.ContainsKey(i.Ref), $"shop item {i.Id} references unknown weapon {i.Ref}");
+            Json.Require(combat.Weapons.ContainsKey(i.Ref), $"shop item {i.Id} references unknown weapon {i.Ref}");
 
         var heat = Json.Read<HeatConfig>(fs, $"{root}/ai/heat.json");
         heat.Validate();
@@ -63,6 +69,7 @@ public sealed class GameData
             Json.Read<SupplyDropConfig>(fs, $"{root}/activities/supply_drops.json"));
         activities.Validate(economy);
 
-        return new GameData { Weapons = weapons, Combat = combat, Materials = table, Economy = economy, Heat = heat, Activities = activities };
+        return new GameData { Weapons = combat.Weapons, Combat = combat.Combat, Materials = combat.Materials,
+            Economy = economy, Heat = heat, Activities = activities };
     }
 }

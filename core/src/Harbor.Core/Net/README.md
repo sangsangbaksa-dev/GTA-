@@ -7,6 +7,7 @@
 - `ClientSession`: 입력 → 예측(`Sim/Movement`) → 전송, 스냅샷 → 보정(미확인 입력 재적용), 원격 엔티티 보간.
 - `Messages`, `NetWriter/NetReader`, `Quant`: 이진 포맷. 메시지 추가 = `MsgType` + 인코더/디코더를 여기에.
 - `InMemoryNetwork`: 지연·지터·손실 시뮬레이터 (테스트, 로컬 플레이).
+- `TcpTransport`: LAN 플레이테스트용 TCP 구현 (ADR 0007). 호스트와 클라이언트가 업데이트마다 `Pump()`를 호출하며 전송 큐와 프레임 크기를 제한한다.
 - `LagCompHistory`, `SnapshotInterpolator`.
 
 확장 포인트: 새 게임 이벤트는 `ServerSession.SendEvent/Broadcast(type, payload)` — 타입 번호는 `NetEventTypes`에 모은다.

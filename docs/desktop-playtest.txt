@@ -1,0 +1,19 @@
+Project Harbor 데스크톱 플레이테스트
+
+Windows 10/11 (64비트)
+  ZIP을 모두 풀고 ProjectHarbor.exe를 실행합니다.
+
+Linux (x86_64)
+  tar -xzf project-harbor-linux-x86_64.tar.gz
+  cd 'Project Harbor'
+  ./ProjectHarbor.x86_64
+
+전용 서버 접속
+  시작 화면에서 Join a server를 선택하고 호스트 주소와 포트(기본 7788)를 입력합니다.
+  실행 시 -- --connect 192.168.1.10:7788을 추가하고
+  IP 주소를 서버의 실제 주소로 바꿉니다.
+
+패키지에 .NET 런타임이 포함되어 있습니다. 게임 실행 파일, .pck 및
+data_Harbor_* 폴더를 같은 위치에 둡니다. 기본 렌더러는 Vulkan을
+사용합니다. Vulkan을 사용할 수 없는 환경에서는 실행 인수
+--rendering-method gl_compatibility로 OpenGL 호환 모드를 선택할 수 있습니다.

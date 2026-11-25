@@ -1,0 +1,737 @@
+"""Emit the Harbor Front Godot scene and matching server collision layout."""
+
+import json
+import math
+import random
+from collections import defaultdict
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+SPAWN = (0, 0, 5)
+obstacles = []
+roads = []
+water = []
+batches = defaultdict(list)
+rng = random.Random(34)
+
+
+scene = []
+sub_count = 0
+ext_count = 0
+
+
+def emit(*lines):
+    scene.extend(lines)
+    scene.append('')
+
+
+def val(value):
+    if isinstance(value, tuple):
+        return f'Vector3({", ".join(map(str, value))})'
+    return str(value)
+
+
+def ext(name, path, kind='PackedScene'):
+    global ext_count
+    ext_count += 1
+    emit(f'[ext_resource type="{kind}" path="res://{path}" id="{name}"]')
+
+
+def sub(kind, name, **props):
+    global sub_count
+    sub_count += 1
+    emit(f'[sub_resource type="{kind}" id="{name}"]', *(f'{k} = {val(v)}' for k, v in props.items()))
+
+
+def node(name, kind, parent='.', *, instance=None, groups=None, **props):
+    definition = f'[node name="{name}"'
+    if kind:
+        definition += f' type="{kind}"'
+    if parent is not None:
+        definition += f' parent="{parent}"'
+    if groups:
+        definition += f' groups=["{groups}"]'
+    if instance:
+        definition += f' instance=ExtResource("{instance}")'
+    emit(definition + ']', *(f'{k} = {val(v)}' for k, v in props.items()))
+
+
+def material(name, color, roughness=0.92, **props):
+    sub('StandardMaterial3D', name, albedo_color=f'Color({color}, 1)', roughness=roughness, **props)
+
+
+def box(name, center, size, material_name, parent, rotation=None):
+    # The shared unit cube keeps the scene small, and each object reads as a simple blockout primitive.
+    props = {'position': center, 'scale': size}
+    if rotation:
+        props['rotation_degrees'] = rotation
+    node(name, 'MeshInstance3D', parent, **props, mesh='SubResource("UnitBox")',
+         material_override=f'SubResource("{material_name}")')
+
+
+def collider(name, center, size, surface="concrete"):
+    obstacles.append({"tag": name, "center": center, "size": size, "material": surface})
+    node(name, 'CollisionShape3D', 'WalkCollision', groups='walk_obstacle', position=center,
+         shape=f'SubResource("Shape{len(obstacles) - 1:03}")')
+
+
+def prop(name, resource, pos, rotate=0, scale=1, parent='DockKit'):
+    props = {'position': pos}
+    if rotate:
+        props['rotation_degrees'] = (0, rotate, 0)
+    if scale != 1:
+        props['scale'] = (scale, scale, scale)
+    node(name, None, parent, instance=resource, **props)
+
+
+ext('Warehouse', 'assets/buildings/bldg_warehouse.glb')
+for resource, asset in [
+    ('Apartment', 'apartment_block'), ('Shop', 'corner_shop'), ('Garage', 'parking_garage'),
+]:
+    ext(resource, f'assets/buildings/bldg_{asset}.glb')
+ext('PavingShader', 'scenes/world/HarborPaving.gdshader', 'Shader')
+ext('WaterShader', 'scenes/world/HarborWater.gdshader', 'Shader')
+for name, filename in [
+    ('PowerPedestal', 'dock_power_pedestal'), ('AccessGate', 'dock_access_gate'),
+    ('SafetyRail', 'dock_safety_rail'), ('Fender', 'mooring_fender'),
+    ('LoadingRamp', 'loading_ramp'), ('CargoNet', 'dock_cargo_net'),
+    ('Barrier', 'concrete_barrier'), ('Crates', 'crate_stack'), ('Container', 'shipping_container'),
+    ('Lamp', 'street_lamp'), ('Bollard', 'dock_bollard'), ('Gantry', 'harbor_gantry_crane'),
+    ('Tug', 'harbor_pilot_tug'), ('Terminal', 'dock_inspection_terminal'), ('Drum', 'barrel_oil'),
+    ('Bench', 'bench'), ('Dumpster', 'dumpster'), ('Shelter', 'bus_shelter'),
+    ('LifeRing', 'life_ring_stand'), ('Beacon', 'harbor_beacon'),
+]:
+    ext(name, f'assets/props/prop_{filename}.glb')
+
+sub('ProceduralSkyMaterial', 'CoastalSky', sky_top_color='Color(0.29, 0.5, 0.68, 1)',
+    sky_horizon_color='Color(0.79, 0.82, 0.80, 1)', ground_bottom_color='Color(0.15, 0.24, 0.28, 1)',
+    ground_horizon_color='Color(0.75, 0.8, 0.80, 1)', sun_angle_max=18.0)
+sub('Sky', 'Sky', sky_material='SubResource("CoastalSky")')
+sub('Environment', 'CoastalLight', background_mode=2, sky='SubResource("Sky")',
+    ambient_light_source=3, ambient_light_color='Color(0.82, 0.88, 0.96, 1)',
+    ambient_light_sky_contribution=0.52, ambient_light_energy=0.78, tonemap_mode=2,
+    fog_enabled='true', fog_light_color='Color(0.66, 0.75, 0.79, 1)', fog_density=0.0019,
+    fog_sky_affect=0.35)
+sub('BoxMesh', 'UnitBox')
+sub('ShaderMaterial', 'WaterSurface', shader='ExtResource("WaterShader")')
+sub('PlaneMesh', 'Bay', material='SubResource("WaterSurface")', size='Vector2(670, 670)')
+for label, color, scale, strength, grit in [
+    ('Asphalt', '0.205, 0.231, 0.234', 0.29, 0.75, 0.17),
+    ('Concrete', '0.45, 0.435, 0.392', 0.24, 0.66, 0.10),
+    ('Sidewalk', '0.49, 0.465, 0.423', 0.43, 0.48, 0.08),
+    ('Pavers', '0.42, 0.316, 0.254', 0.69, 0.56, 0.09),
+    ('Ballast', '0.25, 0.263, 0.244', 0.40, 0.90, 0.24),
+    ('PlanterSoil', '0.22, 0.233, 0.177', 0.33, 0.68, 0.22),
+]:
+    sub('ShaderMaterial', label, shader='ExtResource("PavingShader")', **{
+        'shader_parameter/base_color': f'Color({color}, 1.0)',
+        'shader_parameter/stain_scale': scale,
+        'shader_parameter/stain_strength': strength,
+        'shader_parameter/grit_strength': grit,
+    })
+material('ConcreteEdge', '0.54, 0.51, 0.44')
+material('Joint', '0.34, 0.34, 0.31')
+material('PaintAmber', '0.95, 0.66, 0.20')
+material('PaintIvory', '0.81, 0.80, 0.67')
+material('DeepTeal', '0.10, 0.22, 0.23')
+material('Shutter', '0.23, 0.29, 0.30', 0.66)
+material('Shore', '0.33, 0.41, 0.42')
+for label, color, roughness in [
+    ('Dune', '0.47, 0.398, 0.315', 0.91), ('RedBrick', '0.39, 0.20, 0.16', 0.92),
+    ('Terra', '0.59, 0.32, 0.24', 0.9), ('Limestone', '0.62, 0.57, 0.49', 0.88),
+    ('StoneBlue', '0.34, 0.40, 0.42', 0.89), ('Celadon', '0.30, 0.40, 0.36', 0.87),
+    ('OffWhite', '0.66, 0.64, 0.57', 0.90), ('Rust', '0.40, 0.227, 0.16', 0.74),
+    ('Rubber', '0.065, 0.071, 0.068', 0.97), ('Glass', '0.071, 0.153, 0.181', 0.28),
+    ('WarmGlass', '0.25, 0.215, 0.156', 0.32), ('Moss', '0.22, 0.31, 0.168', 0.96),
+    ('Leaf', '0.32, 0.43, 0.202', 0.93), ('Trunk', '0.28, 0.196, 0.12', 0.91),
+    ('Roof', '0.26, 0.27, 0.26', 0.88), ('BluePaint', '0.15, 0.43, 0.57', 0.80),
+    ('Whitecap', '0.51, 0.69, 0.65', 0.46), ('RedPaint', '0.68, 0.21, 0.15', 0.90),
+]:
+    material(label, color, roughness)
+sub('SphereMesh', 'Foliage', radial_segments=7, rings=4, radius=0.5, height=1.0)
+sub('CylinderMesh', 'Cylinder', radial_segments=12, top_radius=0.5, bottom_radius=0.5, height=1.0)
+scene_nodes_start = len(scene)
+
+node('HarborFront', 'Node3D', None)
+node('Environment', 'WorldEnvironment', environment='SubResource("CoastalLight")')
+node('LateAfternoonSun', 'DirectionalLight3D', rotation_degrees=(-38, -39, 0),
+     light_color='Color(1, 0.91, 0.75, 1)', light_energy=1.33, shadow_enabled='true',
+     directional_shadow_max_distance=126.0)
+node('Spawn', 'Marker3D', groups='walk_spawn', position=SPAWN)
+node('Bay', 'MeshInstance3D', position=(15, -1.12, -80), mesh='SubResource("Bay")', cast_shadow=0)
+node('Yard', 'Node3D')
+box('Apron', (0, -0.48, -5), (48, 0.96, 48), 'Concrete', 'Yard')
+box('ServiceLane', (-5.5, -0.009, -2.4), (33, 0.029, 34), 'Asphalt', 'Yard')
+box('NorthQuay', (0, 0.12, -28.75), (48, 0.58, 0.54), 'ConcreteEdge', 'Yard')
+box('EastApronJoint', (23.75, 0.007, -5), (0.075, 0.014, 48), 'Joint', 'Yard')
+for j, z in enumerate([-24.75, -20.1, -15.4, -10.7, -6, -1.3, 3.4, 8.1, 12.8]):
+    box(f'EastJoint{j:02}', (17.67, 0.007, z), (11.45, 0.009, 0.035), 'Joint', 'Yard')
+for j, x in enumerate(range(-21, 24, 5)):
+    box(f'NorthJoint{j:02}', (x, 0.008, -24.1), (0.035, 0.009, 8.8), 'Joint', 'Yard')
+for name, position, size in [
+    ('EastLine', (12.5, 0.014, -5), (0.13, 0.008, 39.5)),
+    ('NorthLine', (-5.8, 0.014, -24.8), (36.6, 0.008, 0.13)),
+    ('LaneLeft', (-3.7, 0.013, -8), (0.10, 0.008, 22.2)),
+    ('LaneRight', (3.7, 0.013, -8), (0.10, 0.008, 22.2)),
+]:
+    box(name, position, size, 'PaintAmber', 'Yard')
+for j in range(5):
+    box(f'LaneDash{j}', (0, 0.014, -15 + j * 3.55), (0.10, 0.008, 1.30), 'PaintIvory', 'Yard')
+for j in range(6):
+    box(f'CrossingStripe{j}', (-2.75 + j * 1.1, 0.014, 2.45), (0.54, 0.008, 1.65), 'PaintIvory', 'Yard')
+for j in range(5):
+    box(f'LoadingStripe{j}', (-13.75 + j * 1.15, 0.014, 0.13), (0.11, 0.008, 3), 'PaintAmber', 'Yard', (0, 33, 0))
+
+node('Warehouse', None, instance='Warehouse', position=(-12.35, 0, -10.2))
+node('WarehouseDetails', 'Node3D')
+box('ShutterLeft', (-19.85, 2.7, -3.24), (4.95, 4.99, 0.08), 'Shutter', 'WarehouseDetails')
+box('ShutterRight', (-4.85, 1.48, -3.24), (4.95, 2.55, 0.08), 'Shutter', 'WarehouseDetails')
+box('SignBack', (-10.5, 6.12, -2.96), (8.7, 1.24, 0.10), 'DeepTeal', 'WarehouseDetails')
+node('WarehouseSign', 'Label3D', 'WarehouseDetails', position=(-10.5, 6.16, -2.896),
+     pixel_size=0.016, font_size=55, outline_size=0, modulate='Color(0.93, 0.88, 0.70, 1)',
+     text='"CALLOWAY QUAY"')
+for j in range(8):
+    box(f'LeftSlat{j}', (-19.85, 1.3 + j * 0.46, -3.17), (4.94, 0.035, 0.04), 'DeepTeal', 'WarehouseDetails')
+for j in range(6):
+    box(f'RightSlat{j}', (-4.85, 0.28 + j * 0.45, -3.17), (4.94, 0.035, 0.04), 'DeepTeal', 'WarehouseDetails')
+
+node('DockKit', 'Node3D')
+prop('PowerPedestal', 'PowerPedestal', (6.38, 0, -5.0))
+prop('QuayPowerPedestal', 'PowerPedestal', (13.85, 0, -21.8))
+prop('AccessGate', 'AccessGate', (8.1, 0, -9.8))
+prop('LoadingRamp', 'LoadingRamp', (-5.0, 0, -0.95))
+prop('CargoNet', 'CargoNet', (-9.1, 0, -0.25))
+for j in range(4):
+    prop(f'NorthRail{j}', 'SafetyRail', (4.15 + j * 2.31, 0.41, -28.66))
+for j in range(3):
+    prop(f'NorthFender{j}', 'Fender', (2.1 + j * 5.93, -0.68, -29.23), 180)
+prop('SpareFender', 'Fender', (10.7, 0, -8.9))
+
+node('WalkCollision', 'StaticBody3D')
+for name, center, size, surface in [
+    ('Warehouse', (-12.35, 4, -10.2), (22.36, 8, 14.32), 'concrete'),
+    ('LoadingPlatform', (-19.85, 0.6, -1.88), (7, 1.2, 2.65), 'concrete'),
+    ('Pedestal', (6.38, 0.58, -5), (0.52, 1.16, 0.42), 'metal'),
+    ('QuayPedestal', (13.85, 0.58, -21.8), (0.52, 1.16, 0.42), 'metal'),
+    ('Gate', (8.1, 1, -9.8), (2.60, 2.0, 0.36), 'metal'),
+    ('Ramp', (-5, 0.27, -0.95), (1.45, 0.54, 2.4), 'metal'),
+    ('Net', (-9.1, 0.415, -0.25), (1.24, 0.83, 1.0), 'wood'),
+    ('Fender', (10.7, 0.41, -8.87), (1.18, 0.82, 0.50), 'wood'),
+]:
+    collider(name, center, size, surface)
+
+
+def primitive(zone, label, center, size, heading=0, mesh='UnitBox'):
+    """Store a Godot MultiMesh row-major 3×4 transform."""
+    x, y, z = center
+    width, height, depth = size
+    angle = math.radians(heading)
+    cos, sin = math.cos(angle), math.sin(angle)
+    batches[(zone, label, mesh)].extend(
+        round(value, 5) for value in (
+            width * cos, 0, depth * sin, x,
+            0, height, 0, y,
+            -width * sin, 0, depth * cos, z,
+        )
+    )
+
+
+def deck(zone, bounds, finish, top=0, thickness=0.6):
+    x0, z0, x1, z1 = bounds
+    primitive(zone, finish, ((x0+x1)/2, top-thickness/2, (z0+z1)/2),
+              (x1-x0, thickness, z1-z0))
+
+
+def road(name, x0, z0, x1, z1, *, vertical, crossings=(), zone='Roads', bridge=False):
+    width, depth = x1-x0, z1-z0
+    center = ((x0+x1)/2, (z0+z1)/2)
+    roads.append({'name': name, 'center': center, 'size': (width, depth)})
+    road_top = -0.008 if vertical else 0.003
+    deck(zone, (x0, z0, x1, z1), 'Asphalt', top=road_top, thickness=0.86 if bridge else 0.035)
+    long_start, long_end = (z0, z1) if vertical else (x0, x1)
+    midpoint = center[0 if vertical else 1]
+    half = (width if vertical else depth)/2
+    def stripe(across, along, thick, length, finish):
+        position = (across, 0.017, along) if vertical else (along, 0.017, across)
+        size = (thick, 0.009, length) if vertical else (length, 0.009, thick)
+        primitive(zone, finish, position, size)
+    for along in range(math.ceil(long_start)+5, math.floor(long_end)-3, 5):
+        if any(abs(along-at) < extent+2.6 for at, extent in crossings):
+            continue
+        stripe(midpoint, along, 0.12, 2.45, 'PaintAmber')
+        if bridge or half >= 5:
+            stripe(midpoint-half+0.38, along, 0.10, 4.92, 'PaintIvory')
+            stripe(midpoint+half-0.38, along, 0.10, 4.92, 'PaintIvory')
+
+
+# Land wraps around an inner basin. The original starting quay looks directly onto the water.
+for bounds in [
+    (-215, -195, -29, 95), (31, -195, 145, 95),
+    (-29, -195, 31, -108), (-29, -29, 31, 95),
+]:
+    deck('Ground', bounds, 'Concrete', top=-0.028, thickness=2.58)
+water.append({'center': (1, -68.5), 'size': (60, 79)})
+roads_x = [(-155, 6), (-85, 5.5), (-39, 5.5), (40, 5.5), (99, 6)]
+roads_z = [(-175, 5), (-119, 6), (33, 6.5), (71, 4.5)]
+for name, x, width in zip(
+    ['WEST VIADUCT', 'DRYDOCK AVENUE', 'CANAL STREET', 'BERTH ROAD', 'LIGHTHOUSE DRIVE'],
+    (x for x, _ in roads_x), (width for _, width in roads_x)
+):
+    road(name, x-width, -195, x+width, 95, vertical=True, crossings=roads_z)
+for name, z, width in zip(
+    ['SUPPLY ROAD', 'RAIL EXCHANGE', 'CALLOWAY BOULEVARD', 'STACKYARD ROAD'],
+    (z for z, _ in roads_z), (width for _, width in roads_z)
+):
+    road(name, -215, z-width, 145, z+width, vertical=False, crossings=roads_x)
+road('BASIN BRIDGE', -39, -77, 40, -67, vertical=False, crossings=roads_x, bridge=True)
+road('PILOT WAY', 40, -41, 145, -31, vertical=False, crossings=roads_x)
+road('FREIGHT LANE', -215, -46, -39, -36, vertical=False, crossings=roads_x)
+road('CALLOWAY QUAY', -39, 1, -24, 9, vertical=False)
+road('BONDED YARD', 24, 2, 40, 11, vertical=False)
+road('GATE APPROACH', -3.6, 17, 3.6, 33, vertical=True,
+     crossings=[(33, 6.5)])
+
+# Reflective roadside lettering and crosswalks orient drivers at the four corners of the basin.
+node('DistrictSigns', 'Node3D')
+def sign(name, text, center, angle=0, width=4.0, height=0.62):
+    x, y, z = center
+    rad = math.radians(angle)
+    primitive('Signs', 'DeepTeal', center, (width, height, 0.09), angle)
+    position = (x+math.sin(rad)*0.06, y, z+math.cos(rad)*0.06)
+    node(name, 'Label3D', 'DistrictSigns', position=position,
+         rotation_degrees=(0, angle, 0), pixel_size=0.0068,
+         font_size=48, outline_size=0, modulate='Color(0.95, 0.89, 0.69, 1)',
+         text=json.dumps(text), cast_shadow=0)
+
+for data in [
+    ('QuayGuide', 'CALLOWAY QUAY', (26.5, 3.35, -13.5), -30, 6.2),
+    ('OutboundGuide', 'MARKET  /  BERTH ROAD', (9, 3.55, 26), 180, 8.2),
+    ('WestBridgeGuide', 'BASIN BRIDGE', (-31.4, 3.6, -65.75), -90, 5.0),
+    ('EastBridgeGuide', 'BASIN BRIDGE', (34, 3.6, -78.15), 90, 5.0),
+    ('NorthGuide', 'RAIL EXCHANGE', (33.5, 3.5, -107), 0, 6.0),
+    ('EastGuide', 'PILOT BERTH', (123, 3.5, -33), 90, 5.0),
+    ('FreightGuide', 'FREIGHT  /  STACKYARD', (-30, 3.5, 38.8), 0, 8.1),
+]:
+    name, text, (x, y, z), angle, width = data
+    sign(name, text, (x, y, z), angle, width)
+    primitive('Signs', 'Shutter', (x, y/2, z), (0.11, y, 0.11))
+for x, z in [(-39, 26), (40, 26), (40, -112), (-39, -112), (-85, 26), (-155, 26), (99, 26)]:
+    for i in range(9):
+        primitive('Roads', 'PaintIvory', (x-4+i*1, 0.025, z), (0.52, 0.009, 1.7))
+for x in [-156, -86, -40, 41, 100]:
+    for z in range(-174, 82, 34):
+        prop(f'VerticalLamp{str(x).replace("-", "W")}_{str(z).replace("-", "N")}',
+             'Lamp', (x+6.2, 0.14, z+10), 90, parent='DockKit')
+for j, x in enumerate([-198, -176, -132, -109, -64, -22, 16, 64, 126]):
+    prop(f'BoulevardLamp{j}', 'Lamp', (x, 0.13, 40.45), 180)
+    prop(f'ExchangeLamp{j}', 'Lamp', (x, 0.13, -127.2), 180)
+
+
+def quay_wall(name, zone, start, end, axis, *, bridge=False, decorative=False):
+    """A visual kerb, handrail and aligned boundary keep the water and bridge edges legible."""
+    start_point, fixed = start
+    length = end-start_point
+    at = (end+start_point)/2
+    def point(along, y, side=0):
+        return (along, y, fixed+side) if axis == 'x' else (fixed+side, y, along)
+    def section(thick, height, distance):
+        return (distance, height, thick) if axis == 'x' else (thick, height, distance)
+    rail_height = 0.95 if bridge else 0.82
+    primitive(zone, 'ConcreteEdge', point(at, -0.09), section(0.78, 0.81, length))
+    primitive(zone, 'DeepTeal', point(at, rail_height), section(0.09, 0.08, length))
+    primitive(zone, 'Shutter', point(at, rail_height*0.60), section(0.065, 0.05, length))
+    for index in range(max(2, math.ceil(length/2.5)+1)):
+        n = max(1, math.ceil(length/2.5))
+        along = start_point + length*index/n
+        primitive(zone, 'Shutter', point(along, rail_height/2), (0.10, rail_height, 0.10))
+    if not decorative:
+        collider(name, point(at, 0.49), section(0.67, 1.02, length), 'metal')
+
+
+quay_wall('NorthQuay', 'Basin', (-29, -28.91), 31, 'x')
+quay_wall('BasinNorth', 'Basin', (-29, -108.10), 31, 'x')
+quay_wall('BasinWestNorth', 'Basin', (-108, -28.9), -77, 'z')
+quay_wall('BasinWestSouth', 'Basin', (-67, -28.9), -29, 'z')
+quay_wall('BasinEastNorth', 'Basin', (-108, 30.9), -77, 'z')
+quay_wall('BasinEastSouth', 'Basin', (-67, 30.9), -29, 'z')
+quay_wall('BridgeNorth', 'Basin', (-29.45, -76.86), 31.45, 'x', bridge=True)
+quay_wall('BridgeSouth', 'Basin', (-29.45, -67.14), 31.45, 'x', bridge=True)
+for x in (-22, 24):
+    primitive('Basin', 'Shutter', (x, -0.79, -72), (2.1, 2.45, 9))
+for x0, z0, x1, z1 in [(140, -195, 145, 95), (-215, 91, 145, 95)]:
+    deck('OceanEdge', (x0, z0, x1, z1), 'Sidewalk', top=0.05)
+quay_wall('EastPromenade', 'OceanEdge', (-195, 144.72), 95, 'z')
+quay_wall('SouthPromenade', 'OceanEdge', (-215, 94.73), 145, 'x')
+quay_wall('WestPerimeter', 'OceanEdge', (-195, -214.74), 95, 'z')
+quay_wall('NorthPerimeter', 'OceanEdge', (-215, -194.74), 145, 'x')
+
+# Working harbor silhouettes line a dry quay immediately beyond the encounter.
+for index, (x, z, scale, heading) in enumerate([
+    (-19, -25.8, 1.12, 0), (23.8, -25.5, 1.18, 0),
+    (55.5, -96, 1.86, 90), (72.1, -90, 1.53, 90),
+    (128, -140, 2.23, 0), (129, -103, 1.95, 0), (133, -44, 1.55, 0),
+]):
+    prop(f'Gantry{index}', 'Gantry', (x, 0, z), heading, scale)
+    for leg in (-1, 1):
+        for rail in (-1, 1):
+            tx, tz = leg*2.68*scale, rail*1.64*scale
+            if heading:
+                tx, tz = tz, -tx
+            collider(f'Gantry{index}Foot{leg+1}{rail+1}', (x+tx, 0.75, z+tz),
+                     (0.86*scale, 1.5, 0.86*scale), 'metal')
+
+for index, (x, z, angle, scale) in enumerate([
+    (5.2, -40.8, 74, 1.10), (16.8, -58.5, 0, 1.4), (-7.7, -93.1, -23, 1.32),
+    (153.5, -67, 8, 1.2), (154.4, -128, -24, 1.40), (158, 46, 8, 1.04),
+]):
+    prop(f'PilotTug{index}', 'Tug', (x, -1.03, z), angle, scale)
+    for side in (-1, 1):
+        primitive('Basin', 'Whitecap', (x+side*scale*1.84, -1.109, z),
+                  (0.055, 0.008, scale*5.5), angle, 'Foliage')
+for index, x in enumerate([-26.75, -9, 1.2, 17.5, 27.1]):
+    prop(f'BasinBollard{index}', 'Bollard', (x, 0, -27.25), 90)
+    collider(f'BasinBollard{index}', (x, 0.33, -27.25), (0.57, 0.63, 0.63), 'metal')
+for index, z in enumerate([-178, -147, -117, -84, -49, -18, 12, 43, 76]):
+    prop(f'EastLoopBollard{index}', 'Bollard', (142, 0.07, z), 0)
+    prop(f'LifeRing{index}', 'LifeRing', (143.55, 0.07, z+1.4), 90)
+    collider(f'EastLoopBollard{index}', (142, 0.38, z), (0.57, 0.63, 0.63), 'metal')
+
+# Eleven hand-placed obstacles break up the starting combat yard while preserving all approach lanes.
+prop('ManifestTerminal', 'Terminal', (8, 0, -3))
+collider('ManifestTerminal', (8, 0.75, -3), (0.82, 1.5, 0.68), 'metal')
+for index in range(6):
+    primitive('YardPaint', 'PaintAmber', (6.88+index*0.45, 0.019, -2.3),
+              (0.10, 0.008, 0.64), 31)
+primitive('YardPaint', 'PaintAmber', (8, 0.019, -1.95), (2.42, 0.008, 0.075))
+prop('QuayEntryLampWest', 'Lamp', (-6.40, 0, 2.87), 45)
+prop('QuayEntryLampEast', 'Lamp', (13.91, 0, 2.78), -60)
+for x in (-16.4, -8.15):
+    primitive('QuayRoof', 'Shutter', (x, 9.28, -10.9), (1.34, 0.4, 1.60))
+    primitive('QuayRoof', 'Limestone', (x, 9.60, -10.9), (1.43, 0.25, 1.72))
+for index in range(18):
+    x = -23.0 + index*2.68
+    primitive('YardPaint', 'PaintAmber', (x, 0.021, -27.34), (1.85, 0.008, 0.075))
+
+def cover(name, kind, x, z, heading=0, y=0, *, collision=True, scale=1):
+    size, surface = {
+        'Barrier': ((2.0, 0.89, 0.62), 'concrete'),
+        'Crates': ((2.34, 1.68, 1.24), 'wood'),
+        'Container': ((6.16, 2.60, 2.46), 'metal'),
+        'Drum': ((0.62, 0.89, 0.62), 'metal'),
+        'Dumpster': ((2.00, 1.36, 1.28), 'metal'),
+        'Bench': ((1.72, 0.90, 0.55), 'wood'),
+        'Shelter': ((3.50, 2.95, 1.60), 'metal'),
+    }[kind]
+    prop(name, kind, (x, y, z), heading, scale)
+    if collision:
+        w, h, d = [n * scale for n in size]
+        if heading % 180 == 90:
+            w, d = d, w
+        collider(name, (x, y+h/2, z), (w, h, d), surface)
+
+
+for name, kind, x, z, heading in [
+    ('LowBlockWest', 'Barrier', -0.6, -6.4, 0),
+    ('LowBlockCenter', 'Barrier', 5.5, -11.9, 90),
+    ('LowBlockEast', 'Barrier', 13.1, -5.9, 0),
+    ('ManifestCrates', 'Crates', 9.8, -4.55, 90),
+    ('CustomsCrates', 'Crates', 16.2, -9, 0),
+    ('TwinPalletCrates', 'Crates', 3.8, -21.5, 90),
+    ('EastShieldContainer', 'Container', 23, -14.8, 90),
+    ('QuayHoldContainer', 'Container', 7.1, -25.17, 0),
+    ('EastOilDrum', 'Drum', 17.5, -15.3, 0),
+    ('InspectionDrum', 'Drum', 5.4, -16.0, 0),
+    ('RubbishHopper', 'Dumpster', -10.8, -0.28, 0),
+]:
+    cover(name, kind, x, z, heading)
+for j, (x, z) in enumerate([(16.15, 6.5), (24.25, 6.5), (24.25, 14.83), (16.15, 14.83)]):
+    for offset in (-0.31, 0, 0.31):
+        primitive('YardPaint', 'PaintIvory', (x+offset, 0.021, z), (0.085, 0.009, 1.1), -25)
+
+# The southern town is built around the running lanes, with distinct streetscapes and sight lines.
+def urban_building(name, zone, x, z, w, d, height, facade, bays, entrance_sign=None):
+    primitive(zone, facade, (x, height/2, z), (w, height, d))
+    collider(name, (x, height/2, z), (w, height, d))
+    primitive(zone, 'Limestone', (x, 0.21, z), (w+0.34, 0.42, d+0.25))
+    primitive(zone, 'ConcreteEdge', (x, height+0.085, z), (w+0.45, 0.20, d+0.45))
+    primitive(zone, 'Roof', (x, height+0.20, z), (w+0.19, 0.18, d+0.21))
+    floors = max(2, round(height/2.8))
+    pitch = height/floors
+    for floor in range(floors):
+        y = pitch*(floor+0.53)
+        for side in (-1, 1):
+            for index in range(bays):
+                wx = x+(index-(bays-1)/2)*w/(bays+0.4)
+                if floor == 0 and index == bays//2:
+                    primitive(zone, 'DeepTeal', (wx, 1.04, z+side*(d/2+0.025)),
+                              (1.2, 2.04, 0.075))
+                    if side == 1:
+                        primitive(zone, 'Limestone', (wx, 2.28, z+d/2+0.55),
+                                  (1.9, 0.16, 1.25))
+                    continue
+                tone = 'WarmGlass' if rng.random() < 0.17 else 'Glass'
+                sw = min(1.27, w/(bays+2))
+                depth = z+side*(d/2+0.027)
+                primitive(zone, 'Limestone', (wx, y, depth), (sw+0.17, 1.70, 0.12))
+                primitive(zone, tone, (wx, y+0.035, depth+side*0.067), (sw, 1.48, 0.026))
+                primitive(zone, 'Limestone', (wx, y-0.78, depth+side*0.07), (sw+0.25, 0.09, 0.22))
+            for index in range(max(2, round(d/3.4))):
+                wz = z+(index-(max(2, round(d/3.4))-1)/2)*3.05
+                primitive(zone, 'Limestone', (x+side*(w/2+0.03), y, wz), (0.085, 1.47, 1.07))
+                primitive(zone, 'Glass', (x+side*(w/2+0.082), y+0.02, wz), (0.023, 1.34, 0.93))
+        if floor in (0, floors-2) and floors > 3:
+            primitive(zone, 'Limestone', (x, (floor+1)*pitch+0.03, z), (w+0.20, 0.17, d+0.20))
+    for ix, sign_code in enumerate((-1, 1)):
+        primitive(zone, 'Roof', (x+sign_code*w*0.23, height+0.72, z+d*0.12),
+                  (1.8, 1.20, 1.6))
+        primitive(zone, 'Shutter', (x+sign_code*w*0.23, height+1.40, z+d*0.12),
+                  (1.05, 0.18, 1.05), mesh='Cylinder')
+    if entrance_sign:
+        sign(name+'Address', entrance_sign, (x, pitch+0.44, z+d/2+0.15), 0, min(w-0.4, 6.7))
+
+
+def factory(name, zone, x, z, w, d, height, finish, label=None):
+    primitive(zone, finish, (x, height/2, z), (w, height, d))
+    collider(name, (x, height/2, z), (w, height, d), 'metal')
+    primitive(zone, 'Roof', (x, height+0.19, z), (w+0.73, 0.38, d+0.72))
+    primitive(zone, 'Limestone', (x, 0.31, z), (w+0.12, 0.62, d+0.10))
+    for side in (-1, 1):
+        for j in range(1, round(w/0.9)):
+            wx = x-w/2+j*0.9
+            primitive(zone, 'Shutter', (wx, height*0.53, z+side*(d/2+0.035)),
+                      (0.055, height*0.9, 0.075))
+        for j in range(1, round(w/4.0)):
+            wx = x-w/2+j*4
+            primitive(zone, 'Glass', (wx, height*0.775, z+side*(d/2+0.071)),
+                      (1.90, 0.62, 0.08))
+    for off in (-0.28, 0.27):
+        sx = x+off*w
+        primitive(zone, 'DeepTeal', (sx, 1.91, z+d/2+0.07), (3.5, 3.71, 0.115))
+        for row in range(10):
+            primitive(zone, 'Shutter', (sx, 0.30+row*0.34, z+d/2+0.134),
+                      (3.47, 0.035, 0.020))
+        primitive(zone, 'PaintAmber', (sx-1.91, 0.55, z+d/2+0.40), (0.17, 1.1, 0.17))
+        primitive(zone, 'PaintAmber', (sx+1.91, 0.55, z+d/2+0.40), (0.17, 1.1, 0.17))
+    for offset in (-1, 1):
+        primitive(zone, 'Shutter', (x+offset*w*0.29, height+1.36, z+d*0.10),
+                  (0.56, 2.4, 0.56), mesh='Cylinder')
+        primitive(zone, 'Limestone', (x+offset*w*0.29, height+2.58, z+d*0.10),
+                  (0.66, 0.16, 0.66), mesh='Cylinder')
+    if label:
+        sign(name+'Address', label, (x, height*0.64, z+d/2+0.13), 0, min(w*0.77, 9.0))
+
+
+def tree(zone, name, x, z, height):
+    primitive(zone, 'ConcreteEdge', (x, 0.16, z), (2.50, 0.32, 2.50))
+    primitive(zone, 'PlanterSoil', (x, 0.329, z), (2.25, 0.04, 2.25))
+    primitive(zone, 'Trunk', (x, height*0.46, z), (0.25, height*0.86, 0.25), mesh='Cylinder')
+    for ox, oy, oz, scale, tone in [
+        (0, 1.02, 0, 1, 'Moss'), (0.52, .89, 0.4, .88, 'Leaf'),
+        (-0.76, .91, 0.33, .91, 'Moss'), (0.67, .92, -.63, .76, 'Leaf'),
+        (-.45, 1.10, -.57, .85, 'Leaf'),
+    ]:
+        primitive(zone, tone, (x+ox, height*oy, z+oz), (scale*2.2, scale*2.5, scale*2.27),
+                  mesh='Foliage')
+    collider(name, (x, 0.25, z), (2.45, 0.51, 2.45))
+
+
+# City blocks are placed individually by neighborhood, retaining wide fire lanes and mid-block spaces.
+for district, bx0, bx1, bz0, bz1, style in [
+    ('FoundryWest', -208, -162, -167, -127, 'factory'),
+    ('FoundryCentral', -148, -92, -167, -127, 'factory'),
+    ('FoundryCanal', -78, -46, -168, -127, 'factory'),
+    ('DepotNorth', -32, 33, -168, -127, 'factory'),
+    ('DepotEast', 47, 91, -168, -127, 'factory'),
+    ('LighthouseWorks', 107, 136, -167, -127, 'factory'),
+    ('SundownNorth', -208, -162, -112, -48, 'town'),
+    ('RiveterNorth', -148, -92, -112, -48, 'town'),
+    ('CanalNorth', -78, -46, -112, -48, 'town'),
+    ('SundownSouth', -207, -162, -34, 24, 'town'),
+    ('RiveterSouth', -148, -92, -34, 24, 'town'),
+    ('CanalSouth', -78, -46, -34, 24, 'town'),
+    ('MarketWest', -208, -162, 42, 64, 'shop'),
+    ('MarketCentral', -148, -92, 42, 64, 'shop'),
+    ('MarketEast', -78, -46, 42, 64, 'shop'),
+    ('MarketQuay', -32, 33, 42, 64, 'shop'),
+    ('MarketPilot', 47, 92, 42, 64, 'shop'),
+    ('MarketLighthouse', 107, 136, 42, 64, 'shop'),
+]:
+    deck(district, (bx0, bz0, bx1, bz1), 'Sidewalk', top=0.13)
+    deck(district, (bx0+2.6, bz0+2.6, bx1-2.6, bz1-2.6),
+         'Pavers' if style != 'factory' else 'Concrete', top=0.133)
+    columns = 2 if bx1-bx0 >= 40 else 1
+    rows = 2 if bz1-bz0 >= 34 else 1
+    for col in range(columns):
+        for row in range(rows):
+            cellw = (bx1-bx0)/columns
+            celld = (bz1-bz0)/rows
+            x = bx0+cellw*(col+0.5) + rng.uniform(-1.35, 1.35)
+            z = bz0+celld*(row+0.5) + rng.uniform(-1.15, 1.15)
+            name = f'{district}Block{col}{row}'
+            if style == 'factory':
+                title = {'FoundryWest': 'FOUNDRY WEST', 'DepotEast': 'EXCHANGE FREIGHT'}.get(district)
+                factory(name, district, x, z, cellw-7.4, celld-5.4, rng.uniform(5.5, 7.5),
+                        rng.choice(['StoneBlue', 'Celadon', 'Rust', 'Shutter']),
+                        title if row == rows-1 and col == columns-1 else None)
+            elif style == 'shop' and rng.random() < 0.56:
+                prop(name, 'Shop', (x, 0.134, z), 0, 1.35)
+                collider(name, (x, 2.52, z+0.50), (12.66, 4.77, 12.85))
+            elif style == 'town' and rng.random() < 0.20:
+                prop(name, 'Apartment', (x, 0.13, z), 0, 1.14)
+                collider(name, (x+0.50, 8.5, z+0.5), (14.5, 17.0, 12.5))
+            else:
+                h = rng.uniform(5.1, 8.6) if style == 'shop' else rng.uniform(8.2, 17.4)
+                title = {'MarketQuay': 'NIGHT MARKET', 'RiveterSouth': 'CANAL EXCHANGE'}.get(district)
+                urban_building(name, district, x, z, cellw-7.15, celld-8.55, h,
+                               rng.choice(['RedBrick', 'Terra', 'Dune', 'Celadon', 'OffWhite']),
+                               3 if columns == 2 else 5,
+                               title if row == rows-1 and col == columns-1 else None)
+    if style != 'factory':
+        for n, x in enumerate(range(math.ceil(bx0)+5, math.floor(bx1)-2, 15)):
+            tree(district, f'{district}Planter{n}', x, bz1-1.9, rng.uniform(2.68, 3.31))
+        if style == 'shop':
+            cover(district+'Bench', 'Bench', bx0+2.3, bz0+1.76)
+            cover(district+'Dumpster', 'Dumpster', bx1-2.8, bz0+1.53, 90)
+
+# Color-coded stalls and lowered awnings give the market a recognizable street frontage.
+deck('QuayMarket', (-25.5, 64.4, 26.5, 66.1), 'Pavers', top=0.13)
+for n, x in enumerate((-22, -16, -10, -4, 5, 11, 17, 23)):
+    z = 64.05
+    for side in (-1, 1):
+        primitive('QuayMarket', 'Shutter', (x+side*1.79, 1.30, z+0.84),
+                  (0.075, 2.60, 0.075))
+        primitive('QuayMarket', 'Shutter', (x+side*1.79, 1.30, z-0.90),
+                  (0.075, 2.60, 0.075))
+    accent = ('Terra', 'Celadon', 'Dune', 'StoneBlue')[n % 4]
+    primitive('QuayMarket', 'ConcreteEdge', (x, 2.67, z), (3.70, 0.09, 1.85))
+    for r in range(8):
+        primitive('QuayMarket', accent if r%2 == 0 else 'OffWhite',
+                  (x-1.67+r*0.48, 2.713, z), (0.43, 0.035, 1.93))
+    primitive('QuayMarket', 'Limestone', (x, 0.90, z-0.35), (3.00, 0.10, 0.79))
+    primitive('QuayMarket', 'Shutter', (x, 0.47, z-0.35), (2.88, 0.84, 0.62))
+    collider(f'MarketStall{n}', (x, 0.50, z-0.35), (3.00, 1.0, 0.79))
+
+prop('CanalParking', 'Garage', (-59.5, 0, 81.4), 0, 0.88)
+collider('CanalParking', (-58.65, 4.74, 82.0), (28.0, 9.48, 19.2))
+sign('GarageDirection', 'CANAL PARKING', (-59.7, 3.1, 91.96), 0, 7.2)
+cover('MarketTransitStop', 'Shelter', 0, 41.45)
+cover('CanalTransitStop', 'Shelter', -125.5, 41.45)
+cover('PilotTransitStop', 'Shelter', 66, 41.45)
+for j, x in enumerate([-205, -184, -156, -132, -110, -78, -25, -4, 18, 65, 114, 131]):
+    if x not in (-156, -78, 114):
+        tree('Promenade', f'SouthPromenadePlanter{j}', x, 88.8, 3.45)
+    if x not in (-156, -78):
+        cover(f'SouthPromenadeBench{j}', 'Bench', x+3.4, 92.49, 180)
+
+# Container depots and a public promenade contrast with the narrower brick streets across the basin.
+for name, x, z, w, d, finish in [
+    ('PilotSorting', 68, -48, 25, 18, 'StoneBlue'),
+    ('CustomsOffice', 64.5, -12, 17, 13, 'Limestone'),
+    ('HarborMachinery', 119, -61, 19.5, 26, 'Celadon'),
+    ('SouthService', -118, 82.4, 28, 9.2, 'Rust'),
+    ('BondPermit', 68, 10.1, 16.5, 14, 'StoneBlue'),
+]:
+    deck(name, (x-w/2-3, z-d/2-2.6, x+w/2+3, z+d/2+2.6), 'Sidewalk', top=0.13)
+    factory(name, name, x, z, w, d, rng.uniform(6.28, 8.1), finish,
+            {'PilotSorting': 'PILOT LOGISTICS', 'CustomsOffice': 'HARBOR CUSTOMS',
+             'HarborMachinery': 'ATLANTIC REPAIR', 'BondPermit': 'BONDED FREIGHT'}.get(name))
+
+for index, (x, z, heading) in enumerate([
+    (61, -97, 90), (65, -97, 90), (67.8, -88, 0), (57, -84, 0),
+    (74, -103, 0), (79.7, -91, 90), (85, -96.1, 90), (88.5, -97, 90),
+    (119, -100, 90), (123, -100, 90), (130, -117, 0), (127, -111, 0),
+    (89, -25, 90), (89, -20, 90), (89, -12, 90), (85, -7, 0),
+    (112, 12, 90), (116.1, 12, 90), (123, -2.5, 0), (124, 4.5, 0),
+    (114, 78, 0), (120.5, 80.7, 0), (126.1, 86, 0), (117.6, 84.9, 90),
+]):
+    kind = ['Celadon', 'Rust', 'StoneBlue', 'DeepTeal'][index % 4]
+    cover(f'DepotContainer{index}', 'Container', x, z, heading, collision=False)
+    w, d = (2.46, 6.16) if heading else (6.16, 2.46)
+    if index % 4 in (1, 2):
+        cover(f'DepotContainerUpper{index}', 'Container', x, z, heading, y=2.59, collision=False)
+        # Stacked doors receive their own color blocking.
+        primitive('DepotTrim', kind, (x, 3.83, z+d/2+0.015), (w*0.92, 2.26, 0.036))
+    collider(f'DepotContainer{index}', (x, 2.6 if index % 4 in (1, 2) else 1.3, z),
+             (w, 5.2 if index % 4 in (1, 2) else 2.6, d), 'metal')
+    panel_x = x+w/2+0.014
+    primitive('DepotTrim', kind, (panel_x, 1.27, z), (0.055, 2.32, d*0.94))
+    for j in range(round(d/0.30)):
+        rib = z-d*.47+j*d*.9/max(1, round(d/0.30)-1)
+        primitive('DepotTrim', 'Shutter', (panel_x+0.021, 1.25, rib), (0.04, 2.22, 0.035))
+for j, (x, z) in enumerate([
+    (49.8, -100), (49.8, -93), (48.5, -54), (86, -47), (110, -11), (124, -17), (111, 80),
+]):
+    cover(f'StackyardBarrier{j}', 'Barrier', x, z, 90)
+    cover(f'StackyardPallet{j}', 'Crates', x+1.9, z-3, 0)
+
+# The channel beacon and distant shores anchor the view during long approaches.
+beacon_x, beacon_z = 139.4, -176.5
+deck('Beacon', (135.1, -181, 144, -172.2), 'ConcreteEdge', top=0.20)
+prop('ChannelBeacon', 'Beacon', (beacon_x, 0.20, beacon_z))
+collider('BeaconPlinth', (beacon_x, 0.42, beacon_z), (4.55, 0.43, 4.55))
+collider('BeaconTower', (beacon_x, 5.8, beacon_z), (3.38, 11.2, 3.38))
+collider('BeaconSteps', (beacon_x, 0.53, beacon_z+2.05), (1.36, 0.66, 1.06))
+sign('BeaconSign', 'CHANNEL LIGHT', (138.7, 2.05, -172.45), 0, 3.7)
+
+for j, (x, z, spacing, angle) in enumerate([(196, -106, 7, -12), (-21, 140, 8, -7), (-130, -244, 8, 8)]):
+    primitive('FarShore', 'Shore', (x, -0.64, z), (85, 1.8, 12.0), angle)
+    for i in range(9):
+        height = rng.uniform(4.7, 20)
+        sx, sz = x+(i-4)*spacing, z+rng.uniform(-3.1, 2.4)
+        primitive('FarShore', rng.choice(['Shore', 'StoneBlue', 'Shutter']), (sx, height/2-.1, sz),
+                  (rng.uniform(4.8, 8.2), height, rng.uniform(5.7, 9.2)), rng.uniform(-11, 11))
+for j, (x, z) in enumerate([(47, -211), (66, -211), (89, -219), (113, -218), (131, -216)]):
+    prop(f'RailGantry{j}', 'Gantry', (x, -0.1, z), 0, 1.85)
+deck('FarShore', (29, -227, 149, -202), 'Shore', top=-0.10, thickness=1.5)
+
+for name, position in [
+    ('CarSpawn', (5, 0, 9)),
+    ('MissionTerminal', (8, 0, -3)),
+    ('ExtractionPoint', (18.5, 0, 11)),
+    ('PoliceApproachNorth', (-37.8, 0, -38)),
+    ('PoliceApproachEast', (30, 0, -6)),
+    ('PoliceApproachSouth', (-4, 0, 31)),
+    ('PoliceApproachBerth', (41, 0, 23)),
+]:
+    node(name, 'Marker3D', position=position)
+
+
+def serialize():
+    node_sections = scene[scene_nodes_start:]
+    del scene[scene_nodes_start:]
+    for index, obstacle in enumerate(obstacles):
+        sub('BoxShape3D', f'Shape{index:03}', size=obstacle['size'])
+    for index, ((zone, material_name, mesh), buffer) in enumerate(batches.items()):
+        sub('MultiMesh', f'Batch{index:03}', transform_format=1,
+            mesh=f'SubResource("{mesh}")', instance_count=len(buffer)//12,
+            buffer='PackedFloat32Array(' + ', '.join(map(str, buffer)) + ')')
+    scene.extend(node_sections)
+    node('DistrictGeometry', 'Node3D')
+    for index, (zone, material_name, mesh) in enumerate(batches):
+        no_shadow = zone in ('Roads', 'Ground', 'YardPaint') or material_name in (
+            'PaintAmber', 'PaintIvory', 'Whitecap', 'WarmGlass', 'Glass', 'PlanterSoil',
+        )
+        node(zone+material_name+mesh, 'MultiMeshInstance3D', 'DistrictGeometry',
+             multimesh=f'SubResource("Batch{index:03}")', material_override=f'SubResource("{material_name}")',
+             cast_shadow=0 if no_shadow else 1)
+    path = ROOT / 'game/scenes/world/HarborFront.tscn'
+    path.write_text(f'[gd_scene load_steps={ext_count + sub_count + 1} format=3]\n\n' +
+                    '\n'.join(scene), encoding='utf-8')
+    layout = {'spawn': SPAWN, 'bounds': {'min': (-215, -195), 'max': (145, 95)},
+              'roads': roads, 'water': water, 'obstacles': obstacles}
+    # Keep each marker on a single line so changes in building and cover placement remain reviewable.
+    lines = ['{']
+    for key, value in layout.items():
+        if key in ('roads', 'water', 'obstacles'):
+            items = [f'    {json.dumps(item)}' for item in value]
+            serialized = '[\n' + ',\n'.join(items) + '\n  ]'
+        else:
+            serialized = json.dumps(value)
+        suffix = '' if key == 'obstacles' else ','
+        lines.append(f'  "{key}": {serialized}{suffix}')
+    lines.append('}')
+    (ROOT / 'data/world/harbor_front.json').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+
+
+if __name__ == '__main__':
+    serialize()

@@ -1,0 +1,120 @@
+{
+  "$schema": "../../../data/schema/harbor-lockdown.schema.json",
+  "playerWeapon": "wasp_smg",
+  "playerSecondary": "kestrel_p10",
+  "enemyWeapon": "kestrel_p10",
+  "initialArmor": 75,
+  "playerReserveMagazines": 5,
+  "enemyHealth": 52,
+  "enemySpeed": 1.2,
+  "enemyShotInterval": 2.55,
+  "enemyStartDelay": 2.75,
+  "enemyHoldDistance": 10.0,
+  "reinforcementDelay": 3.25,
+  "firstWave": [
+    [
+      2,
+      0,
+      -9
+    ],
+    [
+      10.8,
+      0,
+      -14
+    ]
+  ],
+  "reinforcements": [
+    [
+      0,
+      0,
+      -18
+    ],
+    [
+      13.8,
+      0,
+      -20
+    ],
+    [
+      18,
+      0,
+      -12
+    ]
+  ],
+  "extraction": [
+    18.5,
+    0,
+    11
+  ],
+  "extractionRadius": 2.5,
+  "start": [
+    8,
+    0,
+    -3
+  ],
+  "startRadius": 2.0,
+  "vehicle": [
+    5,
+    0,
+    9
+  ],
+  "vehicleEnterRadius": 3.0,
+  "policeSpawns": [
+    [
+      -37.8,
+      0,
+      -38
+    ],
+    [
+      30,
+      0,
+      -6
+    ],
+    [
+      -4,
+      0,
+      31
+    ],
+    [
+      41,
+      0,
+      23
+    ]
+  ],
+  "policeSpeed": 3.1,
+  "policeSightDistance": 13,
+  "heat": {
+    "decayPerSecond": 3.4,
+    "decayDelaySeconds": 7,
+    "repeatCrimeSeconds": 3.5,
+    "crimeHeat": {
+      "shots_fired": 12,
+      "attack_police": 20
+    },
+    "levels": [
+      {
+        "level": 0,
+        "minHeat": 0,
+        "units": 0,
+        "responseSeconds": 0
+      },
+      {
+        "level": 1,
+        "minHeat": 9,
+        "units": 1,
+        "responseSeconds": 4.0
+      },
+      {
+        "level": 2,
+        "minHeat": 27,
+        "units": 1,
+        "responseSeconds": 3.0
+      },
+      {
+        "level": 3,
+        "minHeat": 55,
+        "units": 1,
+        "responseSeconds": 2.0
+      }
+    ]
+  }
+}

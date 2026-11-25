@@ -172,6 +172,7 @@ Godot: 이벤트 받아 피격 애니메이션·이펙트·HUD
 - 원본 = `tools/blender/build_assets.py` (블렌더 4.2 헤드리스, `bpy`). 산출물 `.glb`는 Git LFS.
 - 사람: `human.py` + `characters.py` — 메타볼 몸 → 리메시 → 51본 리그(손가락 포함) 자동 웨이트 → 옷 레이어가 몸 웨이트 상속. 캐릭터당 ~5만 면.
 - 캐릭터·총기·건물 → `game/assets/{characters,weapons,buildings}/`. 범용 소품 → **sangsangbaksa-dev/Set** 리포 `props/`.
+- Harbor Front 씬에 배치한 소품은 Set과 동일한 GLB를 `game/assets/props/`에 둔다. `tools/blender/build_props.py`가 새 소품과 카탈로그를 생성한다. Calloway Compact는 `game/assets/vehicles/`와 Set의 `vehicles/`에 둔다.
 - 명명: `chr_*`, `wpn_*`, `bldg_*`, `prop_*`. 충돌이 필요한 메시는 이름 끝 `-col`(Godot 임포트가 충돌 생성).
 - 미리보기 PNG: `tools/blender/render_preview.py` → `docs/art/`.
 
@@ -213,6 +214,7 @@ Godot: 이벤트 받아 피격 애니메이션·이펙트·HUD
 │  ├─ scripts/               ← C# (Bridge, Adapters, Streaming, Views, Player, Vehicles, UI)
 │  ├─ scenes/
 │  └─ assets/                ← 바이너리 에셋 (Git LFS): characters/ weapons/ buildings/
+├─ server/                   ← Linux 전용 서버 진입점
 ├─ data/                     ← JSON 게임 데이터 + schema/
 ├─ docs/
 │  ├─ adr/
@@ -234,6 +236,8 @@ Godot: 이벤트 받아 피격 애니메이션·이펙트·HUD
 | M3 | 스트리밍 | 청크 로딩/언로드, 원점 이동, 4km² |
 | M4 | 살아있는 거리 + 수배 | 보행자·교통 에이전트, District 1개, Heat 3단계, 경찰 추격 |
 | M5 | 미션 + 세이브 | JSON 미션 3개, 세이브/로드 |
+
+Harbor Front 플레이테스트에서는 360 × 290m 시가지에서 보행, 운전, 항만 봉쇄와 경찰 대응을 실행한다. `HarborAuthority`가 로컬 플레이와 전용 서버에서 같은 이동·전투·수배·차량 규칙을 30Hz로 구동한다. `data/world/harbor_front.json`은 `StaticWorld`의 공용 배치다. Godot은 입력과 예측 결과를 연결하거나 TCP로 Linux 전용 서버에 접속한다. [ADR 0007](docs/adr/0007-dedicated-harbor-playtest.md)
 
 멀티플레이·경제 트랙 (기획: `docs/CONTENT_DESIGN.md` §10) — 코어+테스트만으로 완결, Godot 연결은 G1:
 

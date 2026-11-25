@@ -6,8 +6,17 @@ config_version=5
 [application]
 
 config/name="Project Harbor"
+boot_splash/show_image=false
+boot_splash/bg_color=Color(0.04, 0.085, 0.11, 1)
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.4", "C#", "Forward Plus")
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
 
 [dotnet]
 
@@ -21,3 +30,4 @@ common/physics_ticks_per_second=60
 [rendering]
 
 renderer/rendering_method="forward_plus"
+anti_aliasing/quality/screen_space_aa=1

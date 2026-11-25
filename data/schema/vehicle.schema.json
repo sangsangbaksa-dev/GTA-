@@ -27,6 +27,20 @@
       }
     },
     "seats": { "type": "integer", "minimum": 1, "default": 2 },
-    "modelAsset": { "type": "string", "description": "res:// path of the visual scene" }
+    "modelAsset": { "type": "string", "description": "res:// path of the visual scene" },
+    "arcade": {
+      "type": "object",
+      "required": ["forwardSpeed", "reverseSpeed", "acceleration", "reverseAcceleration", "brakeAcceleration", "coastDeceleration", "steeringRate", "maxSteerDegrees"],
+      "properties": {
+        "forwardSpeed": { "type": "number", "exclusiveMinimum": 0 },
+        "reverseSpeed": { "type": "number", "exclusiveMinimum": 0 },
+        "acceleration": { "type": "number", "exclusiveMinimum": 0 },
+        "reverseAcceleration": { "type": "number", "exclusiveMinimum": 0 },
+        "brakeAcceleration": { "type": "number", "exclusiveMinimum": 0 },
+        "coastDeceleration": { "type": "number", "exclusiveMinimum": 0 },
+        "steeringRate": { "type": "number", "exclusiveMinimum": 0 },
+        "maxSteerDegrees": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 90 }
+      }
+    }
   }
 }
