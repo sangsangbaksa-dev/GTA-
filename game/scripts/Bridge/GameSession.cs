@@ -15,15 +15,11 @@ using Harbor.Game.Views;
 
 namespace Harbor.Game.Bridge;
 
-/// <summary>Root of a running game (ADR 0008). Hosts the engine-agnostic <see cref="GameServer"/> (offline, listen
-/// server or headless dedicated) and/or a <see cref="ClientSession"/>, steps them, and hands their state to the
+/// <summary>Root of the single-player City Operations session. Steps the local <see cref="GameServer"/>
+/// and <see cref="ClientSession"/> and hands their state to the
 /// views. Godot never decides game rules: it only sends inputs/requests and draws what the core says.</summary>
 public partial class GameSession : Node3D
 {
-    public enum Mode { Offline, Host, Join, Dedicated }
-
-    public const int DefaultPort = 27960;
-
     public GameData Data { get; private set; } = null!;
     public GameServer? Server { get; private set; }
     public ClientSession? Client { get; private set; }
@@ -32,7 +28,6 @@ public partial class GameSession : Node3D
     public StaticWorld ClientStatic { get; } = new();
     /// <summary>Placement index → static box id (same ids on server and client because both build from map.json in order).</summary>
     public IReadOnlyDictionary<int, int> PlacementBoxes => _placementBoxes;
-    public Mode CurrentMode { get; private set; }
     public bool Running { get; private set; }
     /// <summary>Fraction of the current client tick that has elapsed (render interpolation).</summary>
     public double Alpha { get; private set; }
@@ -45,7 +40,6 @@ public partial class GameSession : Node3D
 
     private Dictionary<int, int> _placementBoxes = new();
     private InMemoryNetwork? _memNet;
-    private ENetTransport? _serverTransport, _clientTransport;
     private double _clientAccum;
     private double _smokeSeconds = -1, _smokeElapsed;
     private string? _screenshotPath;
@@ -80,18 +74,9 @@ public partial class GameSession : Node3D
             _devSpawn = new Harbor.Core.Math.Vec3d(double.Parse(xz[0], System.Globalization.CultureInfo.InvariantCulture), 0,
                 double.Parse(xz[1], System.Globalization.CultureInfo.InvariantCulture));
         }
-        var port = args.TryGetValue("port", out var ps) ? int.Parse(ps) : DefaultPort;
         var name = args.GetValueOrDefault("name", "rook");
-
-        if (args.ContainsKey("server") || DisplayServer.GetName() == "headless" && !args.ContainsKey("offline") && !args.ContainsKey("join"))
-        {
-            Start(Mode.Dedicated, name, "", port);
-            return;
-        }
         BuildPresentation();
-        if (args.ContainsKey("offline")) Start(Mode.Offline, name, "", port);
-        else if (args.ContainsKey("host")) Start(Mode.Host, name, "", port);
-        else if (args.TryGetValue("join", out var addr)) Start(Mode.Join, name, addr, port);
+        if (args.ContainsKey("offline")) Start(name);
         else
         {
             _menu = new MainMenu(this);
@@ -118,36 +103,14 @@ public partial class GameSession : Node3D
         AddChild(_phone);
     }
 
-    public void Start(Mode mode, string playerName, string address, int port)
+    public void Start(string playerName)
     {
         if (Running) return;
-        CurrentMode = mode;
         PlayerName = string.IsNullOrWhiteSpace(playerName) ? "rook" : playerName.Trim();
-        var log = new GodotLog();
-        switch (mode)
-        {
-            case Mode.Offline:
-                _memNet = new InMemoryNetwork { LatencySeconds = 0 };
-                var ep = _memNet.CreateServer();
-                Server = new GameServer(Data, ep, log);
-                Client = new ClientSession(_memNet.Connect(ep), PlayerName, Server.Session.MovementConfig, ClientStatic);
-                break;
-            case Mode.Host:
-                _serverTransport = ENetTransport.Listen(port, 16);
-                Server = new GameServer(Data, _serverTransport, log);
-                _clientTransport = ENetTransport.Connect("127.0.0.1", port);
-                Client = new ClientSession(_clientTransport, PlayerName, null, ClientStatic);
-                break;
-            case Mode.Join:
-                _clientTransport = ENetTransport.Connect(address, port);
-                Client = new ClientSession(_clientTransport, PlayerName, null, ClientStatic);
-                break;
-            case Mode.Dedicated:
-                _serverTransport = ENetTransport.Listen(port, 16);
-                Server = new GameServer(Data, _serverTransport, log);
-                log.Info($"dedicated server listening on UDP {port} (max 16 players)");
-                break;
-        }
+        _memNet = new InMemoryNetwork { LatencySeconds = 0 };
+        var endpoint = _memNet.CreateServer();
+        Server = new GameServer(Data, endpoint, new GodotLog(), config: new ServerConfig { MaxPlayers = 1 });
+        Client = new ClientSession(_memNet.Connect(endpoint), PlayerName, Server.Session.MovementConfig, ClientStatic);
         Running = true;
         _menu?.QueueFree();
         _menu = null;
@@ -215,17 +178,11 @@ public partial class GameSession : Node3D
 
     public int LocalActorId => Client?.LocalActorId ?? -1;
 
-    public override void _ExitTree()
-    {
-        _clientTransport?.Close();
-        _serverTransport?.Close();
-    }
-
     private void SmokeReport()
     {
         var actors = Server?.World.Actors.Count ?? 0;
         var npcs = Server?.Agents.Agents.Count ?? 0;
-        GD.Print($"[Harbor] SMOKE OK mode={CurrentMode} joined={Client?.IsJoined} actors={actors} npcs={npcs} " +
+        GD.Print($"[Harbor] SMOKE OK mode=Offline joined={Client?.IsJoined} actors={actors} npcs={npcs} " +
                  $"wallet={State.Wallet} bank={State.Bank} pos={Predicted.Position} views={_actors?.ViewCount ?? 0}");
     }
 

@@ -80,10 +80,11 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
     public Vec3d StartPosition { get; } = HarborLockdownDef.Point(definition.Start);
     public double StartRadius => definition.StartRadius;
     public int DriverId { get; private set; } = -1;
+    internal HarborJobs? Jobs { get; set; }
     public int WantedLevel(int actorId) => heat.LevelOf(actorId);
-    public bool CanStart(int actorId) => Phase == LockdownPhase.FreeRoam && DriverId != actorId
+    public bool CanStart(int actorId) => Phase == LockdownPhase.FreeRoam && DriverId != actorId && Jobs?.IsActive != true
         && PlayerIsNear(actorId, StartPosition, StartRadius);
-    public bool CanEnterVehicle(int actorId) => DriverId < 0
+    public bool CanEnterVehicle(int actorId) => DriverId < 0 && Jobs?.CanDrive(actorId) != false
         && PlayerIsNear(actorId, vehicle.Position, definition.VehicleEnterRadius);
     public IReadOnlyList<int> EnemyIds => _enemyIds;
     public int RemainingEnemies => _enemies.Count(e => e.Actor.IsAlive && e.Actor.Team == 2);
@@ -143,7 +144,7 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
         switch (Phase)
         {
             case LockdownPhase.FreeRoam:
-                TickPolice(dt);
+                if (Jobs?.IsCombat != true) TickPolice(dt);
                 break;
             case LockdownPhase.FirstWave when RemainingEnemies == 0:
                 Phase = LockdownPhase.Reinforcements;
@@ -169,7 +170,8 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
         {
             if (!enemy.Actor.IsAlive) continue;
             var target = enemy.Actor.Team == 3 ? _players.GetValueOrDefault(_policeTargetId) :
-                _players.Values.Where(a => a.IsAlive).MinBy(a => (a.Position - enemy.Actor.Position).LengthSquared);
+                _players.Values.Where(a => a.IsAlive && (Jobs?.IsCombat != true || Jobs.IsParticipant(a.Id)))
+                    .MinBy(a => (a.Position - enemy.Actor.Position).LengthSquared);
             if (target is { IsAlive: true }) TickEnemy(enemy, target, dt);
         }
         if (_players.Values.All(a => !a.IsAlive)) Phase = LockdownPhase.Failed;
@@ -177,6 +179,7 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
 
     public void Reset()
     {
+        Jobs?.Cancel();
         foreach (var enemy in _enemies) RemoveEnemy(enemy.Actor.Id);
         _enemyIds.Clear();
         _enemies.Clear();
@@ -248,9 +251,16 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
         }
         else if (_interactHeld.Add(actorId))
         {
-            if (DriverId == actorId) TryExitVehicle(actor);
-            else if (CanEnterVehicle(actorId)) DriverId = actorId;
-            else if (CanStart(actorId)) StartEncounter();
+            if (DriverId == actorId)
+            {
+                if (Jobs?.TryStart(actor) != true) TryExitVehicle(actor);
+            }
+            else if (Jobs?.TryRecover(actor) != true)
+            {
+                if (CanEnterVehicle(actorId)) DriverId = actorId;
+                else if (CanStart(actorId)) StartEncounter();
+                else Jobs?.TryStart(actor);
+            }
         }
 
         if (DriverId == actorId)
@@ -304,7 +314,8 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
 
     private void OnShot(ShotFired shot)
     {
-        if (Phase == LockdownPhase.FreeRoam && _players.ContainsKey(shot.ShooterId))
+        if (Phase == LockdownPhase.FreeRoam && _players.ContainsKey(shot.ShooterId)
+            && (Jobs?.IsCombat != true || !Jobs.IsParticipant(shot.ShooterId)))
             heat.Report(shot.ShooterId, "shots_fired");
     }
 
@@ -378,7 +389,26 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
             SpawnEnemy(HarborLockdownDef.Point(point), team: 2, definition.EnemyStartDelay + (_enemies.Count % 3) * 0.55);
     }
 
-    private void SpawnEnemy(Vec3d point, int team, double delay)
+    internal void PrepareJobCombat()
+    {
+        foreach (var id in _players.Keys.Where(id => Jobs?.IsParticipant(id) == true)) heat.Clear(id);
+        ClearPolice();
+    }
+
+    internal int[] SpawnJobEnemies(double[][] points) => points.Select((point, index) =>
+        SpawnEnemy(HarborLockdownDef.Point(point), 2, definition.EnemyStartDelay + index * 0.45)).ToArray();
+
+    internal void RemoveJobEnemies(IReadOnlyCollection<int> ids)
+    {
+        foreach (var id in ids)
+        {
+            if (!_enemyIds.Remove(id)) continue;
+            _enemies.RemoveAll(enemy => enemy.Actor.Id == id);
+            RemoveEnemy(id);
+        }
+    }
+
+    private int SpawnEnemy(Vec3d point, int team, double delay)
     {
         var actor = _world.Actors.Spawn(ActorKind.Npc, point);
         actor.Team = team;
@@ -390,6 +420,7 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
         loadout.Reserve[loadout.Slots[slot].Def.Class] = 60;
         _enemies.Add(new Enemy(actor, (byte)slot, delay));
         _enemyIds.Add(actor.Id);
+        return actor.Id;
     }
 
     private void TickEnemy(Enemy enemy, Actor player, double dt)

@@ -214,7 +214,7 @@ Godot: 이벤트 받아 피격 애니메이션·이펙트·HUD
 │  ├─ scripts/               ← C# (Bridge, Adapters, Streaming, Views, Player, Vehicles, UI)
 │  ├─ scenes/
 │  └─ assets/                ← 바이너리 에셋 (Git LFS): characters/ weapons/ buildings/
-├─ server/                   ← Linux 전용 서버 진입점
+├─ server/                   ← 엔진 없는 로컬 테스트 호스트
 ├─ data/                     ← JSON 게임 데이터 + schema/
 ├─ docs/
 │  ├─ adr/
@@ -237,7 +237,7 @@ Godot: 이벤트 받아 피격 애니메이션·이펙트·HUD
 | M4 | 살아있는 거리 + 수배 | 보행자·교통 에이전트, District 1개, Heat 3단계, 경찰 추격 |
 | M5 | 미션 + 세이브 | JSON 미션 3개, 세이브/로드 |
 
-Harbor Front 플레이테스트에서는 360 × 290m 시가지에서 보행, 운전, 항만 봉쇄와 경찰 대응을 실행한다. `HarborAuthority`가 로컬 플레이와 전용 서버에서 같은 이동·전투·수배·차량 규칙을 30Hz로 구동한다. `data/world/harbor_front.json`은 `StaticWorld`의 공용 배치다. Godot은 입력과 예측 결과를 연결하거나 TCP로 Linux 전용 서버에 접속한다. `GameSession`의 ENet 세션과 도시 의뢰는 시작 화면의 City operations에서 연다. [ADR 0007](docs/adr/0007-dedicated-harbor-playtest.md)
+Harbor Front 플레이테스트는 360 × 290m 시가지에서 1인 플레이를 제공한다. `HarborAuthority`가 게임 내부에서 30Hz로 전투·수배·운전·의뢰와 보행자·교통을 판정한다. `data/world/harbor_front.json`은 공용 충돌 배치이고, `data/world/harbor_population.json`과 `game/data/missions/harbor_jobs.json`은 거리 활동과 의뢰를 정의한다. City operations도 게임 안의 로컬 권한으로 실행한다.
 
 멀티플레이·경제 트랙 (기획: `docs/CONTENT_DESIGN.md` §10) — 코어+테스트만으로 완결, Godot 연결은 G1:
 

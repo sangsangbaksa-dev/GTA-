@@ -87,7 +87,7 @@ public sealed class ClientSession(ITransport transport, string playerName,
                 OnSnapshot(Messages.ReadSnapshot(ref r));
                 break;
             case MsgType.GameEvent:
-                Events.Enqueue(Messages.ReadTagged(ref r));
+                Events.Enqueue(Messages.ReadGameEvent(ref r));
                 break;
         }
     }

@@ -54,9 +54,7 @@ export_game "Windows x86_64" ProjectHarbor.exe windows coreclr.dll
 
 linux_archive=project-harbor-linux-x86_64.tar.gz
 windows_archive=project-harbor-windows-x86_64.zip
-server_archive=project-harbor-server-linux-x86_64.tar.gz
 tar -czf "$staging/$linux_archive" -C "$staging/linuxbsd" 'Project Harbor'
 (cd -- "$staging/windows" && zip -qr "$staging/$windows_archive" 'Project Harbor')
-"$repo/tools/package-server.sh" "$staging"
-(cd -- "$staging" && sha256sum "$linux_archive" "$windows_archive" "$server_archive" > SHA256SUMS)
-mv -- "$staging/$linux_archive" "$staging/$windows_archive" "$staging/$server_archive" "$staging/SHA256SUMS" "$output/"
+(cd -- "$staging" && sha256sum "$linux_archive" "$windows_archive" > SHA256SUMS)
+mv -- "$staging/$linux_archive" "$staging/$windows_archive" "$staging/SHA256SUMS" "$output/"

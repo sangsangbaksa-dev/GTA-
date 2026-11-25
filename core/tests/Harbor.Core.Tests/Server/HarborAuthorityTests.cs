@@ -6,12 +6,143 @@ using Harbor.Core.Ports;
 using Harbor.Core.Server;
 using Harbor.Core.Sim;
 using Harbor.Core.Vehicles;
+using Harbor.Core.World;
 using Xunit;
 
 namespace Harbor.Core.Tests.Server;
 
 public sealed class HarborAuthorityTests
 {
+    [Fact]
+    public void SharedJobAndStreetPopulationFitTheBoundedServerEvent()
+    {
+        var game = new Harness(includeAmbient: true);
+        var player = game.Join("Rook");
+        var job = game.Catalog.Jobs.Single(j => j.Id == "stackyard_sweep");
+        player.Actor.Position = job.StartPosition;
+        game.PressInteract(player);
+
+        Assert.NotEmpty(player.State.Ambient.Pedestrians);
+        Assert.Equal(job.Id, player.State.Jobs.Active?.Id);
+        Assert.InRange(HarborProtocol.Encode(player.State).Length, 1, Messages.MaxGameEventPayload);
+    }
+
+    [Fact]
+    public void DistrictCombatJobRunsSharedWavesAndPaysOncePerParticipantOnReplay()
+    {
+        var game = new Harness();
+        var owner = game.Join("Rook");
+        var partner = game.Join("Partner");
+        var outsider = game.Join("Observer");
+        var job = game.Catalog.Jobs.Single(j => j.Id == "stackyard_sweep");
+        owner.Actor.Position = job.StartPosition;
+        partner.Actor.Position = job.StartPosition + new Vec3d(4, 0, 0);
+        game.PressInteract(owner);
+
+        Assert.Equal(2, owner.State.Jobs.Active!.RemainingEnemies);
+        Assert.True(partner.State.Jobs.Active!.IsParticipant);
+        Assert.False(outsider.State.Jobs.Active!.IsParticipant);
+        Assert.Equal(LockdownPhase.FreeRoam, owner.State.Lockdown.Phase);
+        game.ClearWave(owner.Actor);
+        Assert.Equal(2, partner.State.Jobs.Active!.Stage);
+        Assert.Equal(1, partner.State.Jobs.Active.RemainingEnemies);
+        game.ClearWave(owner.Actor);
+        Assert.Equal(3, owner.State.Jobs.Active!.Stage);
+        partner.Actor.Position = job.Stages[^1].Position;
+        game.Ticks(5);
+
+        Assert.Equal(HarborJobStatus.Succeeded, owner.State.Jobs.LastResult!.Status);
+        Assert.Equal(job.Reward, owner.State.Jobs.Credits);
+        Assert.Equal(job.Reward, partner.State.Jobs.Credits);
+        Assert.Equal(0, outsider.State.Jobs.Credits);
+        Assert.Null(outsider.State.Jobs.LastResult);
+        Assert.Empty(game.Authority.Lockdown.EnemyIds);
+        var firstRun = owner.State.Jobs.LastResult.RunId;
+        game.Ticks(45);
+        Assert.Equal(job.Reward, owner.State.Jobs.Credits);
+
+        owner.Actor.Position = job.StartPosition;
+        game.PressInteract(owner);
+        Assert.True(owner.State.Jobs.Active!.RunId > firstRun);
+        Assert.Null(owner.State.Jobs.LastResult);
+        Assert.Equal(job.Reward, owner.State.Jobs.Credits);
+    }
+
+    [Fact]
+    public void RecoveryRequiresAnExplicitParticipantInteraction()
+    {
+        var game = new Harness();
+        var owner = game.Join("Rook");
+        var outsider = game.Join("Observer");
+        var job = game.Catalog.Jobs.Single(j => j.Id == "quay_recovery");
+        owner.Actor.Position = job.StartPosition;
+        game.PressInteract(owner);
+        game.ClearWave(owner.Actor);
+
+        outsider.Actor.Position = job.Stages[^1].Position;
+        game.PressInteract(outsider);
+        Assert.Equal(2, outsider.State.Jobs.Active!.Stage);
+        Assert.False(outsider.State.Jobs.Active.IsParticipant);
+        owner.Actor.Position = job.Stages[^1].Position;
+        game.Ticks(5);
+        Assert.Equal(2, owner.State.Jobs.Active!.Stage);
+        game.PressInteract(owner);
+        Assert.Null(owner.State.Jobs.Active);
+        Assert.Equal(job.Reward, owner.State.Jobs.Credits);
+    }
+
+    [Fact]
+    public void DrivingJobUsesOrderedVehicleCheckpointsAndRequiresAStopForDelivery()
+    {
+        var game = new Harness();
+        var driver = game.Join("Driver");
+        var passenger = game.Join("Observer");
+        var job = game.Catalog.Jobs.Single(j => j.Id == "night_dispatch");
+        driver.Actor.Position = job.StartPosition;
+        game.PressInteract(driver);
+        Assert.Null(driver.State.Jobs.Active);
+
+        game.EnterVehicle(driver);
+        game.MoveVehicle(job.StartPosition);
+        game.PressInteract(driver);
+        Assert.True(driver.State.IsDriving);
+        Assert.Equal(1, driver.State.Jobs.Active!.Stage);
+        Assert.False(passenger.State.Jobs.Active!.IsParticipant);
+
+        game.MoveVehicle(job.Stages[^1].Position);
+        Assert.Equal(1, driver.State.Jobs.Active!.Stage);
+        foreach (var stage in job.Stages.SkipLast(1)) game.MoveVehicle(stage.Position);
+        Assert.Equal(job.Stages.Length, driver.State.Jobs.Active!.Stage);
+
+        game.MoveVehicle(job.Stages[^1].Position, speed: 8);
+        Assert.NotNull(driver.State.Jobs.Active);
+        game.MoveVehicle(job.Stages[^1].Position);
+        Assert.Null(driver.State.Jobs.Active);
+        Assert.Equal(HarborJobStatus.Succeeded, driver.State.Jobs.LastResult!.Status);
+        Assert.Equal(job.Reward, driver.State.Jobs.Credits);
+        Assert.Equal(0, passenger.State.Jobs.Credits);
+    }
+
+    [Fact]
+    public void DriveJobTimeoutReturnsToFreeRoamWithoutPayingAndCanBeRetried()
+    {
+        var game = new Harness();
+        var driver = game.Join("Driver");
+        var job = game.Catalog.Jobs.Single(j => j.Id == "basin_circuit");
+        game.EnterVehicle(driver);
+        game.MoveVehicle(job.StartPosition);
+        game.PressInteract(driver);
+        var run = driver.State.Jobs.Active!.RunId;
+        game.Ticks((int)(job.TimeLimit * driver.Client.TickRate) + 3);
+        Assert.Null(driver.State.Jobs.Active);
+        Assert.Equal(HarborJobStatus.Failed, driver.State.Jobs.LastResult!.Status);
+        Assert.Equal(0, driver.State.Jobs.LastResult.Reward);
+        Assert.Equal(0, driver.State.Jobs.Credits);
+        Assert.Equal(LockdownPhase.FreeRoam, driver.State.Lockdown.Phase);
+        game.PressInteract(driver);
+        Assert.True(driver.State.Jobs.Active!.RunId > run);
+    }
+
     [Fact]
     public void TwoPilotsShareOneWorldWithIndependentWeaponsAndHeat()
     {
@@ -20,8 +151,8 @@ public sealed class HarborAuthorityTests
         var second = game.Join("Pilot");
         Assert.Equal(LockdownPhase.FreeRoam, first.State.Lockdown.Phase);
         Assert.Empty(first.State.Enemies);
-        Assert.Equal(second.Client.LocalActorId, Assert.Single(first.State.RemotePlayers).Id);
-        Assert.Equal(first.Client.LocalActorId, Assert.Single(second.State.RemotePlayers).Id);
+        Assert.True(first.Client.TryGetRemote(second.Client.LocalActorId, out _));
+        Assert.True(second.Client.TryGetRemote(first.Client.LocalActorId, out _));
 
         var magazine = first.State.PlayerCombat.Magazine;
         first.Buttons = InputButtons.Fire;
@@ -197,6 +328,18 @@ public sealed class HarborAuthorityTests
         Assert.Equal(2, first.State.Lockdown.RemainingEnemies);
     }
 
+    [Fact]
+    public void DefaultAuthorityAcceptsOnlyOnePlayer()
+    {
+        var game = new Harness(singlePlayer: true);
+        var pilot = game.Join("Rook");
+        var second = game.TryJoin("Second player");
+        Assert.True(pilot.Client.IsJoined);
+        Assert.False(second.Client.IsJoined);
+        Assert.Equal(1, game.Authority.Session.Config.MaxPlayers);
+        Assert.Single(game.Authority.World.Actors.All, actor => actor.Kind == ActorKind.Player);
+    }
+
     private sealed class Harness
     {
         private const double Step = 1.0 / 30.0;
@@ -204,26 +347,58 @@ public sealed class HarborAuthorityTests
         private readonly InMemoryNetwork.Endpoint _server;
         private readonly List<Pilot> _pilots = new();
         public HarborAuthority Authority { get; }
+        public HarborJobCatalog Catalog { get; }
 
-        public Harness()
+        public Harness(bool includeAmbient = false, bool singlePlayer = false)
         {
             var files = new DiskFileSystem(Repo.Root);
             var data = GameData.LoadCombat(files);
             var encounter = HarborLockdownDef.Load(files, "game/data/missions/harbor_lockdown.json", data.Weapons);
+            Catalog = HarborJobCatalog.Load(files, "game/data/missions/harbor_jobs.json");
             var layout = HarborLayout.Load(files, "data/world/harbor_front.json");
             var car = ArcadeVehicleTuning.Load(files, "data/vehicles/calloway_compact.json");
             _server = _network.CreateServer();
-            Authority = new HarborAuthority(data, encounter, layout, car, _server, new NullLog());
+            var ambient = includeAmbient ? StreetPopulationDef.Load(files, "data/world/harbor_population.json") : null;
+            Authority = singlePlayer
+                ? new HarborAuthority(data, encounter, layout, car, _server, new NullLog(), jobs: Catalog, ambient: ambient)
+                : new HarborAuthority(data, encounter, layout, car, _server, new NullLog(), maxPlayers: 4, jobs: Catalog, ambient: ambient);
+        }
+
+        public void PressInteract(Pilot pilot)
+        {
+            pilot.Buttons = InputButtons.Interact;
+            Ticks(3);
+            pilot.Buttons = InputButtons.None;
+            Ticks(3);
+        }
+
+        public void EnterVehicle(Pilot pilot)
+        {
+            pilot.Actor.Position = Authority.Vehicle.Position + new Vec3d(1.7, 0, 0);
+            PressInteract(pilot);
+            Assert.True(pilot.State.IsDriving);
+        }
+
+        public void MoveVehicle(Vec3d position, double speed = 0)
+        {
+            Authority.Vehicle.Restore(position, 0, speed, 0, 0);
+            Ticks(3);
         }
 
         public Pilot Join(string name)
+        {
+            var pilot = TryJoin(name);
+            Assert.True(pilot.Client.IsJoined);
+            return pilot;
+        }
+
+        public Pilot TryJoin(string name)
         {
             var endpoint = _network.Connect(_server);
             var client = new ClientSession(endpoint, name, staticWorld: Authority.Level);
             var pilot = new Pilot(endpoint, client, Authority);
             _pilots.Add(pilot);
             Ticks(6);
-            Assert.True(client.IsJoined);
             return pilot;
         }
 

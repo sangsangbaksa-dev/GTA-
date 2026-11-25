@@ -7,29 +7,23 @@ using Harbor.Core.Net;
 using Harbor.Core.Ports;
 using Harbor.Core.Server;
 using Harbor.Core.Vehicles;
+using Harbor.Core.World;
 
-const string usage = "Usage: Harbor.Server [--listen IP_ADDRESS] [--port PORT]";
-const int maxPlayers = 4;
+const string usage = "Usage: Harbor.Server [--port PORT]";
+const int maxPlayers = 1;
 if (args.Length == 1 && args[0] is "--help" or "-h")
 {
     Console.WriteLine(usage);
-    Console.WriteLine("Default address: 127.0.0.1, default port: 7788.");
+    Console.WriteLine("Local one-player test host, default port: 7788.");
     return 0;
 }
 
-var address = IPAddress.Loopback;
 var port = 7788;
 for (var i = 0; i < args.Length; i += 2)
 {
     if (i + 1 < args.Length)
     {
         var value = args[i + 1];
-        if (args[i] == "--listen" && IPAddress.TryParse(value, out var parsedAddress))
-        {
-            address = parsedAddress;
-            continue;
-        }
-
         if (args[i] == "--port" && int.TryParse(value, out var parsedPort) && parsedPort is >= 0 and <= 65535)
         {
             port = parsedPort;
@@ -64,13 +58,15 @@ try
     var encounter = HarborLockdownDef.Load(files, "game/data/missions/harbor_lockdown.json", combat.Weapons);
     var layout = HarborLayout.Load(files, "data/world/harbor_front.json");
     var vehicle = ArcadeVehicleTuning.Load(files, "data/vehicles/calloway_compact.json");
+    var jobs = HarborJobCatalog.Load(files, "game/data/missions/harbor_jobs.json");
+    var ambient = StreetPopulationDef.Load(files, "data/world/harbor_population.json");
 
-    using var transport = TcpTransport.Listen(address, port, maxPlayers);
-    var authority = new HarborAuthority(combat, encounter, layout, vehicle, transport, log, maxPlayers);
+    using var transport = TcpTransport.Listen(IPAddress.Loopback, port, maxPlayers);
+    var authority = new HarborAuthority(combat, encounter, layout, vehicle, transport, log, maxPlayers, jobs: jobs, ambient: ambient);
     authority.World.Events.Subscribe<PlayerJoined>(joined => log.Info($"Player {joined.ActorId} joined."));
     authority.World.Events.Subscribe<PlayerLeft>(left => log.Info($"Player {left.ActorId} left."));
 
-    log.Info($"Project Harbor listening on {transport.LocalEndPoint} (TCP, {authority.Session.Config.MaxPlayers} players).");
+    log.Info($"Project Harbor listening on {transport.LocalEndPoint} (TCP, one local player).");
     using var timer = new PeriodicTimer(TimeSpan.FromSeconds(authority.World.Loop.StepSeconds / 2));
     var previous = Stopwatch.GetTimestamp();
     while (await timer.WaitForNextTickAsync(stop.Token))

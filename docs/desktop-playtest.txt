@@ -8,10 +8,8 @@ Linux (x86_64)
   cd 'Project Harbor'
   ./ProjectHarbor.x86_64
 
-전용 서버 접속
-  시작 화면에서 Join a server를 선택하고 호스트 주소와 포트(기본 7788)를 입력합니다.
-  실행 시 -- --connect 192.168.1.10:7788을 추가하고
-  IP 주소를 서버의 실제 주소로 바꿉니다.
+시작 화면에서 Start game을 선택합니다. J 키로 항만 의뢰 목록을 열고,
+Harbor characters에서 네 인물의 전신과 얼굴 모델을 살펴볼 수 있습니다.
 
 패키지에 .NET 런타임이 포함되어 있습니다. 게임 실행 파일, .pck 및
 data_Harbor_* 폴더를 같은 위치에 둡니다. 기본 렌더러는 Vulkan을

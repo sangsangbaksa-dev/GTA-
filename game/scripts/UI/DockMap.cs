@@ -15,6 +15,7 @@ public partial class DockMap : Control
     public CoreHost Host { get; init; } = null!;
     public ThirdPersonController Player { get; init; } = null!;
     public bool EntireDistrict { get; init; }
+    public string? TrackedJob { get; set; }
 
     private static readonly Rect2 FallbackDistrict = new(-215, -195, 360, 290);
     private static readonly Color Water = new("#143f51");
@@ -60,11 +61,7 @@ public partial class DockMap : Control
                 DrawRect(Region(area), Structure);
         }
 
-        var run = Host.Lockdown;
-        if (run.Phase == LockdownPhase.FreeRoam)
-            Marker(Point(MapPoint(run.StartPosition)), HarborHud.Amber, frame);
-        else if (run.Phase == LockdownPhase.Extraction)
-            Marker(Point(MapPoint(run.ExtractionPosition)), HarborHud.Seafoam, frame);
+        DrawObjectives(Point, frame);
 
         var car = Point(MapPoint(Host.Vehicle.Position));
         if (!Host.IsDriving && frame.Grow(-4).HasPoint(car))
@@ -95,6 +92,31 @@ public partial class DockMap : Control
         DrawColoredPolygon(new[] { anchor + Vector2.Up * 4.5f, anchor + Vector2.Right * 4.5f,
             anchor + Vector2.Down * 4.5f, anchor + Vector2.Left * 4.5f }, color);
         if (inside) DrawCircle(anchor, 7, color, false, 1, true);
+    }
+
+    private void DrawObjectives(Func<Vector2, Vector2> point, Rect2 frame)
+    {
+        if (Host.Jobs.Active is { } job)
+        {
+            Marker(point(MapPoint(job.Waypoint)), HarborHud.Seafoam, frame);
+            return;
+        }
+
+        var run = Host.Lockdown;
+        if (run.Phase == LockdownPhase.Extraction)
+        {
+            Marker(point(MapPoint(run.ExtractionPosition)), HarborHud.Seafoam, frame);
+            return;
+        }
+        if (run.Phase != LockdownPhase.FreeRoam) return;
+
+        if (TrackedJob == null) Marker(point(MapPoint(run.StartPosition)), HarborHud.Amber, frame);
+        foreach (var offer in Host.Jobs.Available)
+        {
+            var here = point(MapPoint(offer.StartPosition));
+            if (offer.Id == TrackedJob) Marker(here, HarborHud.Amber, frame);
+            else if (frame.Grow(-4).HasPoint(here)) DrawCircle(here, 3, HarborHud.Amber, false, 1.5f, true);
+        }
     }
 
     private static Vector2 MapPoint(Vec3d from) => new((float)from.X, (float)from.Z);

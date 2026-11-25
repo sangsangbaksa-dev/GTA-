@@ -3,7 +3,7 @@ using Harbor.Game.Bridge;
 
 namespace Harbor.Game.UI;
 
-/// <summary>Title screen: name + offline / host (listen server, up to 16) / join by address.</summary>
+/// <summary>Single-player entry point for City Operations.</summary>
 public partial class MainMenu(GameSession session) : CanvasLayer
 {
     public override void _Ready()
@@ -28,8 +28,6 @@ public partial class MainMenu(GameSession session) : CanvasLayer
 
         var name = new LineEdit { Text = "rook", PlaceholderText = "이름" };
         v.AddChild(name);
-        var addr = new LineEdit { Text = "127.0.0.1", PlaceholderText = "서버 주소" };
-        var port = new SpinBox { MinValue = 1024, MaxValue = 65535, Value = GameSession.DefaultPort, Prefix = "포트" };
 
         void Add(string text, System.Action a)
         {
@@ -37,16 +35,12 @@ public partial class MainMenu(GameSession session) : CanvasLayer
             b.Pressed += a;
             v.AddChild(b);
         }
-        Add("싱글 플레이", () => session.Start(GameSession.Mode.Offline, name.Text, "", (int)port.Value));
-        Add("서버 열기 (최대 16명)", () => session.Start(GameSession.Mode.Host, name.Text, "", (int)port.Value));
-        v.AddChild(addr);
-        v.AddChild(port);
-        Add("접속", () => session.Start(GameSession.Mode.Join, name.Text, addr.Text, (int)port.Value));
+        Add("게임 시작", () => session.Start(name.Text));
         Add("항만 플레이테스트", () => GetTree().ChangeSceneToFile(HarborLaunch.PlaytestScene));
         Add("종료", () => GetTree().Quit());
         v.AddChild(new Label
         {
-            Text = "더러운 돈은 사망 시 일부 떨어집니다. 세탁해서 은행에 넣으세요.\n전용 서버: godot --headless -- --server --port 27960",
+            Text = "더러운 돈은 사망 시 일부 떨어집니다. 세탁해서 은행에 넣으세요.",
             HorizontalAlignment = HorizontalAlignment.Center, AutowrapMode = TextServer.AutowrapMode.WordSmart, Modulate = new Color(1, 1, 1, 0.55f),
         });
     }

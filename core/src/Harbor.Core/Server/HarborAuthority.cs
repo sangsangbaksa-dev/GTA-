@@ -8,6 +8,7 @@ using Harbor.Core.Net;
 using Harbor.Core.Ports;
 using Harbor.Core.Sim;
 using Harbor.Core.Vehicles;
+using Harbor.Core.World;
 
 namespace Harbor.Core.Server;
 
@@ -36,10 +37,11 @@ public readonly record struct HarborEnemyState(int Id, int Team, Vec3d Position,
 public sealed record HarborState
 {
     public HarborLockdownState Lockdown { get; init; } = new();
+    public HarborJobsState Jobs { get; init; } = new();
+    public StreetPopulationState Ambient { get; init; } = new();
     public HarborPlayerCombat PlayerCombat { get; init; } = new();
     public HarborVehicleState Vehicle { get; init; }
     public HarborEnemyState[] Enemies { get; init; } = [];
-    public HarborEnemyState[] RemotePlayers { get; init; } = [];
     public int DriverId { get; init; } = -1;
     public int WantedLevel { get; init; }
     public bool IsDriving { get; init; }
@@ -67,6 +69,8 @@ public sealed class HarborAuthority
     public ServerSession Session { get; }
     public CombatSystem Combat { get; }
     public HarborLockdown Lockdown { get; }
+    public HarborJobs Jobs { get; }
+    public StreetPopulation? Ambient { get; }
     public StaticWorld Level { get; }
     public ArcadeVehicle Vehicle { get; }
     public double? BestTime { get; private set; }
@@ -76,7 +80,8 @@ public sealed class HarborAuthority
     private int _runGeneration = 1;
 
     public HarborAuthority(GameData combatData, HarborLockdownDef encounter, HarborLayout layout,
-        ArcadeVehicleTuning vehicleTuning, ITransport transport, ILog log, int maxPlayers = 4)
+        ArcadeVehicleTuning vehicleTuning, ITransport transport, ILog log, int maxPlayers = 1,
+        HarborJobCatalog? jobs = null, StreetPopulationDef? ambient = null)
     {
         Level = layout.CreateStaticWorld();
         Vehicle = new ArcadeVehicle(HarborLockdownDef.Point(encounter.Vehicle), 0, vehicleTuning);
@@ -91,6 +96,9 @@ public sealed class HarborAuthority
         });
         var heat = World.AddSystem(new HeatSystem(encounter.Heat));
         Lockdown = World.AddSystem(new HarborLockdown(encounter, Combat, Session, Level, heat, Vehicle));
+        Jobs = World.AddSystem(new HarborJobs(jobs ?? new HarborJobCatalog(), Lockdown, Vehicle));
+        Lockdown.Jobs = Jobs;
+        if (ambient != null) Ambient = World.AddSystem(new StreetPopulation(ambient));
         Session.ShouldApplyMovement = actor => Lockdown.DriverId != actor.Id
             && Lockdown.Phase is not (LockdownPhase.Succeeded or LockdownPhase.Failed);
         var events = World.Events;
@@ -133,10 +141,10 @@ public sealed class HarborAuthority
                 enemies.Add(ActorState(a));
         return new HarborState
         {
-            Lockdown = mission, PlayerCombat = combat, WantedLevel = Lockdown.WantedLevel(actorId),
+            Lockdown = mission, Jobs = Jobs.GetState(actorId), Ambient = Ambient?.GetState(player?.Position) ?? new StreetPopulationState(),
+            PlayerCombat = combat, WantedLevel = Lockdown.WantedLevel(actorId),
             Vehicle = new HarborVehicleState(Vehicle.Position, Vehicle.Yaw, Vehicle.Speed, Vehicle.Steering, Vehicle.Distance),
             Enemies = enemies.ToArray(),
-            RemotePlayers = World.Actors.All.Where(a => a.Kind == ActorKind.Player && a.Id != actorId).Select(ActorState).ToArray(),
             DriverId = Lockdown.DriverId, IsDriving = Lockdown.DriverId == actorId,
             CanEnterVehicle = Lockdown.CanEnterVehicle(actorId), RunGeneration = _runGeneration, BestTime = BestTime,
         };
