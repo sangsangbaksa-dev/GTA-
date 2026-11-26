@@ -44,6 +44,7 @@ public sealed record HarborState
     public HarborEnemyState[] Enemies { get; init; } = [];
     public int DriverId { get; init; } = -1;
     public int WantedLevel { get; init; }
+    public CrimeStatus Crime { get; init; } = new();
     public bool IsDriving { get; init; }
     public bool CanEnterVehicle { get; init; }
     public int RunGeneration { get; init; }
@@ -99,6 +100,7 @@ public sealed class HarborAuthority
         Jobs = World.AddSystem(new HarborJobs(jobs ?? new HarborJobCatalog(), Lockdown, Vehicle));
         Lockdown.Jobs = Jobs;
         if (ambient != null) Ambient = World.AddSystem(new StreetPopulation(ambient));
+        Lockdown.Ambient = Ambient;
         Session.ShouldApplyMovement = actor => Lockdown.DriverId != actor.Id
             && Lockdown.Phase is not (LockdownPhase.Succeeded or LockdownPhase.Failed);
         var events = World.Events;
@@ -142,7 +144,7 @@ public sealed class HarborAuthority
         return new HarborState
         {
             Lockdown = mission, Jobs = Jobs.GetState(actorId), Ambient = Ambient?.GetState(player?.Position) ?? new StreetPopulationState(),
-            PlayerCombat = combat, WantedLevel = Lockdown.WantedLevel(actorId),
+            PlayerCombat = combat, WantedLevel = Lockdown.WantedLevel(actorId), Crime = Lockdown.CrimeOf(actorId),
             Vehicle = new HarborVehicleState(Vehicle.Position, Vehicle.Yaw, Vehicle.Speed, Vehicle.Steering, Vehicle.Distance),
             Enemies = enemies.ToArray(),
             DriverId = Lockdown.DriverId, IsDriving = Lockdown.DriverId == actorId,

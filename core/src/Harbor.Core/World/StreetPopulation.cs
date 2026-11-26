@@ -89,6 +89,7 @@ public sealed class StreetPopulation(StreetPopulationDef definition) : ISimSyste
     private Traveler[] _pedestrians = [];
     private Traveler[] _traffic = [];
     private SimWorld _world = null!;
+    private readonly HashSet<int> _stolenTraffic = new();
 
     public void Initialize(SimWorld world)
     {
@@ -111,6 +112,7 @@ public sealed class StreetPopulation(StreetPopulationDef definition) : ISimSyste
 
         foreach (var car in _traffic)
         {
+            if (_stolenTraffic.Contains(car.Id)) continue;
             var wanted = CarTargetSpeed(car);
             var change = wanted > car.Speed ? 2.6 * dt : -6.0 * dt;
             car.Speed = wanted > car.Speed ? M.Min(wanted, car.Speed + change) : M.Max(wanted, car.Speed + change);
@@ -128,9 +130,64 @@ public sealed class StreetPopulation(StreetPopulationDef definition) : ISimSyste
             Pedestrians = _pedestrians.Where(Visible).Select(person =>
                 new StreetPedestrianState(person.Id, person.Appearance, Round(person.Position), M.Round(person.Yaw, 3),
                     M.Round(person.Speed, 2), person.Panic > 0)).ToArray(),
-            Traffic = _traffic.Where(Visible).Select(car =>
+            Traffic = _traffic.Where(car => !_stolenTraffic.Contains(car.Id) && Visible(car)).Select(car =>
                 new StreetTrafficState(car.Id, car.Appearance, Round(car.Position), M.Round(car.Yaw, 3), M.Round(car.Speed, 2))).ToArray()
         };
+    }
+
+    // Ambient actors are route-driven; interactions use their authoritative positions.
+    public bool TryStreetCrime(Actor player, bool assault, Func<Vec3d, bool> reachable,
+        out int cash, out bool reported, out bool counterattack)
+    {
+        cash = 0; reported = false; counterattack = false;
+        var victim = _pedestrians.Where(p => (p.Position - player.Position).LengthSquared <= 2.2 * 2.2
+            && reachable(p.Position)).MinBy(p => (p.Position - player.Position).LengthSquared);
+        if (victim == null || (!assault && victim.WalletTaken)) return false;
+        if (!assault)
+        {
+            victim.WalletTaken = true;
+            // Seeded game outcome, independent of frame rate.
+            reported = victim.Id % 3 == 0 || victim.Panic > 0;
+            if (!reported) { cash = 15 + victim.Id % 6 * 10; return true; }
+        }
+        else reported = true;
+        counterattack = victim.Id % 4 == 0;
+        React(victim, player.Position);
+        foreach (var witness in _pedestrians)
+        {
+            if (witness == victim || (witness.Position - victim.Position).LengthSquared > 12 * 12
+                || !reachable(witness.Position)) continue;
+            if (witness.Id % 3 == 1) witness.Pause = System.Math.Max(witness.Pause, 3);
+            else React(witness, player.Position);
+        }
+        return true;
+    }
+
+    private void React(Traveler person, Vec3d threat)
+    {
+        if ((person.Position - threat).WithY(0).Dot(person.Forward(1)) < 0) person.Direction *= -1;
+        person.Panic = definition.FleeSeconds;
+        person.Pause = 0;
+    }
+
+    public bool TryTakeTraffic(Actor player, Func<Vec3d, bool> reachable, out StreetTrafficState state)
+    {
+        var car = _traffic.Where(c => !_stolenTraffic.Contains(c.Id) && c.Speed <= 2.5
+            && (c.Position - player.Position).LengthSquared <= 3.2 * 3.2 && reachable(c.Position))
+            .MinBy(c => (c.Position - player.Position).LengthSquared);
+        state = default;
+        if (car == null) return false;
+        _stolenTraffic.Add(car.Id);
+        state = new StreetTrafficState(car.Id, car.Appearance, car.Position, car.Yaw, car.Speed);
+        foreach (var person in _pedestrians)
+            if ((person.Position - car.Position).LengthSquared <= 12 * 12) React(person, player.Position);
+        return true;
+    }
+
+    public void ResetCrimes()
+    {
+        _stolenTraffic.Clear();
+        foreach (var person in _pedestrians) { person.WalletTaken = false; person.Panic = 0; person.Pause = 0; }
     }
 
     private static Vec3d Round(Vec3d p) => new(M.Round(p.X, 2), M.Round(p.Y, 2), M.Round(p.Z, 2));
@@ -183,7 +240,7 @@ public sealed class StreetPopulation(StreetPopulationDef definition) : ISimSyste
 
         foreach (var ahead in _traffic)
         {
-            if (ahead == car || ahead.Path != car.Path) continue;
+            if (ahead == car || ahead.Path != car.Path || _stolenTraffic.Contains(ahead.Id)) continue;
             var gap = car.Path.Wrap(ahead.Distance - car.Distance);
             if (gap < 13)
                 wanted = M.Min(wanted, M.Max(0, (gap - 5.4) * 0.9));
@@ -201,6 +258,7 @@ public sealed class StreetPopulation(StreetPopulationDef definition) : ISimSyste
         public int Direction { get; set; } = direction;
         public double Speed { get; set; } = cruise;
         public double Panic { get; set; }
+        public bool WalletTaken { get; set; }
         public double Pause { get; set; }
         public Vec3d Position => Path.Sample(Distance);
         public double Yaw

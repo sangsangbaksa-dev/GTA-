@@ -144,6 +144,18 @@ public sealed class HarborAuthorityTests
     }
 
     [Fact]
+    public void FreeRoamHeatConfigurationIncludesFiveIncreasingPoliceTiers()
+    {
+        var files = new DiskFileSystem(Repo.Root);
+        var data = Repo.Data;
+        var definition = HarborLockdownDef.Load(files, "game/data/missions/harbor_lockdown.json", data.Weapons);
+        Assert.Equal(5, definition.Heat.MaxLevel);
+        Assert.Equal(1, definition.Heat.LevelFor(definition.Heat.CrimeHeat["assault"]));
+        Assert.Equal(2, definition.Heat.LevelFor(definition.Heat.CrimeHeat["vehicle_theft"]));
+        Assert.Equal(new[] { 0, 1, 2, 3, 4, 5 }, definition.Heat.Levels.Select(l => l.Units).ToArray());
+    }
+
+    [Fact]
     public void TwoPilotsShareOneWorldWithIndependentWeaponsAndHeat()
     {
         var game = new Harness();

@@ -14,6 +14,7 @@ public partial class ThirdPersonController : Node3D
     private const string Sprint = "walk_sprint";
     private const string Crouch = "walk_crouch";
     private const string Interact = "walk_interact";
+    private const string Pickpocket = "walk_pickpocket", Melee = "walk_melee", Carjack = "walk_carjack";
     private const string Aim = "walk_aim";
     private const string Fire = "walk_fire";
     private const string Reload = "walk_reload";
@@ -80,6 +81,9 @@ public partial class ThirdPersonController : Node3D
         RegisterAction(Sprint, KeyBinding(Key.Shift), ButtonBinding(JoyButton.LeftStick));
         RegisterAction(Crouch, KeyBinding(Key.C), ButtonBinding(JoyButton.B));
         RegisterAction(Interact, KeyBinding(Key.E), ButtonBinding(JoyButton.X));
+        RegisterAction(Pickpocket, KeyBinding(Key.F));
+        RegisterAction(Melee, KeyBinding(Key.V));
+        RegisterAction(Carjack, KeyBinding(Key.G));
         RegisterAction(Aim, MouseBinding(MouseButton.Right), AxisBinding(JoyAxis.TriggerLeft, 1));
         RegisterAction(Fire, MouseBinding(MouseButton.Left), AxisBinding(JoyAxis.TriggerRight, 1));
         RegisterAction(Reload, KeyBinding(Key.R), ButtonBinding(JoyButton.RightShoulder));
@@ -167,6 +171,9 @@ public partial class ThirdPersonController : Node3D
                 _manualOrbitLeft = 2f;
             }
             if (@event.IsActionPressed(Interact)) _host.QueueInputPulse(InputButtons.Interact);
+            if (@event.IsActionPressed(Pickpocket)) _host.QueueInputPulse(InputButtons.Pickpocket);
+            if (@event.IsActionPressed(Melee)) _host.QueueInputPulse(InputButtons.Melee);
+            if (@event.IsActionPressed(Carjack)) _host.QueueInputPulse(InputButtons.Carjack);
             if (@event.IsActionPressed(Fire) && !_host.IsDriving) _host.QueueInputPulse(InputButtons.Fire);
             if (@event.IsActionPressed(Reload)) _host.QueueInputPulse(InputButtons.Reload);
             if (@event.IsActionPressed(Primary)) _selectedSlot = 0;

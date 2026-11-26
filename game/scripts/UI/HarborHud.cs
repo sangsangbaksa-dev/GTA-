@@ -141,8 +141,9 @@ public partial class HarborHud : CanvasLayer
             eligible != null ? $"{input}   Start {eligible.Title}" : movingInCar ? $"{input}   Exit vehicle" :
             run.CanStart ? $"{input}   Start Harbor Lockdown" : "";
         _prompt.Visible = _prompt.Text.Length > 0;
-        _wanted.Text = _host.WantedLevel > 0 ? "WANTED    " + new string('★', _host.WantedLevel) : "";
-        _wanted.Visible = _host.WantedLevel > 0;
+        _wanted.Text = (_host.WantedLevel > 0 ? "WANTED    " + new string('★', _host.WantedLevel) + new string('☆', 5 - _host.WantedLevel) + "   /   " : "")
+            + $"CASH ${_host.Crime.Cash}  {_host.Crime.LastAction}";
+        _wanted.Visible = true;
         _reticle.Armed = !movingInCar;
         _reticle.Aiming = _player.IsAiming;
         _reticle.HasTarget = _player.AimHasTarget;
@@ -376,6 +377,7 @@ public partial class HarborHud : CanvasLayer
         ControlRow(column, "Sprint / handbrake", "Shift / Space", "L3 / A");
         ControlRow(column, "Crouch", "C", "B");
         ControlRow(column, "Interact / enter vehicle", "E", "X");
+        ControlRow(column, "Pickpocket / assault / carjack", "F / V / G", "-");
         ControlRow(column, "District map / city jobs", "M / J", "Game menu");
         ControlRow(column, "Menu", "Esc", "Menu");
         Space(column, 14);
