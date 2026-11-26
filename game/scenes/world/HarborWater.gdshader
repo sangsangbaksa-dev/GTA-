@@ -23,10 +23,12 @@ void fragment() {
     float smaller_wave = dot(bay_position, chop) - TIME * 0.78;
     float crest = dot(bay_position, vec2(-0.74, 2.03)) + sin(smaller_wave * 0.46) + TIME * 1.67;
     float micro = dot(bay_position, vec2(3.2, 4.7)) + sin(smooth_wave) - TIME * 2.15;
+    float footprint = length(fwidth(bay_position));
+    float ripple_detail = 1.0 - smoothstep(0.11, 0.40, footprint);
     vec2 slope = cos(smooth_wave) * wind * 0.089
         + cos(smaller_wave) * chop * 0.043
         + cos(crest) * vec2(-0.05, 0.06)
-        + cos(micro) * vec2(0.018, -0.014);
+        + cos(micro) * vec2(0.022, -0.017) * ripple_detail;
     NORMAL_MAP = normalize(vec3(slope, 1.0)) * 0.5 + 0.5;
 
     float depth = shoreline_distance(bay_position);
@@ -38,11 +40,11 @@ void fragment() {
     float shore_foam = (1.0 - smoothstep(0.05, 0.36, abs(depth - rolling_edge)))
         * smoothstep(0.20, 0.80, sin(crest * 0.71 + smaller_wave * 0.39));
     float whitecaps = smoothstep(0.95, 1.0, sin(crest))
-        * smoothstep(0.56, 0.90, sin(smaller_wave * 0.72)) * 0.17;
+        * smoothstep(0.56, 0.90, sin(smaller_wave * 0.72)) * 0.17 * ripple_detail;
     float grazing = pow(1.0 - max(dot(NORMAL, VIEW), 0.0), 4.0);
     seawater = mix(seawater, vec3(0.12, 0.235, 0.29), grazing * 0.67);
     float foam = clamp(shore_foam * 0.58 + whitecaps, 0.0, 1.0);
     ALBEDO = mix(seawater, vec3(0.39, 0.50, 0.45), foam);
-    ROUGHNESS = mix(0.29, 0.61, foam);
+    ROUGHNESS = mix(mix(0.41, 0.27, ripple_detail), 0.64, foam);
     SPECULAR = 0.51;
 }

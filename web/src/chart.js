@@ -1,4 +1,4 @@
-import { DISTRICT_COLORS } from './world.js';
+import { DISTRICT_COLORS } from './map-data.js';
 
 function rectangle(ctx, area, color) {
   ctx.save();

@@ -93,7 +93,7 @@ Save ─> (모든 모듈의 ISaveable)
 
 ### 2.3 브라우저 클라이언트 (`web/`)
 
-`web/runtime`은 `Harbor.Core`를 .NET 8 WebAssembly로 실행하고, `web/src`는 Three.js로 같은 월드 데이터 및 캐릭터 GLB를 표현한다. WASM 경계에는 입력과 읽기 전용 상태가 오간다. 데스크톱과 동일한 싱글플레이 샌드박스 규칙을 사용한다. [ADR 0009](docs/adr/0009-browser-wasm-client.md)
+`web/runtime`은 `Harbor.Core`를 .NET 8 WebAssembly로 실행한다. `web/engine`은 표준 Godot의 WebGL 2 렌더러로 데스크톱과 같은 지도 장면, 셰이더 및 캐릭터·차량 GLB를 그린다. `web/src`는 브라우저 입력과 HUD를 연결하고, Godot의 `JavaScriptBridge`를 통해 읽기 전용 상태를 전달한다. 데스크톱과 동일한 싱글플레이 샌드박스 규칙을 사용한다. [ADR 0009](docs/adr/0009-browser-wasm-client.md)
 
 ---
 

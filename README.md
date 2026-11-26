@@ -8,15 +8,17 @@ Port Calloway를 자유롭게 돌아다니는 1인용 3인칭 오픈월드 게�
 
 ## 브라우저 실행
 
-프로젝트 루트에서 .NET 8 SDK의 `dotnet workload install wasm-tools`를 실행하고, Node.js 22로 다음 명령을 실행한다. WebGL 2 지원 브라우저에서 터미널에 표시된 주소를 연다.
+플레이어는 WebGL 2를 지원하는 브라우저에서 웹판을 열 수 있다. 소스에서 빌드할 때는 표준 Godot 4.4.1과 공식 웹 내보내기 템플릿, .NET 8 SDK, Node.js 22를 사용한다. 여러 Godot 버전이 있다면 `GODOT`에 표준 에디터의 실행 파일 경로를 지정한다.
 
 ```bash
 git lfs pull
-npm --prefix web ci
-npm --prefix web run dev
+cd web
+dotnet workload install wasm-tools
+npm ci
+npm run dev
 ```
 
-배포용 정적 파일은 `npm --prefix web run build`로 `web/dist/`에 만든다. 브라우저는 페이지를 여는 것만으로 플레이할 수 있다. 정적 빌드 실행과 검증 방법은 [브라우저 플레이 문서](web/README.md)에 있다.
+터미널에 표시된 주소에서 **도시로 들어가기**를 누른다. `web/`에서 `npm run build`를 실행하면 `web/dist/`에 정적 파일이 만들어진다. [브라우저 빌드와 검증](web/README.md)
 
 | 입력 | 동작 |
 |---|---|

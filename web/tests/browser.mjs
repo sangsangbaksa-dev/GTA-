@@ -23,6 +23,7 @@ try {
   await start.waitFor({ timeout: 75_000 }).catch(error => {
     throw new Error('Browser could not load the sandbox: ' + errors.join('\n'), { cause: error });
   });
+  await page.locator('canvas[data-engine="godot"]').waitFor();
   if (process.env.HARBOR_SHOTS) await page.screenshot({ path: process.env.HARBOR_SHOTS + '-intro.png' });
   await start.focus();
   await page.keyboard.press('Enter');

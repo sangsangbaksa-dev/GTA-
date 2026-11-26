@@ -1,8 +1,6 @@
-import * as THREE from 'three';
 import { createChart } from './chart.js';
-import { angleLerp, createEntities } from './entities.js';
 import { createInput } from './input.js';
-import { assetUrl, createView, districtAt } from './world.js';
+import { assetUrl, districtAt } from './map-data.js';
 import './style.css';
 
 const byId = (id) => document.getElementById(id);
@@ -38,25 +36,16 @@ const crimeMessages = {
 
 let screen = 'intro';
 let mapParent = 'play';
-let api, frame, layout, view, entities, chart;
+let api, frame, layout, chart;
+let serializedFrame = "";
+let frameVersion = 0;
 let elapsed = 0;
-let previousTime = 0;
 let simulationTime = 0;
 let crimeSequence = 0;
 let noticeUntil = 0;
 let audio;
-let vehicleView = null;
-let cameraArm = 5.7;
-let chaseYaw = 0;
 let hadPointerLock = false;
 let contextLost = false;
-const focus = new THREE.Vector3();
-const cameraOffset = new THREE.Vector3();
-const desired = new THREE.Vector3();
-const aim = new THREE.Vector3();
-const dir = new THREE.Vector3();
-const bullet = new THREE.Color('#ffe2a4');
-const traces = [];
 const input = createInput(canvas, touch, () => screen === 'play' && frame.alive, code => {
   if (!frame || screen === 'intro') return false;
   if (code === 'KeyM') {
@@ -100,15 +89,17 @@ function openMap() {
   setScreen('map');
 }
 
+function replaceFrame(raw) {
+  frame = JSON.parse(raw);
+  serializedFrame = raw;
+  frameVersion++;
+}
+
 function reset() {
-  frame = JSON.parse(api.Start());
+  replaceFrame(api.Start());
   input.reset();
   crimeSequence = 0;
   noticeUntil = 0;
-  chaseYaw = 0;
-  for (const item of traces) disposeTrace(item);
-  traces.length = 0;
-  entities.player.root.position.copy(frame.position);
   setScreen('play');
 }
 
@@ -171,58 +162,11 @@ function updateHud() {
   chart.radar(state, frame.position, isDriving ? vehicle.yaw : input.direction().yaw, elapsed);
 }
 
-function camera(dt) {
-  const { state } = frame;
-  if (screen === 'intro') {
-    focus.copy(frame.position);
-    view.camera.position.set(focus.x + 31, 13, focus.z + 22);
-    view.camera.lookAt(focus.x + 7, 1.5, focus.z - 26);
-    return;
-  }
-  const driving = state.isDriving && vehicleView;
-  const orientation = input.direction();
-  chaseYaw = driving ? angleLerp(chaseYaw, state.vehicle.yaw, 1 - Math.exp(-5 * dt)) : orientation.yaw;
-  focus.copy(driving ? vehicleView.position : entities.player.root.position);
-  const pivotHeight = driving ? 1.12 : frame.crouched ? 1.08 : 1.48;
-  aim.copy(focus).addScaledVector(UP, pivotHeight);
-  const pitch = driving ? -.26 : orientation.pitch;
-  const radius = driving ? 7.1 : frame.aiming ? 2.8 : 4.9;
-  const shoulder = driving ? 0 : frame.aiming ? .62 : .46;
-  cameraOffset.set(Math.sin(chaseYaw) * radius * Math.cos(pitch) + Math.cos(chaseYaw) * shoulder,
-    -Math.sin(pitch) * radius + (driving ? 1.05 : .58),
-    Math.cos(chaseYaw) * radius * Math.cos(pitch) - Math.sin(chaseYaw) * shoulder);
-  const distance = cameraOffset.length();
-  dir.copy(cameraOffset).divideScalar(distance);
-  const limit = api.CameraDistance(aim.x, aim.y, aim.z, dir.x, dir.y, dir.z, distance);
-  cameraArm = Math.min(limit, THREE.MathUtils.damp(cameraArm, limit, 10, dt));
-  desired.copy(aim).addScaledVector(dir, cameraArm);
-  view.camera.position.copy(desired);
-  if (driving) view.camera.lookAt(aim.x - Math.sin(chaseYaw) * 1.8, aim.y + .22, aim.z - Math.cos(chaseYaw) * 1.8);
-  else {
-    const shotPitch = orientation.pitch;
-    dir.set(-Math.sin(chaseYaw) * Math.cos(shotPitch), Math.sin(shotPitch), -Math.cos(chaseYaw) * Math.cos(shotPitch));
-    view.camera.lookAt(aim.addScaledVector(dir, 20));
-  }
-}
-
-const UP = new THREE.Vector3(0, 1, 0);
-
 function handleShots(shots) {
   for (const shot of shots) {
-    const geometry = new THREE.BufferGeometry().setFromPoints([shot.origin, shot.end]);
-    const material = new THREE.LineBasicMaterial({ color: bullet, transparent: true });
-    const trail = new THREE.Line(geometry, material);
-    view.scene.add(trail);
-    traces.push({ trail, expire: elapsed + .125 });
     const distance = Math.hypot(frame.position.x - shot.origin.x, frame.position.z - shot.origin.z);
     audio?.shot(shot.weaponId, distance);
   }
-}
-
-function disposeTrace({ trail }) {
-  view.scene.remove(trail);
-  trail.geometry.dispose();
-  trail.material.dispose();
 }
 
 // Advance the local authority on its own clock so slow GPU frames do not slow input or physics.
@@ -235,30 +179,9 @@ function simulate() {
   const { right, forward, yaw, pitch, buttons, pulses, slot } = input.sample(dt, frame.state.isDriving);
   const next = api.Tick(dt, right, forward, yaw, pitch, buttons, pulses, slot);
   if (!next) return;
-  frame = JSON.parse(next);
+  replaceFrame(next);
   handleShots(frame.shots);
   updateHud();
-}
-
-function render(now) {
-  const dt = Math.min((now - (previousTime || now)) / 1000, .12);
-  previousTime = now;
-  if (!document.hidden && !contextLost && (screen === 'play' || screen === 'intro')) {
-    if (screen === 'intro') elapsed += dt;
-    for (let i = traces.length - 1; i >= 0; i--) {
-      const trace = traces[i];
-      const remaining = trace.expire - elapsed;
-      if (remaining > 0) trace.trail.material.opacity = Math.min(1, remaining * 8);
-      else {
-        disposeTrace(trace);
-        traces.splice(i, 1);
-      }
-    }
-    vehicleView = entities.update(frame, dt);
-    camera(dt);
-    view.render(elapsed, focus);
-  }
-  requestAnimationFrame(render);
 }
 
 function sound() {
@@ -288,24 +211,80 @@ async function json(path) {
   return response.json();
 }
 
+function prefersLowDetail() {
+  const probe = document.createElement('canvas');
+  const gl = probe.getContext('webgl2');
+  if (!gl) throw new Error('WebGL 2 is not available');
+  const info = gl.getExtension('WEBGL_debug_renderer_info');
+  const software = info && /swiftshader|llvmpipe|software rasterizer/i.test(gl.getParameter(info.UNMASKED_RENDERER_WEBGL));
+  gl.getExtension('WEBGL_lose_context')?.loseContext();
+  return Boolean(software || input.coarse.matches);
+}
+
+async function startGodot() {
+  let ready;
+  const initialized = new Promise(resolve => { ready = resolve; });
+  const lowDetail = prefersLowDetail();
+  globalThis.harborView = {
+    ready,
+    lowDetail: () => lowDetail,
+    screen: () => screen,
+    yaw: () => input.direction().yaw,
+    pitch: () => input.direction().pitch,
+    frame: () => serializedFrame,
+    frameVersion: () => frameVersion,
+    cameraDistance: (...args) => api.CameraDistance(...args),
+  };
+
+  const executable = assetUrl('godot/harbor');
+  await new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = executable + '.js';
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('Godot launcher could not be loaded'));
+    document.head.append(script);
+  });
+  const engine = new globalThis.Engine({
+    canvas,
+    executable,
+    mainPack: executable + '.pck',
+    focusCanvas: false,
+    canvasResizePolicy: 2,
+    ensureCrossOriginIsolationHeaders: false,
+  });
+  await engine.startGame({
+    onProgress(current, total) {
+      if (total > 0) status.textContent = '3D 도시 불러오는 중 · ' + Math.floor(current / total * 100) + '%';
+    },
+  });
+  let timer;
+  try {
+    await Promise.race([
+      initialized,
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Godot scene did not initialize')), 60_000); }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+  canvas.dataset.engine = 'godot';
+}
+
 async function initialize() {
   const runtimePath = assetUrl('runtime/_framework/dotnet.js');
-  view = createView(canvas);
-  const runtimePromise = import(/* @vite-ignore */ runtimePath).then(({ dotnet }) => dotnet.create());
-  const [runtime, plan, visuals] = await Promise.all([
-    runtimePromise, json('world/harbor_front.json'), json('world/harbor_visuals.json'),
+  const [runtime, plan] = await Promise.all([
+    import(/* @vite-ignore */ runtimePath).then(({ dotnet }) => dotnet.create()),
+    json('world/harbor_front.json'),
   ]);
   layout = plan;
   const exports = await runtime.getAssemblyExports(runtime.getConfig().mainAssemblyName);
   api = exports.Harbor.Browser.BrowserHarbor;
-  frame = JSON.parse(api.Start());
-  [entities] = await Promise.all([createEntities(view.scene, view.softwareGL), view.populate(visuals, layout)]);
+  replaceFrame(api.Start());
   chart = createChart(layout, byId('radar'), byId('atlas'), byId('map-legend'));
+  await startGodot();
   start.textContent = '도시로 들어가기';
   status.textContent = input.coarse.matches ? '화면을 드래그해 둘러보세요.' : 'WASD 이동 · 마우스 카메라 · F 차량 · M 지도';
   start.disabled = false;
   setInterval(simulate, 1000 / 30);
-  requestAnimationFrame(render);
 }
 
 canvas.addEventListener('webglcontextlost', event => {

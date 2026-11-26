@@ -1,14 +1,3 @@
 import { defineConfig } from 'vite';
 
-export default defineConfig({
-  base: './',
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.endsWith('/three/build/three.core.js')) return 'three-core';
-        },
-      },
-    },
-  },
-});
+export default defineConfig({ base: './' });
