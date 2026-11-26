@@ -57,22 +57,22 @@ public partial class HarborRoster : CenterContainer
         var controls = new HBoxContainer();
         controls.AddThemeConstantOverride("separation", 7);
         summary.AddChild(controls);
-        var previous = HarborJobBoard.NewButton("Previous", display);
+        var previous = HarborHud.NewButton("Previous", display);
         previous.CustomMinimumSize = new Vector2(102, 44);
         previous.Pressed += () => ShowPerson(_index - 1);
         controls.AddChild(previous);
-        var next = HarborJobBoard.NewButton("Next", display);
+        var next = HarborHud.NewButton("Next", display);
         next.CustomMinimumSize = new Vector2(74, 44);
         next.Pressed += () => ShowPerson(_index + 1);
         controls.AddChild(next);
-        _framing = HarborJobBoard.NewButton("Face detail", display);
+        _framing = HarborHud.NewButton("Face detail", display);
         _framing.Pressed += () =>
         {
             _face = !_face;
             FramePerson();
         };
         summary.AddChild(_framing);
-        var returnButton = HarborJobBoard.NewButton("Back to title", display, true);
+        var returnButton = HarborHud.NewButton("Back to title", display, true);
         returnButton.Pressed += back;
         summary.AddChild(returnButton);
         next.CallDeferred(Control.MethodName.GrabFocus);

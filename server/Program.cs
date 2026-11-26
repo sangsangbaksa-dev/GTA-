@@ -58,11 +58,12 @@ try
     var encounter = HarborLockdownDef.Load(files, "game/data/missions/harbor_lockdown.json", combat.Weapons);
     var layout = HarborLayout.Load(files, "data/world/harbor_front.json");
     var vehicle = ArcadeVehicleTuning.Load(files, "data/vehicles/calloway_compact.json");
-    var jobs = HarborJobCatalog.Load(files, "game/data/missions/harbor_jobs.json");
+    var fleet = VehicleCatalog.Load(files, "data/vehicles", vehicle);
     var ambient = StreetPopulationDef.Load(files, "data/world/harbor_population.json");
 
     using var transport = TcpTransport.Listen(IPAddress.Loopback, port, maxPlayers);
-    var authority = new HarborAuthority(combat, encounter, layout, vehicle, transport, log, maxPlayers, jobs: jobs, ambient: ambient);
+    var authority = new HarborAuthority(combat, encounter, layout, vehicle, transport, log, maxPlayers,
+        ambient: ambient, vehicles: fleet, sandbox: true);
     authority.World.Events.Subscribe<PlayerJoined>(joined => log.Info($"Player {joined.ActorId} joined."));
     authority.World.Events.Subscribe<PlayerLeft>(left => log.Info($"Player {left.ActorId} left."));
 

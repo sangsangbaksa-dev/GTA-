@@ -30,7 +30,26 @@ public sealed record HarborLockdownState
 public sealed record HarborPlayerCombat(int Health = 100, int MaxHealth = 100, int Armor = 0, int MaxArmor = 100,
     string WeaponId = "", string WeaponName = "", int Magazine = 0, int Reserve = 0, bool IsReloading = false, int ActiveSlot = 0);
 
-public readonly record struct HarborVehicleState(Vec3d Position, double Yaw, double Speed, double Steering, double Distance);
+public readonly record struct HarborVehicleState(Vec3d Position, double Yaw, double Speed, double Steering, double Distance)
+{
+    public int Id { get; init; }
+    public string ModelId { get; init; } = "";
+    public string VehicleClass { get; init; } = "";
+    public string DisplayName { get; init; } = "";
+    public int Appearance { get; init; }
+    public int DriverId { get; init; }
+    public bool Occupied { get; init; }
+    public double HalfWidth { get; init; }
+    public double HalfLength { get; init; }
+    public double RoofHeight { get; init; }
+    public double Wheelbase { get; init; }
+    public double WheelRadius { get; init; }
+}
+
+public sealed record HarborStreetAction(int VehicleId = -1, int PedestrianId = -1, bool VehicleOccupied = false,
+    bool CanPickpocket = false, string CargoId = "");
+
+public sealed record HarborStreetCrime(string Status = "none", long DirtyCash = 0, int Amount = 0, int Sequence = 0);
 public readonly record struct HarborEnemyState(int Id, int Team, Vec3d Position, Vec3d Velocity, double Yaw, int Health,
     int MaxHealth, ActorFlags Flags);
 
@@ -41,9 +60,15 @@ public sealed record HarborState
     public StreetPopulationState Ambient { get; init; } = new();
     public HarborPlayerCombat PlayerCombat { get; init; } = new();
     public HarborVehicleState Vehicle { get; init; }
+    public HarborVehicleState[] Vehicles { get; init; } = [];
+    public HarborStreetAction StreetAction { get; init; } = new();
+    public HarborStreetCrime StreetCrime { get; init; } = new();
     public HarborEnemyState[] Enemies { get; init; } = [];
     public int DriverId { get; init; } = -1;
     public int WantedLevel { get; init; }
+    public int MaxWantedLevel { get; init; }
+    public int PoliceUnits { get; init; }
+    public int PlayerVehicleId { get; init; } = -1;
     public bool IsDriving { get; init; }
     public bool CanEnterVehicle { get; init; }
     public int RunGeneration { get; init; }
@@ -72,34 +97,37 @@ public sealed class HarborAuthority
     public HarborJobs Jobs { get; }
     public StreetPopulation? Ambient { get; }
     public StaticWorld Level { get; }
-    public ArcadeVehicle Vehicle { get; }
+    public ArcadeVehicle Vehicle => _fleet.Starter.Body;
     public double? BestTime { get; private set; }
 
+    private readonly HarborFleet _fleet;
     private readonly Dictionary<int, int> _players = new();
     private long _lastPublishedTick = -1;
     private int _runGeneration = 1;
 
     public HarborAuthority(GameData combatData, HarborLockdownDef encounter, HarborLayout layout,
         ArcadeVehicleTuning vehicleTuning, ITransport transport, ILog log, int maxPlayers = 1,
-        HarborJobCatalog? jobs = null, StreetPopulationDef? ambient = null)
+        HarborJobCatalog? jobs = null, StreetPopulationDef? ambient = null, VehicleCatalog? vehicles = null, bool sandbox = false)
     {
         Level = layout.CreateStaticWorld();
-        Vehicle = new ArcadeVehicle(HarborLockdownDef.Point(encounter.Vehicle), 0, vehicleTuning);
         World = new SimWorld(log);
         Session = World.AddSystem(new ServerSession(transport,
             new ServerConfig { MaxPlayers = maxPlayers, SpawnPoint = layout.SpawnPosition }, staticWorld: Level));
         Combat = World.AddSystem(new CombatSystem(combatData.Combat, combatData.Materials, combatData.Weapons, Level, Session.History)
         {
             DefaultWeaponId = encounter.PlayerWeapon,
-            AutoRespawn = false,
+            AutoRespawn = sandbox,
+            SpawnPointFor = _ => layout.SpawnPosition,
             UsesDownedState = (_, _) => false,
         });
         var heat = World.AddSystem(new HeatSystem(encounter.Heat));
-        Lockdown = World.AddSystem(new HarborLockdown(encounter, Combat, Session, Level, heat, Vehicle));
-        Jobs = World.AddSystem(new HarborJobs(jobs ?? new HarborJobCatalog(), Lockdown, Vehicle));
-        Lockdown.Jobs = Jobs;
         if (ambient != null) Ambient = World.AddSystem(new StreetPopulation(ambient));
-        Session.ShouldApplyMovement = actor => Lockdown.DriverId != actor.Id
+        _fleet = new HarborFleet(encounter, Level, World, vehicles ?? VehicleCatalog.Default(vehicleTuning),
+            Ambient, ambient, vehicles != null);
+        Lockdown = World.AddSystem(new HarborLockdown(encounter, Combat, Session, Level, heat, _fleet, Ambient, sandbox));
+        Jobs = World.AddSystem(new HarborJobs(sandbox ? new HarborJobCatalog() : jobs ?? new HarborJobCatalog(), Lockdown));
+        Lockdown.Jobs = Jobs;
+        Session.ShouldApplyMovement = actor => !_fleet.IsDriving(actor.Id)
             && Lockdown.Phase is not (LockdownPhase.Succeeded or LockdownPhase.Failed);
         var events = World.Events;
         events.Subscribe<PlayerJoined>(OnJoined);
@@ -118,6 +146,8 @@ public sealed class HarborAuthority
         if (_players.Count > 0 && Session.Tick - _lastPublishedTick >= 2) PublishState();
     }
 
+    public HarborVehicleState GetPlayerVehicle(int actorId) => (_fleet.Driving(actorId) ?? _fleet.Starter).State;
+
     public HarborState GetState(int actorId)
     {
         World.Actors.TryGet(actorId, out var player);
@@ -129,7 +159,8 @@ public sealed class HarborAuthority
             slot == null ? 0 : loadout!.ReserveOf(slot.Def.Class), loadout?.IsReloading ?? false, loadout?.Active ?? 0);
         var mission = new HarborLockdownState
         {
-            Phase = player is { IsAlive: false } ? LockdownPhase.Failed : Lockdown.Phase, RemainingEnemies = Lockdown.RemainingEnemies,
+            Phase = !Lockdown.Sandbox && player is { IsAlive: false } ? LockdownPhase.Failed : Lockdown.Phase,
+            RemainingEnemies = Lockdown.RemainingEnemies,
             WaveNumber = Lockdown.WaveNumber, WaveCount = Lockdown.WaveCount, Elapsed = Lockdown.Elapsed,
             ReinforcementSeconds = Lockdown.ReinforcementSeconds,
             StartPosition = Lockdown.StartPosition, StartRadius = Lockdown.StartRadius, CanStart = Lockdown.CanStart(actorId),
@@ -139,14 +170,17 @@ public sealed class HarborAuthority
         foreach (var id in Lockdown.EnemyIds)
             if (World.Actors.TryGet(id, out var a))
                 enemies.Add(ActorState(a));
+        var driving = _fleet.Driving(actorId);
+        var action = Lockdown.GetStreetAction(actorId);
         return new HarborState
         {
             Lockdown = mission, Jobs = Jobs.GetState(actorId), Ambient = Ambient?.GetState(player?.Position) ?? new StreetPopulationState(),
-            PlayerCombat = combat, WantedLevel = Lockdown.WantedLevel(actorId),
-            Vehicle = new HarborVehicleState(Vehicle.Position, Vehicle.Yaw, Vehicle.Speed, Vehicle.Steering, Vehicle.Distance),
+            PlayerCombat = combat, WantedLevel = Lockdown.WantedLevel(actorId), MaxWantedLevel = Lockdown.MaxWantedLevel,
+            PoliceUnits = Lockdown.PoliceUnits, StreetAction = action, StreetCrime = Lockdown.GetStreetCrime(actorId),
+            Vehicle = (driving ?? _fleet.Starter).State, Vehicles = _fleet.GetStates(player?.Position),
             Enemies = enemies.ToArray(),
-            DriverId = Lockdown.DriverId, IsDriving = Lockdown.DriverId == actorId,
-            CanEnterVehicle = Lockdown.CanEnterVehicle(actorId), RunGeneration = _runGeneration, BestTime = BestTime,
+            DriverId = Lockdown.DriverId, IsDriving = driving != null, PlayerVehicleId = driving?.Id ?? -1,
+            CanEnterVehicle = action.VehicleId >= 0 && driving == null, RunGeneration = _runGeneration, BestTime = BestTime,
         };
     }
 

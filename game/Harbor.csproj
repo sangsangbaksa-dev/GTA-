@@ -8,9 +8,8 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../core/src/Harbor.Core/Harbor.Core.csproj" />
-    <EmbeddedResource Include="../data/**/*.json" Exclude="../data/schema/**"
+    <EmbeddedResource Include="../data/**/*.json" Exclude="../data/schema/**;../data/world/harbor_visuals.json"
                       LogicalName="data/%(RecursiveDir)%(Filename)%(Extension)" />
     <EmbeddedResource Include="data/missions/harbor_lockdown.json" LogicalName="data/missions/harbor_lockdown.json" />
-    <EmbeddedResource Include="data/missions/harbor_jobs.json" LogicalName="data/missions/harbor_jobs.json" />
   </ItemGroup>
 </Project>

@@ -13,3 +13,32 @@ jobs:
           dotnet-version: '8.0.x'
       - run: tools/check-core-purity.sh
       - run: dotnet test core/tests/Harbor.Core.Tests
+      - run: dotnet build game/Harbor.csproj
+  browser:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: dotnet workload install wasm-tools
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - uses: actions/upload-artifact@v4
+        with:
+          name: harbor-web
+          path: web/dist/
+          if-no-files-found: error

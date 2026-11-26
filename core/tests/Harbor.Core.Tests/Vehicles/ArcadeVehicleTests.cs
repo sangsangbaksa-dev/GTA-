@@ -1,5 +1,6 @@
 using Harbor.Core.Geometry;
 using Harbor.Core.Math;
+using Harbor.Core.Ports;
 using Harbor.Core.Vehicles;
 using Xunit;
 
@@ -67,6 +68,28 @@ public sealed class ArcadeVehicleTests
 
         Assert.InRange(car.Speed, 6.7, 6.9);
         Assert.True(car.Position.X < -2);
+    }
+
+    [Fact]
+    public void AuthoredSportsCarAcceleratesAndBrakesFasterThanUtilityTruck()
+    {
+        var files = new DiskFileSystem(Repo.Root);
+        var sports = new ArcadeVehicle(Vec3d.Zero, tuning: ArcadeVehicleTuning.Load(files, "data/vehicles/pier_runner.json"));
+        var truck = new ArcadeVehicle(Vec3d.Zero, tuning: ArcadeVehicleTuning.Load(files, "data/vehicles/breakwater_utility.json"));
+        var world = new StaticWorld();
+        var throttle = new VehicleInput(1, 0, false);
+        Step(sports, world, throttle, 60);
+        Step(truck, world, throttle, 60);
+        Assert.InRange(sports.Speed, 10.7, 10.9);
+        Assert.InRange(truck.Speed, 5.3, 5.5);
+
+        sports.Restore(Vec3d.Zero, 0, 12, 0, 0);
+        truck.Restore(Vec3d.Zero, 0, 12, 0, 0);
+        var brake = new VehicleInput(0, 0, true);
+        Step(sports, world, brake, 35);
+        Step(truck, world, brake, 35);
+        Assert.Equal(0, sports.Speed);
+        Assert.InRange(truck.Speed, 3.5, 3.7);
     }
 
     private static void Step(ArcadeVehicle car, StaticWorld world, VehicleInput input, int ticks)

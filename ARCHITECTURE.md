@@ -91,6 +91,10 @@ Save ─> (모든 모듈의 ISaveable)
 | `game/scripts/UI/` | HUD, 미니맵, 메뉴, 인게임 폰 |
 | `game/scenes/`, `game/assets/` | 씬·에셋. 에셋 규칙은 `game/assets/README.md` |
 
+### 2.3 브라우저 클라이언트 (`web/`)
+
+`web/runtime`은 `Harbor.Core`를 .NET 8 WebAssembly로 실행하고, `web/src`는 Three.js로 같은 월드 데이터 및 캐릭터 GLB를 표현한다. WASM 경계에는 입력과 읽기 전용 상태가 오간다. 데스크톱과 동일한 싱글플레이 샌드박스 규칙을 사용한다. [ADR 0009](docs/adr/0009-browser-wasm-client.md)
+
 ---
 
 ## 3. 시스템별 설계
@@ -237,7 +241,7 @@ Godot: 이벤트 받아 피격 애니메이션·이펙트·HUD
 | M4 | 살아있는 거리 + 수배 | 보행자·교통 에이전트, District 1개, Heat 3단계, 경찰 추격 |
 | M5 | 미션 + 세이브 | JSON 미션 3개, 세이브/로드 |
 
-Harbor Front 플레이테스트는 360 × 290m 시가지에서 1인 플레이를 제공한다. `HarborAuthority`가 게임 내부에서 30Hz로 전투·수배·운전·의뢰와 보행자·교통을 판정한다. `data/world/harbor_front.json`은 공용 충돌 배치이고, `data/world/harbor_population.json`과 `game/data/missions/harbor_jobs.json`은 거리 활동과 의뢰를 정의한다. City operations도 게임 안의 로컬 권한으로 실행한다.
+Port Calloway 샌드박스는 1,290 × 1,110m 범위에 도심, 저소득 주거지, 사막, 군사 비행장, 삼림, 해안 고급 주거지와 기존 항구를 배치한다. `HarborAuthority`가 게임 내부에서 30Hz로 전투, 수배, 운전, 보행자와 교통을 판정한다. `data/world/harbor_front.json`은 공용 충돌·도로·지형 배치이고, `data/world/harbor_population.json`은 거리 활동을 정의한다. `tools/build_harbor_scene.py`가 공용 배치와 Godot 씬, 브라우저용 `data/world/harbor_visuals.json`을 함께 생성한다. 자세한 좌표와 확장 방법은 ADR 0008을 참고한다.
 
 멀티플레이·경제 트랙 (기획: `docs/CONTENT_DESIGN.md` §10) — 코어+테스트만으로 완결, Godot 연결은 G1:
 

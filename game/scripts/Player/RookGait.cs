@@ -6,6 +6,7 @@ namespace Harbor.Game.Player;
 internal sealed class RookGait
 {
     private readonly Skeleton3D _rig;
+    private readonly BakedLocomotion? _baked;
     private readonly Leg _leftLeg;
     private readonly Leg _rightLeg;
     private readonly Arm _leftArm;
@@ -22,9 +23,10 @@ internal sealed class RookGait
     private float _alert;
     private float _breath;
 
-    private RookGait(Skeleton3D rig)
+    private RookGait(Node3D model, Skeleton3D rig)
     {
         _rig = rig;
+        _baked = BakedLocomotion.Create(model, rig);
         _leftLeg = ReadLeg("L");
         _rightLeg = ReadLeg("R");
         _leftArm = ReadArm("L");
@@ -40,7 +42,7 @@ internal sealed class RookGait
     {
         foreach (var node in model.FindChildren("*", "Skeleton3D", recursive: true, owned: false))
             if (node is Skeleton3D rig)
-                return new RookGait(rig);
+                return new RookGait(model, rig);
 
         return null;
     }
@@ -48,6 +50,12 @@ internal sealed class RookGait
     public void Update(float phase, float speed, bool crouched, float blend, float dt = 0,
         bool sprinting = false, bool hurried = false, float strafe = 0)
     {
+        if (_baked is { } locomotion)
+        {
+            locomotion.Update(phase, speed, crouched, blend, dt, sprinting || hurried, strafe);
+            return;
+        }
+
         _step = Mathf.Lerp(_step, Mathf.SmoothStep(0, 1, Mathf.Clamp(speed / 2.8f, 0, 1)), blend);
         _crouch = Mathf.Lerp(_crouch, crouched ? 1 : 0, blend);
         _run = Mathf.Lerp(_run, sprinting && !crouched ? 1 : 0, blend);

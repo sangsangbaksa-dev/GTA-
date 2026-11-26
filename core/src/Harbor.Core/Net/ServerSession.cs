@@ -168,7 +168,11 @@ public sealed class ServerSession(ITransport transport, ServerConfig? config = n
         else
         {
             // Starved: repeat the last movement intent but never repeat one-shot actions.
-            cmd = c.LastInput with { Buttons = c.LastInput.Buttons & ~(InputButtons.Fire | InputButtons.Reload | InputButtons.Interact | InputButtons.Melee) };
+            cmd = c.LastInput with
+            {
+                Buttons = c.LastInput.Buttons & ~(InputButtons.Fire | InputButtons.Reload | InputButtons.Interact
+                    | InputButtons.Melee | InputButtons.Vehicle | InputButtons.Pickpocket)
+            };
             c.MissedInputs++;
             fresh = false;
         }

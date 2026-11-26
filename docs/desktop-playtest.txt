@@ -8,8 +8,9 @@ Linux (x86_64)
   cd 'Project Harbor'
   ./ProjectHarbor.x86_64
 
-시작 화면에서 Start game을 선택합니다. J 키로 항만 의뢰 목록을 열고,
-Harbor characters에서 네 인물의 전신과 얼굴 모델을 살펴볼 수 있습니다.
+시작 화면에서 Start game을 선택하면 항만에서 자유 탐험을 시작합니다.
+F는 차량 승하차, G는 소매치기와 화물 절도, M은 도시 지도입니다.
+Harbor characters에서 항만 인물의 전신과 얼굴을 살펴볼 수 있습니다.
 
 패키지에 .NET 런타임이 포함되어 있습니다. 게임 실행 파일, .pck 및
 data_Harbor_* 폴더를 같은 위치에 둡니다. 기본 렌더러는 Vulkan을

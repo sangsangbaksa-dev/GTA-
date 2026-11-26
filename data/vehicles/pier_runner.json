@@ -1,0 +1,23 @@
+{
+  "id": "pier_runner",
+  "displayName": "Pier Runner",
+  "class": "sports",
+  "massKg": 1330,
+  "engine": { "maxTorqueNm": 370, "maxRpm": 7400, "gearRatios": [3.7, 2.3, 1.62, 1.28, 1.01, 0.81] },
+  "handling": { "steerAngleDeg": 29, "suspensionStiffness": 61, "frictionSlip": 3.1 },
+  "seats": 2,
+  "modelAsset": "res://assets/vehicles/veh_pier_runner.glb",
+  "shape": { "halfWidth": 0.96, "halfLength": 2.18, "roofHeight": 1.20, "wheelRadius": 0.33, "wheelbase": 2.70 },
+  "arcade": {
+    "forwardSpeed": 27,
+    "reverseSpeed": 6.2,
+    "acceleration": 10.8,
+    "reverseAcceleration": 5.5,
+    "brakeAcceleration": 21,
+    "coastDeceleration": 2.9,
+    "steeringRate": 4.7,
+    "maxSteerDegrees": 29,
+    "highSpeedSteerLoss": 0.72,
+    "cornerGrip": 0.88
+  }
+}

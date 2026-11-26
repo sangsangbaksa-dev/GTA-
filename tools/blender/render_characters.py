@@ -18,6 +18,13 @@ for f in files:
     bpy.ops.wm.read_factory_settings(use_empty=True)
     sc = bpy.context.scene
     bpy.ops.import_scene.gltf(filepath=f)
+    for rig in (o for o in sc.objects if o.type == "ARMATURE" and o.animation_data):
+        tracks = rig.animation_data.nla_tracks
+        if tracks.get("Idle"):
+            rig.animation_data.action = None
+            for track in tracks:
+                track.mute = track.name != "Idle"
+    sc.frame_set(24)
     meshes = [o for o in sc.objects if o.type == "MESH"]
     bpy.context.view_layer.update()
     pts = [o.matrix_world @ Vector(c) for o in meshes for c in o.bound_box]

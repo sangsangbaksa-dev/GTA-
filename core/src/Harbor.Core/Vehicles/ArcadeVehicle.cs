@@ -18,6 +18,8 @@ public sealed record ArcadeVehicleTuning
     public double CoastDeceleration { get; init; } = 2.4;
     public double SteeringRate { get; init; } = 3.8;
     public double MaxSteerDegrees { get; init; } = 32;
+    public double HighSpeedSteerLoss { get; init; } = 0.6;
+    public double CornerGrip { get; init; } = 1;
 
     private sealed record VehicleFile(ArcadeVehicleTuning Arcade);
 
@@ -35,6 +37,8 @@ public sealed record ArcadeVehicleTuning
                      BrakeAcceleration, CoastDeceleration, SteeringRate })
             Json.Require(value > 0 && double.IsFinite(value), "Vehicle speeds and rates must be positive and finite");
         Json.Require(MaxSteerDegrees is > 0 and < 90, "Vehicle steering angle must be between 0 and 90 degrees");
+        Json.Require(HighSpeedSteerLoss is >= 0 and < 1 && CornerGrip is > 0 and <= 1,
+            "Vehicle steering loss and corner grip must be valid proportions");
     }
 }
 
@@ -49,12 +53,13 @@ public sealed class ArcadeVehicle
 
     private readonly ArcadeVehicleTuning _tuning;
 
-    public ArcadeVehicle(Vec3d position, double yaw = 0, ArcadeVehicleTuning? tuning = null)
+    public ArcadeVehicle(Vec3d position, double yaw = 0, ArcadeVehicleTuning? tuning = null, VehicleShape? shape = null)
     {
         Position = position;
         Yaw = yaw;
         _tuning = tuning ?? new ArcadeVehicleTuning();
         _tuning.Validate();
+        Shape = shape ?? new VehicleShape();
     }
 
     public Vec3d Position { get; private set; }
@@ -62,6 +67,7 @@ public sealed class ArcadeVehicle
     public double Speed { get; private set; }
     public double Steering { get; private set; }
     public double Distance { get; private set; }
+    public VehicleShape Shape { get; }
 
     /// <summary>Apply a spawn pose or a snapshot from the authoritative simulation.</summary>
     public void Restore(Vec3d position, double yaw, double speed, double steering, double distance)
@@ -73,12 +79,13 @@ public sealed class ArcadeVehicle
         Distance = distance;
     }
 
-    public void Step(VehicleInput input, double dt, StaticWorld world)
+    public void Step(VehicleInput input, double dt, StaticWorld world, Func<Vec3d, double, bool>? blockedByVehicle = null)
     {
         if (dt <= 0 || !double.IsFinite(dt)) return;
         var throttle = ClampInput(input.Throttle);
         var turn = ClampInput(input.Turn);
-        var steeringAtSpeed = 1 - 0.6 * M.Clamp(M.Abs(Speed) / _tuning.ForwardSpeed, 0, 1);
+        var speedRatio = M.Clamp(M.Abs(Speed) / _tuning.ForwardSpeed, 0, 1);
+        var steeringAtSpeed = 1 - _tuning.HighSpeedSteerLoss * speedRatio;
         var desiredSteering = turn * _tuning.MaxSteerDegrees * M.PI / 180 * steeringAtSpeed;
         Steering = Approach(Steering, desiredSteering, _tuning.SteeringRate * dt);
 
@@ -96,14 +103,14 @@ public sealed class ArcadeVehicle
 
         // Small translation and heading increments prevent skipping thin geometry on longer ticks.
         var distance = Speed * dt;
-        var headingDelta = -distance * M.Tan(Steering) / Wheelbase;
+        var headingDelta = -distance * M.Tan(Steering) / Shape.Wheelbase;
         var pieces = M.Max(1, (int)M.Ceiling(M.Max(M.Abs(distance) / 0.16, M.Abs(headingDelta) / 0.05)));
         for (var i = 0; i < pieces; i++)
         {
             var nextYaw = M.IEEERemainder(Yaw + headingDelta / pieces, 2 * M.PI);
-            var headingMidpoint = Yaw + headingDelta / (2 * pieces);
+            var headingMidpoint = Yaw + headingDelta / (2 * pieces) - Steering * (1 - _tuning.CornerGrip) * speedRatio;
             var nextPosition = Position + Vec3d.FromYawPitch(headingMidpoint, 0) * (distance / pieces);
-            if (Blocked(world, nextPosition, nextYaw))
+            if (Blocked(world, nextPosition, nextYaw, Shape) || blockedByVehicle?.Invoke(nextPosition, nextYaw) == true)
             {
                 Speed = 0;
                 break;
@@ -114,24 +121,42 @@ public sealed class ArcadeVehicle
         }
     }
 
-    private static bool Blocked(StaticWorld world, Vec3d pivot, double yaw)
+    internal static bool Blocked(StaticWorld world, Vec3d pivot, double yaw, VehicleShape shape)
     {
         var forward = Vec3d.FromYawPitch(yaw, 0);
         var right = new Vec3d(-forward.Z, 0, forward.X);
-        var reachX = HalfWidth * M.Abs(right.X) + HalfLength * M.Abs(forward.X);
-        var reachZ = HalfWidth * M.Abs(right.Z) + HalfLength * M.Abs(forward.Z);
+        var reachX = shape.HalfWidth * M.Abs(right.X) + shape.HalfLength * M.Abs(forward.X);
+        var reachZ = shape.HalfWidth * M.Abs(right.Z) + shape.HalfLength * M.Abs(forward.Z);
         var bounds = new Aabb(pivot + new Vec3d(-reachX, 0.12, -reachZ),
-            pivot + new Vec3d(reachX, RoofHeight, reachZ));
+            pivot + new Vec3d(reachX, shape.RoofHeight, reachZ));
 
         // Broad-phase supplies the two world-axis tests; these two projections test the vehicle axes.
         foreach (var box in world.Overlapping(bounds))
         {
             var offset = (box.Box.Min + box.Box.Max) / 2 - pivot;
             var extent = (box.Box.Max - box.Box.Min) / 2;
-            if (Separated(offset, extent, forward, HalfLength) || Separated(offset, extent, right, HalfWidth)) continue;
+            if (Separated(offset, extent, forward, shape.HalfLength) || Separated(offset, extent, right, shape.HalfWidth)) continue;
             return true;
         }
         return false;
+    }
+
+    internal static bool Overlaps(Vec3d a, double aYaw, VehicleShape aShape, Vec3d b, double bYaw, VehicleShape bShape)
+    {
+        if (a.Y + aShape.RoofHeight <= b.Y || b.Y + bShape.RoofHeight <= a.Y) return false;
+        var offset = b - a;
+        var radius = aShape.HalfLength + bShape.HalfLength + aShape.HalfWidth + bShape.HalfWidth;
+        if (offset.WithY(0).LengthSquared > radius * radius) return false;
+
+        var aForward = Vec3d.FromYawPitch(aYaw, 0);
+        var aRight = new Vec3d(-aForward.Z, 0, aForward.X);
+        var bForward = Vec3d.FromYawPitch(bYaw, 0);
+        var bRight = new Vec3d(-bForward.Z, 0, bForward.X);
+        return Intersects(aForward) && Intersects(aRight) && Intersects(bForward) && Intersects(bRight);
+
+        bool Intersects(Vec3d axis) =>
+            M.Abs(axis.Dot(offset)) < M.Abs(axis.Dot(aForward)) * aShape.HalfLength + M.Abs(axis.Dot(aRight)) * aShape.HalfWidth
+                                + M.Abs(axis.Dot(bForward)) * bShape.HalfLength + M.Abs(axis.Dot(bRight)) * bShape.HalfWidth;
     }
 
     private static bool Separated(Vec3d offset, Vec3d extent, Vec3d axis, double halfSize) =>

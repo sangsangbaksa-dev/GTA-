@@ -1,23 +1,22 @@
 using System.Collections.Generic;
 using Godot;
-using Harbor.Core.Vehicles;
 using Harbor.Game.Bridge;
 using Harbor.Game.Player;
 
 namespace Harbor.Game.Views;
 
-/// <summary>Presents the authority's pedestrian and traffic snapshots with locally smoothed motion.</summary>
+/// <summary>Presents the authority's pedestrian snapshots with locally smoothed motion.</summary>
 public partial class StreetPopulationView : Node3D
 {
-    private static readonly string[] CarPaint = ["#3e5e65", "#784745", "#a69c7d", "#4c5979"];
     private readonly Dictionary<int, Pedestrian> _people = new();
-    private readonly Dictionary<int, RoadCar> _cars = new();
+    private readonly Dictionary<string, Node3D> _cargo = new();
+    private readonly HashSet<string> _visibleCargo = new();
+    private readonly List<string> _missingCargo = new();
     private readonly HashSet<int> _seen = new();
     private readonly List<int> _expired = new();
     private CoreHost _host = null!;
     private PackedScene? _dockhand;
     private PackedScene? _civilian;
-    private PackedScene? _car;
     private int _generation;
 
     public override void _Ready()
@@ -25,7 +24,6 @@ public partial class StreetPopulationView : Node3D
         _host = GetNode<CoreHost>("../CoreHost");
         _dockhand = LoadOptional("res://assets/characters/chr_harbor_dockhand.glb");
         _civilian = LoadOptional("res://assets/characters/chr_npc_civilian.glb");
-        _car = LoadOptional("res://assets/vehicles/veh_calloway_compact.glb");
     }
 
     public override void _Process(double delta)
@@ -35,7 +33,8 @@ public partial class StreetPopulationView : Node3D
             _generation = _host.RunGeneration;
             _seen.Clear();
             RemoveMissing(_people);
-            RemoveMissing(_cars);
+            foreach (var parcel in _cargo.Values) parcel.QueueFree();
+            _cargo.Clear();
         }
 
         var dt = (float)delta;
@@ -62,27 +61,47 @@ public partial class StreetPopulationView : Node3D
         }
         RemoveMissing(_people);
 
-        _seen.Clear();
-        foreach (var traffic in ambient.Traffic)
+        _visibleCargo.Clear();
+        foreach (var cargo in ambient.Cargo)
         {
-            _seen.Add(traffic.Id);
-            var position = CoreHost.ToGodot(traffic.Position);
-            var yaw = (float)traffic.Yaw;
-            if (!_cars.TryGetValue(traffic.Id, out var view))
+            _visibleCargo.Add(cargo.Id);
+            if (!_cargo.TryGetValue(cargo.Id, out var view))
             {
-                view = AddCar(traffic.Id, traffic.Appearance, position, yaw);
-                _cars.Add(traffic.Id, view);
+                view = MakeCargo(cargo.Id, CoreHost.ToGodot(cargo.Position));
+                _cargo.Add(cargo.Id, view);
             }
-
-            var turn = Mathf.AngleDifference(view.Root.Rotation.Y, yaw);
-            MoveView(view.Root, position, yaw, blend, 100);
-            view.Roll = Mathf.PosMod(view.Roll + (float)(traffic.Speed * dt / ArcadeVehicle.WheelRadius), Mathf.Tau);
-            foreach (var wheel in view.Wheels) wheel.Rotation = new Vector3(view.Roll, 0, 0);
-            var steering = new Vector3(0, -Mathf.Clamp(turn, -0.38f, 0.38f), 0);
-            if (view.LeftSteer != null) view.LeftSteer.Rotation = steering;
-            if (view.RightSteer != null) view.RightSteer.Rotation = steering;
+            view.Visible = cargo.Available;
         }
-        RemoveMissing(_cars);
+        _missingCargo.Clear();
+        foreach (var id in _cargo.Keys)
+            if (!_visibleCargo.Contains(id)) _missingCargo.Add(id);
+        foreach (var id in _missingCargo)
+        {
+            _cargo[id].QueueFree();
+            _cargo.Remove(id);
+        }
+    }
+
+    private Node3D MakeCargo(string id, Vector3 position)
+    {
+        var root = new Node3D { Name = $"Cargo_{id}", Position = position };
+        AddChild(root);
+        AddBox(new Vector3(0.64f, 0.41f, 0.45f), new Vector3(0, 0.205f, 0), new Color("#876446"));
+        AddBox(new Vector3(0.68f, 0.08f, 0.49f), new Vector3(0, 0.42f, 0), new Color("#b78b52"));
+        var metal = new Color("#435454");
+        foreach (var side in new[] { -1, 1 })
+        {
+            AddBox(new Vector3(0.06f, 0.04f, 0.49f), new Vector3(side * 0.23f, 0.47f, 0), metal);
+            AddBox(new Vector3(0.06f, 0.38f, 0.03f), new Vector3(side * 0.23f, 0.22f, 0.235f), metal);
+        }
+        return root;
+
+        void AddBox(Vector3 size, Vector3 local, Color color) => root.AddChild(new MeshInstance3D
+        {
+            Position = local,
+            Mesh = new BoxMesh { Size = size },
+            MaterialOverride = new StandardMaterial3D { AlbedoColor = color, Roughness = 0.85f }
+        });
     }
 
     private Pedestrian AddPedestrian(int id, int appearance, Vector3 position, float yaw)
@@ -104,24 +123,6 @@ public partial class StreetPopulationView : Node3D
             Recolor(model, "hoodie_cobalt", appearance == 1 ? new Color("#755b72") : new Color("#637e81"));
 
         return new Pedestrian(root, RookGait.Create(model), id);
-    }
-
-    private RoadCar AddCar(int id, int appearance, Vector3 position, float yaw)
-    {
-        var root = AddActorRoot("Traffic", id, position, yaw);
-        var result = new RoadCar(root);
-        if (_car == null) return result;
-
-        var model = _car.Instantiate<Node3D>();
-        model.RotateY(Mathf.Pi);
-        root.AddChild(model);
-        Recolor(model, "pip_copper_orange", new Color(CarPaint[Mathf.PosMod(appearance, CarPaint.Length)]));
-        result.LeftSteer = model.FindChild("WheelFL", true, false) as Node3D;
-        result.RightSteer = model.FindChild("WheelFR", true, false) as Node3D;
-        foreach (var name in new[] { "WheelFLRoll", "WheelFRRoll", "WheelRLRoll", "WheelRRRoll" })
-            if (model.FindChild(name, true, false) is Node3D wheel) result.Wheels.Add(wheel);
-
-        return result;
     }
 
     private Node3D AddActorRoot(string category, int id, Vector3 position, float yaw)
@@ -186,13 +187,5 @@ public partial class StreetPopulationView : Node3D
     {
         public readonly RookGait? Gait = gait;
         public float Phase = Mathf.PosMod(id * 1.7f, Mathf.Tau);
-    }
-
-    private sealed class RoadCar(Node3D root) : StreetActor(root)
-    {
-        public readonly List<Node3D> Wheels = new();
-        public Node3D? LeftSteer;
-        public Node3D? RightSteer;
-        public float Roll;
     }
 }

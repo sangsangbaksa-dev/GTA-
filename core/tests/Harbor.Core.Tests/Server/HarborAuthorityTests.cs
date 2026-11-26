@@ -1,4 +1,5 @@
 using Harbor.Core.Combat;
+using Harbor.Core.Geometry;
 using Harbor.Core.Data;
 using Harbor.Core.Math;
 using Harbor.Core.Net;
@@ -340,6 +341,134 @@ public sealed class HarborAuthorityTests
         Assert.Single(game.Authority.World.Actors.All, actor => actor.Kind == ActorKind.Player);
     }
 
+    [Fact]
+    public void SandboxIgnoresMissionTriggersAndRespawnsAfterDefeat()
+    {
+        var game = new Harness(singlePlayer: true, sandbox: true);
+        var pilot = game.Join("Rook");
+        pilot.Actor.Position = game.Authority.Lockdown.StartPosition;
+        game.PressInteract(pilot);
+        Assert.Equal(LockdownPhase.FreeRoam, pilot.State.Lockdown.Phase);
+        Assert.False(pilot.State.Lockdown.CanStart);
+        Assert.Empty(pilot.State.Jobs.Available);
+        Assert.Empty(pilot.State.Enemies);
+
+        game.Authority.Combat.Kill(pilot.Actor, 0, "test", false);
+        game.Ticks((int)System.Math.Ceiling(game.Authority.Combat.Config.RespawnSeconds * 30) + 4);
+        Assert.True(pilot.Actor.IsAlive);
+        Assert.Equal(game.Authority.Session.Config.SpawnPoint, pilot.Actor.Position);
+        Assert.Equal(LockdownPhase.FreeRoam, pilot.State.Lockdown.Phase);
+        Assert.Equal(0, pilot.State.WantedLevel);
+    }
+
+    [Fact]
+    public void StoppedTrafficCanBeTakenOverAndRemainsTheSameVehicleAfterExit()
+    {
+        var streets = new StreetPopulationDef
+        {
+            TrafficRoutes =
+            [
+                new StreetRouteDef
+                {
+                    Id = "test-ring", Count = 1, Loop = true, Speed = 8,
+                    VehicleModels = ["pier_runner"],
+                    Points = [[-60, 0, -60], [60, 0, -60], [60, 0, 60], [-60, 0, 60]],
+                }
+            ],
+        };
+        var game = new Harness(singlePlayer: true, sandbox: true, streetOverride: streets);
+        var pilot = game.Join("Rook");
+        var car = Assert.Single(pilot.State.Vehicles, car => car.Occupied);
+        var forward = Vec3d.FromYawPitch(car.Yaw, 0);
+        pilot.Actor.Position = car.Position + forward * 10;
+        game.Ticks(170);
+
+        var stopped = Assert.Single(pilot.State.Vehicles, candidate => candidate.Id == car.Id);
+        Assert.InRange(stopped.Speed, 0, 0.2);
+        var right = new Vec3d(-forward.Z, 0, forward.X);
+        pilot.Actor.Position = stopped.Position + right * 2;
+        game.Ticks(3);
+        Assert.Equal(stopped.Id, pilot.State.StreetAction.VehicleId);
+        Assert.True(pilot.State.StreetAction.VehicleOccupied);
+
+        game.Press(pilot, InputButtons.Vehicle);
+        Assert.True(pilot.State.IsDriving);
+        Assert.Equal(stopped.Id, pilot.State.PlayerVehicleId);
+        Assert.Equal("sports", pilot.State.Vehicle.VehicleClass);
+        Assert.Equal("vehicle_taken", pilot.State.StreetCrime.Status);
+        Assert.Equal(1, pilot.State.WantedLevel);
+        Assert.Empty(pilot.State.Ambient.Traffic);
+        Assert.Single(pilot.State.Ambient.Pedestrians, person => person.Fleeing);
+
+        game.Press(pilot, InputButtons.Vehicle);
+        Assert.False(pilot.State.IsDriving);
+        var left = Assert.Single(pilot.State.Vehicles, candidate => candidate.Id == car.Id);
+        Assert.False(left.Occupied);
+        Assert.InRange(Vec3d.Distance(left.Position, pilot.Actor.Position), 1.6, 3);
+    }
+
+    [Fact]
+    public void PickpocketPaysOncePerCivilianAndStartsAVisibleReaction()
+    {
+        var streets = new StreetPopulationDef
+        {
+            PedestrianRoutes = [new StreetRouteDef { Id = "sidewalk", Count = 1, Speed = 1.25,
+                Points = [[-5, 0, -8], [5, 0, -8]] }],
+            PickpocketMinCash = 25,
+            PickpocketMaxCash = 25,
+        };
+        var game = new Harness(singlePlayer: true, sandbox: true, streetOverride: streets);
+        var pilot = game.Join("Rook");
+        var pedestrian = Assert.Single(pilot.State.Ambient.Pedestrians);
+        pilot.Actor.Position = pedestrian.Position + new Vec3d(0, 0, -1);
+        game.Ticks(2);
+        Assert.True(pilot.State.StreetAction.CanPickpocket);
+
+        pilot.Buttons = InputButtons.Pickpocket;
+        game.Ticks(20);
+        Assert.Equal("pickpocketed", pilot.State.StreetCrime.Status);
+        Assert.Equal(25, pilot.State.StreetCrime.DirtyCash);
+        Assert.Equal("fleeing", Assert.Single(pilot.State.Ambient.Pedestrians).Reaction);
+        Assert.False(pilot.State.StreetAction.CanPickpocket);
+
+        pilot.Buttons = InputButtons.None;
+        game.Ticks(3);
+        game.Press(pilot, InputButtons.Pickpocket);
+        Assert.Equal("no_target", pilot.State.StreetCrime.Status);
+        Assert.Equal(25, pilot.State.StreetCrime.DirtyCash);
+    }
+
+    [Fact]
+    public void CargoTheftRequiresReachAndSpawnsPoliceWhoScaleWithWantedLevel()
+    {
+        var streets = new StreetPopulationDef { Cargo = [new StreetCargoDef("case", [2, 0, 0], 38, 20)] };
+        var game = new Harness(singlePlayer: true, sandbox: true, streetOverride: streets);
+        var pilot = game.Join("Rook");
+        pilot.Actor.Position = Vec3d.Zero;
+        var wall = game.Authority.Level.Add(Aabb.FromCenter(new Vec3d(1, 1.1, 0), new Vec3d(0.2, 2, 4)),
+            SurfaceMaterial.Concrete, "test obstacle");
+        game.Press(pilot, InputButtons.Pickpocket);
+        Assert.Equal("no_target", pilot.State.StreetCrime.Status);
+        Assert.Equal(0, pilot.State.StreetCrime.DirtyCash);
+        Assert.True(Assert.Single(pilot.State.Ambient.Cargo).Available);
+
+        game.Authority.Level.Remove(wall);
+        game.Press(pilot, InputButtons.Pickpocket);
+        Assert.Equal("cargo_taken", pilot.State.StreetCrime.Status);
+        Assert.Equal(38, pilot.State.StreetCrime.DirtyCash);
+        Assert.False(Assert.Single(pilot.State.Ambient.Cargo).Available);
+        Assert.Equal(1, pilot.State.WantedLevel);
+
+        game.Ticks(122);
+        Assert.Equal(1, pilot.State.PoliceUnits);
+        var officer = Assert.Single(pilot.State.Enemies, enemy => enemy.Team == 3);
+        game.Authority.World.Events.Publish(new ActorDamaged(officer.Id, pilot.Actor.Id, 1, 0, HitZone.Torso, "test"));
+        game.Ticks(94);
+        Assert.Equal(2, pilot.State.WantedLevel);
+        Assert.Equal(2, pilot.State.PoliceUnits);
+        Assert.Equal(5, pilot.State.MaxWantedLevel);
+    }
+
     private sealed class Harness
     {
         private const double Step = 1.0 / 30.0;
@@ -349,24 +478,29 @@ public sealed class HarborAuthorityTests
         public HarborAuthority Authority { get; }
         public HarborJobCatalog Catalog { get; }
 
-        public Harness(bool includeAmbient = false, bool singlePlayer = false)
+        public Harness(bool includeAmbient = false, bool singlePlayer = false, bool sandbox = false, StreetPopulationDef? streetOverride = null)
         {
             var files = new DiskFileSystem(Repo.Root);
             var data = GameData.LoadCombat(files);
             var encounter = HarborLockdownDef.Load(files, "game/data/missions/harbor_lockdown.json", data.Weapons);
             Catalog = HarborJobCatalog.Load(files, "game/data/missions/harbor_jobs.json");
-            var layout = HarborLayout.Load(files, "data/world/harbor_front.json");
+            var layout = streetOverride != null ? new HarborLayout { Spawn = [0, 0, 0] }
+                : HarborLayout.Load(files, "data/world/harbor_front.json");
             var car = ArcadeVehicleTuning.Load(files, "data/vehicles/calloway_compact.json");
             _server = _network.CreateServer();
-            var ambient = includeAmbient ? StreetPopulationDef.Load(files, "data/world/harbor_population.json") : null;
+            var ambient = streetOverride ?? (includeAmbient ? StreetPopulationDef.Load(files, "data/world/harbor_population.json") : null);
+            var fleet = sandbox ? VehicleCatalog.Load(files, "data/vehicles", car) : null;
             Authority = singlePlayer
-                ? new HarborAuthority(data, encounter, layout, car, _server, new NullLog(), jobs: Catalog, ambient: ambient)
+                ? new HarborAuthority(data, encounter, layout, car, _server, new NullLog(), jobs: Catalog, ambient: ambient,
+                    vehicles: fleet, sandbox: sandbox)
                 : new HarborAuthority(data, encounter, layout, car, _server, new NullLog(), maxPlayers: 4, jobs: Catalog, ambient: ambient);
         }
 
-        public void PressInteract(Pilot pilot)
+        public void PressInteract(Pilot pilot) => Press(pilot, InputButtons.Interact);
+
+        public void Press(Pilot pilot, InputButtons buttons)
         {
-            pilot.Buttons = InputButtons.Interact;
+            pilot.Buttons = buttons;
             Ticks(3);
             pilot.Buttons = InputButtons.None;
             Ticks(3);

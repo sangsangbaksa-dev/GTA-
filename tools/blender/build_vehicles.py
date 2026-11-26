@@ -1,4 +1,4 @@
-"""Build the original Calloway Pip road compact for Project Harbor and Set.
+"""Build the original Project Harbor road vehicles.
 
 blender -b --factory-startup -P tools/blender/build_vehicles.py -- --out game/assets/vehicles
 """
@@ -24,7 +24,7 @@ def face(name, coordinates, material):
     return _finish(obj, material, smooth=False)
 
 
-def wheel(name, position, p):
+def wheel(name, position, p, radius=0.31):
     axis = (0, math.pi / 2, 0)
     # Tire, the darker inset drum, and a machined circular hub all spin together.
     pieces = [
@@ -44,6 +44,7 @@ def wheel(name, position, p):
     bpy.context.scene.collection.objects.link(hub)
     hub.location = position
     bpy.data.objects[name + "Roll"].parent = hub
+    bpy.data.objects[name + "Roll"].scale = (radius / 0.31,) * 3
 
 
 def compact():
@@ -107,13 +108,84 @@ def compact():
     wheel("WheelRR", (-0.781, 1.18, 0.31), p)
 
 
+def road_car(truck):
+    reset()
+    p = P()
+    paint = mat("vehicle_paint", (0.37, 0.42, 0.24) if truck else (0.21, 0.48, 0.61),
+                metal=0.42, rough=0.33, clearcoat=0.58)
+    trim = mat("vehicle_trim", (0.034, 0.043, 0.050), metal=0.23, rough=0.47)
+    glass = mat("vehicle_glazing", (0.068, 0.16, 0.20), metal=0.24, rough=0.18, clearcoat=0.60)
+    headlight = mat("vehicle_headlights", (0.74, 0.86, 0.94), emit=(0.64, 0.76, 0.86), emit_strength=1.1)
+    taillight = mat("vehicle_taillights", (0.59, 0.023, 0.028), emit=(0.44, 0.022, 0.026), emit_strength=1.3)
+    length, width, height = (2.51, 1.04, 1.83) if truck else (2.18, 0.96, 1.20)
+    wheel_radius, axle = (0.40, 1.58) if truck else (0.33, 1.35)
+    waist, clearance = (1.04, 0.45) if truck else (0.72, 0.27)
+    side = [(-length + 0.06, clearance), (-length, waist - 0.18), (-length + 0.16, waist - 0.03),
+            (-1.4, waist), (length - 0.28, waist), (length - 0.11, waist - 0.08),
+            (length, waist - 0.25), (length - 0.09, clearance)]
+    for center in (axle, -axle):
+        for j in range(7):
+            angle = j * math.pi / 6
+            side.append((center + (wheel_radius + 0.035) * math.cos(angle),
+                         clearance + (wheel_radius + 0.045) * math.sin(angle)))
+    parts = [profile(side, (width - 0.07) * 2, paint, axis="X", bevel=0.034, seg=3)]
+    cabin = [(-1.02, waist - 0.04), (-0.60, height - 0.08), (-0.47, height),
+             (0.46, height), (0.63, height - 0.10), (0.75 if truck else 1.24, waist - 0.04)]
+    cabin_width = width - (0.18 if truck else 0.25)
+    parts.append(profile(cabin, cabin_width * 2, paint, axis="X", bevel=0.035, seg=3))
+    parts.append(face("windscreen", [(-cabin_width + 0.08, -0.627, height - 0.116),
+                                     (-cabin_width + 0.04, -0.95, waist + 0.02),
+                                     (cabin_width - 0.04, -0.95, waist + 0.02),
+                                     (cabin_width - 0.08, -0.627, height - 0.116)], glass))
+    back_top, back_bottom = (0.63, 0.74) if truck else (0.67, 1.18)
+    parts.append(face("back_glazing", [(cabin_width - 0.07, back_top, height - 0.13),
+                                      (cabin_width - 0.05, back_bottom, waist + 0.028),
+                                      (-cabin_width + 0.05, back_bottom, waist + 0.028),
+                                      (-cabin_width + 0.07, back_top, height - 0.13)], glass))
+    for sign in (-1, 1):
+        x = sign * (cabin_width + 0.002)
+        parts.extend((
+            face("door_glazing", [(x, -0.88, waist + 0.05), (x, -0.565, height - 0.104),
+                                 (x, 0.41, height - 0.104), (x, 0.53, waist + 0.05)], glass),
+            box((0.16, 0.19, 0.09), (sign * (width - 0.08), -0.63, waist + 0.12), trim, bevel=0.03),
+            box((0.035, 0.15, 0.038), (sign * (width - 0.055), 0.32, waist - 0.14), trim, bevel=0.008),
+            box((0.31 if truck else 0.42, 0.05, 0.15 if truck else 0.074),
+                (sign * (width - 0.33), -length + 0.10, waist - 0.20), headlight, bevel=0.015),
+            box((0.21, 0.055, 0.145 if truck else 0.078),
+                (sign * (width - 0.25), length - 0.12, waist - 0.15), taillight, bevel=0.016),
+        ))
+    parts.extend((
+        box((1.53, 0.13, 0.13), (0, -length + 0.04, clearance + 0.05), trim, bevel=0.03),
+        box((1.55, 0.14, 0.15), (0, length - 0.04, clearance + 0.05), trim, bevel=0.025),
+        box((0.65, 0.046, 0.18 if truck else 0.11), (0, -length + 0.038, waist - 0.24), trim, bevel=0.02),
+        box((0.34, 0.028, 0.085), (0, length + 0.004, waist - 0.32), p["plastic_w"], bevel=0.01),
+    ))
+    if truck:
+        parts.append(box((1.34, 1.22, 0.032), (0, 1.46, waist + 0.02), trim, bevel=0.012))
+        for x in (-0.82, 0.82):
+            parts.append(box((0.19, 1.37, 0.12), (x, 1.46, waist + 0.08), paint, bevel=0.018))
+        parts.append(box((1.61, 0.12, 0.16), (0, 2.12, waist + 0.06), paint, bevel=0.018))
+    else:
+        parts.append(box((1.54, 0.20, 0.045), (0, 1.89, waist + 0.08), trim, bevel=0.018))
+    dock_finish(parts, "veh_breakwater_utility" if truck else "veh_pier_runner")
+    wheel_offset = width - 0.10
+    for end, y in (("F", -axle), ("R", axle)):
+        for side_name, x in (("L", wheel_offset), ("R", -wheel_offset)):
+            wheel("Wheel" + end + side_name, (x, y, wheel_radius), p, wheel_radius)
+
+
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", required=True, help="vehicle asset directory")
+    parser.add_argument("--skip-compact", action="store_true")
     args = parser.parse_args(argv)
-    compact()
-    export(os.path.abspath(os.path.join(args.out, "veh_calloway_compact.glb")))
+    if not args.skip_compact:
+        compact()
+        export(os.path.abspath(os.path.join(args.out, "veh_calloway_compact.glb")))
+    for truck, name in ((False, "pier_runner"), (True, "breakwater_utility")):
+        road_car(truck)
+        export(os.path.abspath(os.path.join(args.out, f"veh_{name}.glb")))
 
 
 if __name__ == "__main__":
