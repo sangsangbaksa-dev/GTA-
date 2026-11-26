@@ -116,7 +116,7 @@ public sealed record StreetPopulationDef
 
 public readonly record struct StreetPedestrianState(int Id, int Appearance, Vec3d Position, double Yaw, double Speed, bool Fleeing)
 {
-    public string Reaction { get; init; }
+    public string Reaction { get; init; } = "waiting";
 }
 
 public readonly record struct StreetTrafficState(int Id, int Appearance, Vec3d Position, double Yaw, double Speed)
