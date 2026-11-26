@@ -3,6 +3,7 @@
 import json
 import math
 import random
+import sys
 from collections import defaultdict
 from pathlib import Path
 
@@ -984,6 +985,10 @@ def serialize():
         lines.append(f'  "{key}": {serialized}{suffix}')
     lines.append('}')
     (ROOT / 'data/world/harbor_front.json').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    # The authored scene is one file; the playable view streams it as chunks around the player.
+    sys.path.insert(0, str(ROOT / 'tools' / 'map'))
+    import split_harbor_chunks
+    split_harbor_chunks.split(path)
 
 
 if __name__ == '__main__':

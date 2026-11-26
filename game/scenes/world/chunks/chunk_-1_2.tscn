@@ -1,0 +1,50 @@
+[gd_scene load_steps=8 format=3]
+
+[sub_resource type="BoxMesh" id="UnitBox"]
+
+[sub_resource type="StandardMaterial3D" id="Shutter"]
+albedo_color = Color(0.23, 0.29, 0.30, 1)
+roughness = 0.66
+
+[sub_resource type="StandardMaterial3D" id="Shore"]
+albedo_color = Color(0.33, 0.41, 0.42, 1)
+roughness = 0.92
+
+[sub_resource type="StandardMaterial3D" id="StoneBlue"]
+albedo_color = Color(0.34, 0.40, 0.42, 1)
+roughness = 0.89
+
+[sub_resource type="MultiMesh" id="Batch000"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 2
+buffer = PackedFloat32Array(84.36642, 0, -1.46243, -21, 0, 1.8, 0, -0.64, 10.35889, 0, 11.91055, 140, 5.84015, 0, -0.63025, -5, 0, 11.3071, 0, 5.55355, 0.45028, 0, 8.17443, 142.33862)
+
+[sub_resource type="MultiMesh" id="Batch001"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 4
+buffer = PackedFloat32Array(7.00096, 0, -0.84129, -45, 0, 13.81461, 0, 6.80731, 0.8795, 0, 6.69682, 138.14911, 7.53067, 0, -0.06782, -37, 0, 16.88599, 0, 8.34299, 0.0672, 0, 7.59988, 140.4644, 5.50837, 0, 0.66756, -21, 0, 5.85834, 0, 2.82917, -0.42195, 0, 8.71483, 137.95823, 7.33107, 0, -0.69408, -13, 0, 16.85944, 0, 8.32972, 0.60495, 0, 8.41121, 139.38268)
+
+[sub_resource type="MultiMesh" id="Batch002"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 2
+buffer = PackedFloat32Array(5.54109, 0, -1.28074, -53, 0, 15.65475, 0, 7.72737, 0.91333, 0, 7.77007, 137.88123, 5.16699, 0, -0.40075, -29, 0, 18.46544, 0, 9.13272, 0.32696, 0, 6.33311, 141.68722)
+
+[node name="Chunk_-1_2" type="Node3D"]
+
+[node name="FarShoreShoreUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch000")
+material_override = SubResource("Shore")
+cast_shadow = 1
+
+[node name="FarShoreStoneBlueUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch001")
+material_override = SubResource("StoneBlue")
+cast_shadow = 1
+
+[node name="FarShoreShutterUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch002")
+material_override = SubResource("Shutter")
+cast_shadow = 1

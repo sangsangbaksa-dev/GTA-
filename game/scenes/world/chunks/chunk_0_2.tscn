@@ -1,0 +1,35 @@
+[gd_scene load_steps=6 format=3]
+
+[sub_resource type="BoxMesh" id="UnitBox"]
+
+[sub_resource type="StandardMaterial3D" id="Shutter"]
+albedo_color = Color(0.23, 0.29, 0.30, 1)
+roughness = 0.66
+
+[sub_resource type="StandardMaterial3D" id="Shore"]
+albedo_color = Color(0.33, 0.41, 0.42, 1)
+roughness = 0.92
+
+[sub_resource type="MultiMesh" id="Batch000"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 1
+buffer = PackedFloat32Array(7.81948, 0, 0.96966, 3, 0, 16.69986, 0, 8.24993, -1.04918, 0, 7.22688, 138.4446)
+
+[sub_resource type="MultiMesh" id="Batch001"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 1
+buffer = PackedFloat32Array(7.94544, 0, -1.26471, 11, 0, 5.30996, 0, 2.55498, 1.26799, 0, 7.92486, 142.07509)
+
+[node name="Chunk_0_2" type="Node3D"]
+
+[node name="FarShoreShoreUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch000")
+material_override = SubResource("Shore")
+cast_shadow = 1
+
+[node name="FarShoreShutterUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch001")
+material_override = SubResource("Shutter")
+cast_shadow = 1

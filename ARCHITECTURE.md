@@ -97,10 +97,10 @@ Save ─> (모든 모듈의 ISaveable)
 
 ### 3.1 월드 스트리밍
 Godot에는 UE의 World Partition 같은 내장 기능이 없으므로 직접 만든다.
-- 도시를 **청크 그리드**(기본 256m × 256m)로 나눈다. 청크 = `game/scenes/world/chunks/chunk_X_Y.tscn`.
-- 코어 `World`가 "어떤 청크가 필요한지"(플레이어 위치·속도 기반 반경)를 계산 → Godot `Streaming`이 비동기 로딩.
-- 원거리는 청크별 저폴리 **임포스터/HLOD 메시**로 대체.
-- **원점 이동(floating origin)**: 플레이어가 원점에서 4km 이상 멀어지면 전체를 재정렬. 코어 좌표는 `double`, Godot 좌표는 원점 상대 `float`.
+- 청크 크기와 로드 반경은 데이터다. 도시 계획값은 `data/world/districts.json`의 256m. 지금 플레이하는 항구(360×290m)는 `data/world/harbor_streaming.json`의 **64m**다. 256m면 항구 전체가 상주해서 언로드가 없다. Y는 위쪽이라 칸 주소는 X·Z이고, 씬 이름은 `game/scenes/world/chunks/chunk_X_Z.tscn`.
+- 코어 `ChunkGrid`가 플레이어 위치와 속도 앞쪽으로 필요한 칸을 고른다. Godot `ChunkStreamer`가 그 씬을 `ResourceLoader.LoadThreadedRequest`로 올리고, 로드 반경보다 한 칸 더 벗어나면 내린다.
+- 항구 셸(`HarborFront.tscn`)에는 하늘, 해수면, 충돌만 항상 둔다. 메시와 소품은 칸으로 나뉜다. 분할은 `tools/map/split_harbor_chunks.py`.
+- 원거리 임포스터/HLOD와 원점 이동(플레이어가 원점에서 4km 이상 멀어지면 재정렬. 코어 좌표는 `double`)은 도시가 커지면 잇는다.
 - 인테리어는 별도 씬, 진입 시 외부 인구 예산 축소.
 
 ### 3.2 차량
@@ -237,7 +237,7 @@ Godot: 이벤트 받아 피격 애니메이션·이펙트·HUD
 | M4 | 살아있는 거리 + 수배 | 보행자·교통 에이전트, District 1개, Heat 3단계, 경찰 추격 |
 | M5 | 미션 + 세이브 | JSON 미션 3개, 세이브/로드 |
 
-Harbor Front 플레이테스트는 360 × 290m 시가지에서 1인 플레이를 제공한다. `HarborAuthority`가 게임 내부에서 30Hz로 전투·수배·운전·의뢰와 보행자·교통을 판정한다. `data/world/harbor_front.json`은 공용 충돌 배치이고, `data/world/harbor_population.json`과 `game/data/missions/harbor_jobs.json`은 거리 활동과 의뢰를 정의한다. City operations도 게임 안의 로컬 권한으로 실행한다.
+Harbor Front 플레이테스트는 360 × 290m 시가지에서 1인 플레이를 제공한다. 보이는 지형과 소품은 플레이어 주변 청크만 읽고 내린다. `HarborAuthority`가 게임 내부에서 30Hz로 전투·수배·운전·의뢰와 보행자·교통을 판정한다. `data/world/harbor_front.json`은 공용 충돌 배치이고, `data/world/harbor_population.json`과 `game/data/missions/harbor_jobs.json`은 거리 활동과 의뢰를 정의한다. City operations도 게임 안의 로컬 권한으로 실행한다.
 
 멀티플레이·경제 트랙 (기획: `docs/CONTENT_DESIGN.md` §10) — 코어+테스트만으로 완결, Godot 연결은 G1:
 

@@ -1,0 +1,101 @@
+[gd_scene load_steps=15 format=3]
+
+[sub_resource type="BoxMesh" id="UnitBox"]
+
+[sub_resource type="StandardMaterial3D" id="PaintAmber"]
+albedo_color = Color(0.95, 0.66, 0.20, 1)
+roughness = 0.92
+
+[sub_resource type="StandardMaterial3D" id="Shutter"]
+albedo_color = Color(0.23, 0.29, 0.30, 1)
+roughness = 0.66
+
+[sub_resource type="StandardMaterial3D" id="Shore"]
+albedo_color = Color(0.33, 0.41, 0.42, 1)
+roughness = 0.92
+
+[sub_resource type="StandardMaterial3D" id="Limestone"]
+albedo_color = Color(0.62, 0.57, 0.49, 1)
+roughness = 0.88
+
+[sub_resource type="StandardMaterial3D" id="StoneBlue"]
+albedo_color = Color(0.34, 0.40, 0.42, 1)
+roughness = 0.89
+
+[sub_resource type="StandardMaterial3D" id="RedPaint"]
+albedo_color = Color(0.68, 0.21, 0.15, 1)
+roughness = 0.9
+
+[sub_resource type="CylinderMesh" id="Cylinder"]
+radial_segments = 12
+top_radius = 0.5
+bottom_radius = 0.5
+height = 1.0
+
+[sub_resource type="MultiMesh" id="Batch000"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 3
+buffer = PackedFloat32Array(3.86801, 0, -1.24838, 194.85, 0, 2.2, 0, -0.87, 1.01908, 0, 4.73831, -158.95, 3.60491, 0, -2.12339, 204.3, 0, 2.2, 0, -0.87, 1.73338, 0, 4.41602, -157.6, 3.21127, 0, -2.9215, 213.75, 0, 2.2, 0, -0.87, 2.3849, 0, 3.93381, -156.25)
+
+[sub_resource type="MultiMesh" id="Batch001"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 8
+buffer = PackedFloat32Array(-2.14627, 0, 1.72337, 192.75, 0, 1.29, 0, -1.09, -1.81374, 0, -2.03934, -156.9, -2.51257, 0, 1.19552, 195.9, 0, 1.29, 0, -1.09, -1.2582, 0, -2.38739, -156.45, -2.73798, 0, 0.60062, 199.05, 0, 1.29, 0, -1.09, -0.63211, 0, -2.60157, -156.0, -2.80985, 0, -0.02796, 202.2, 0, 1.29, 0, -1.09, 0.02943, 0, -2.66985, -155.55, -2.72414, 0, -0.65497, 205.35, 0, 1.29, 0, -1.09, 0.68931, 0, -2.58842, -155.1, -2.48567, 0, -1.24525, 208.5, 0, 1.29, 0, -1.09, 1.31055, 0, -2.36183, -154.65, -2.10781, 0, -1.7657, 211.65, 0, 1.29, 0, -1.09, 1.85829, 0, -2.0028, -154.2, -1.61175, 0, -2.18714, 214.8, 0, 1.29, 0, -1.09, 2.30182, 0, -1.53145, -153.75)
+
+[sub_resource type="MultiMesh" id="Batch002"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 4
+buffer = PackedFloat32Array(3.7955, 0, -1.54668, 198.0, 0, 2.2, 0, -0.87, 1.2626, 0, 4.64949, -158.5, 3.70769, 0, -1.83874, 201.15, 0, 2.2, 0, -0.87, 1.50102, 0, 4.54192, -158.05, 3.48759, 0, -2.39947, 207.45, 0, 2.2, 0, -0.87, 1.95875, 0, 4.2723, -157.15, 3.3562, 0, -2.66586, 210.6, 0, 2.2, 0, -0.87, 2.17621, 0, 4.11135, -156.7)
+
+[sub_resource type="MultiMesh" id="Batch003"]
+transform_format = 1
+mesh = SubResource("Cylinder")
+instance_count = 1
+buffer = PackedFloat32Array(1.08, 0, 0.0, 213.6, 0, 0.45, 0, 0.43, -0.0, 0, 1.08, -155.5)
+
+[sub_resource type="MultiMesh" id="Batch004"]
+transform_format = 1
+mesh = SubResource("Cylinder")
+instance_count = 1
+buffer = PackedFloat32Array(0.51, 0, 0.0, 213.6, 0, 1.52, 0, 1.38, -0.0, 0, 0.51, -155.5)
+
+[sub_resource type="MultiMesh" id="Batch005"]
+transform_format = 1
+mesh = SubResource("Cylinder")
+instance_count = 1
+buffer = PackedFloat32Array(0.41, 0, 0.0, 213.6, 0, 0.23, 0, 2.18, -0.0, 0, 0.41, -155.5)
+
+[node name="Chunk_3_-3" type="Node3D"]
+
+[node name="BreakwaterShoreUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch000")
+material_override = SubResource("Shore")
+cast_shadow = 1
+
+[node name="BreakwaterShutterUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch001")
+material_override = SubResource("Shutter")
+cast_shadow = 1
+
+[node name="BreakwaterStoneBlueUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch002")
+material_override = SubResource("StoneBlue")
+cast_shadow = 1
+
+[node name="BreakwaterLimestoneCylinder" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch003")
+material_override = SubResource("Limestone")
+cast_shadow = 1
+
+[node name="BreakwaterRedPaintCylinder" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch004")
+material_override = SubResource("RedPaint")
+cast_shadow = 1
+
+[node name="BreakwaterPaintAmberCylinder" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch005")
+material_override = SubResource("PaintAmber")
+cast_shadow = 0
