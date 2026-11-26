@@ -22,6 +22,8 @@ public partial class HarborRoster : CenterContainer
             "chr_harbor_crew", "chr_enemy_gunman"),
         new("Amara Cole", "Dock electrician", "Cole keeps cranes and shore power running from the loading apron to the basin.",
             "chr_harbor_dockhand", "chr_npc_civilian"),
+        new("Tomas Reyes", "Freight Clerk", "Reyes checks cold-chain seals and customs manifests between the quay market and the inspection plaza.",
+            "chr_harbor_clerk", "chr_npc_civilian"),
     };
 
     private Camera3D _camera = null!;

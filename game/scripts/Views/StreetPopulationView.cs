@@ -16,6 +16,7 @@ public partial class StreetPopulationView : Node3D
     private readonly List<int> _expired = new();
     private CoreHost _host = null!;
     private PackedScene? _dockhand;
+    private PackedScene? _clerk;
     private PackedScene? _civilian;
     private PackedScene? _car;
     private int _generation;
@@ -24,6 +25,7 @@ public partial class StreetPopulationView : Node3D
     {
         _host = GetNode<CoreHost>("../CoreHost");
         _dockhand = LoadOptional("res://assets/characters/chr_harbor_dockhand.glb");
+        _clerk = LoadOptional("res://assets/characters/chr_harbor_clerk.glb");
         _civilian = LoadOptional("res://assets/characters/chr_npc_civilian.glb");
         _car = LoadOptional("res://assets/vehicles/veh_calloway_compact.glb");
     }
@@ -88,8 +90,13 @@ public partial class StreetPopulationView : Node3D
     private Pedestrian AddPedestrian(int id, int appearance, Vector3 position, float yaw)
     {
         var root = AddActorRoot("Pedestrian", id, position, yaw);
-        var worker = appearance % 2 == 0 && _dockhand != null;
-        var scene = worker ? _dockhand : _civilian ?? _dockhand;
+        var slot = Mathf.PosMod(appearance, 4);
+        var scene = slot switch
+        {
+            0 or 2 => _dockhand ?? _clerk ?? _civilian,
+            1 => _clerk ?? _civilian ?? _dockhand,
+            _ => _civilian ?? _clerk ?? _dockhand
+        };
         if (scene == null) return new Pedestrian(root, null, id);
 
         var model = scene.Instantiate<Node3D>();
@@ -98,10 +105,12 @@ public partial class StreetPopulationView : Node3D
         model.Scale = Vector3.One * height;
         root.AddChild(model);
 
-        if (worker && appearance == 2)
+        if (scene == _dockhand && slot == 2)
             Recolor(model, "dockhand_hivis_vermilion", new Color("#c7aa50"));
-        else if (!worker)
-            Recolor(model, "hoodie_cobalt", appearance == 1 ? new Color("#755b72") : new Color("#637e81"));
+        else if (scene == _clerk && (slot == 3 || ((id - 1) / 4) % 2 == 1))
+            Recolor(model, "clerk_ochre_coat", new Color("#3d5a63"));
+        else if (scene == _civilian)
+            Recolor(model, "hoodie_cobalt", slot == 1 ? new Color("#755b72") : new Color("#637e81"));
 
         return new Pedestrian(root, RookGait.Create(model), id);
     }

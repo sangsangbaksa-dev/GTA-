@@ -55,6 +55,7 @@ public sealed class StreetPopulationTests
         var (_, population) = MakeWorld(definition);
         var state = population.GetState();
         Assert.Equal(20, state.Pedestrians.Length);
+        Assert.Equal([0, 1, 2, 3], state.Pedestrians.Select(p => p.Appearance).Distinct().OrderBy(a => a).ToArray());
         Assert.Equal(7, state.Traffic.Length);
         Assert.InRange(HarborProtocol.Encode(new HarborState { Ambient = state }).Length, 1, TcpTransport.MaxPacketBytes / 2);
     }
