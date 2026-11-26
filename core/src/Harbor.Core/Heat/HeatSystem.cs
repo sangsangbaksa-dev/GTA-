@@ -12,15 +12,25 @@ public sealed record HeatConfig
     public double DecayDelaySeconds { get; init; } = 15;
     /// <summary>The same crime by the same actor adds heat at most once per this interval (e.g. a full SMG mag is one "shots_fired").</summary>
     public double RepeatCrimeSeconds { get; init; } = 5;
+    public double? MaximumHeat { get; init; }
     public Dictionary<string, double> CrimeHeat { get; init; } = new();
     public List<HeatLevel> Levels { get; init; } = new() { new HeatLevel(0, 0, 0, 0) };
 
     public void Validate()
     {
-        Json.Require(Levels.Count > 0 && Levels[0].MinHeat == 0, "heat.levels must start at minHeat 0");
+        Json.Require(Levels is { Count: > 0 } && Levels[0] is { Level: 0, MinHeat: 0, Units: 0 },
+            "heat.levels must start at level, minHeat and response units 0");
+        Json.Require(double.IsFinite(DecayPerSecond) && DecayPerSecond >= 0 && double.IsFinite(DecayDelaySeconds)
+            && DecayDelaySeconds >= 0 && double.IsFinite(RepeatCrimeSeconds) && RepeatCrimeSeconds >= 0
+            && CrimeHeat is not null && CrimeHeat.Values.All(amount => double.IsFinite(amount) && amount >= 0),
+            "heat timing and crime costs must be finite and non-negative");
         for (var i = 1; i < Levels.Count; i++)
-            Json.Require(Levels[i].MinHeat > Levels[i - 1].MinHeat && Levels[i].Level == Levels[i - 1].Level + 1,
+            Json.Require(Levels[i] is not null && double.IsFinite(Levels[i].MinHeat)
+                && Levels[i].MinHeat > Levels[i - 1].MinHeat && Levels[i].Level == Levels[i - 1].Level + 1
+                && Levels[i].Units >= 0 && double.IsFinite(Levels[i].ResponseSeconds) && Levels[i].ResponseSeconds >= 0,
                 "heat.levels must be consecutive with increasing minHeat");
+        Json.Require(MaximumHeat is null || double.IsFinite(MaximumHeat.Value) && MaximumHeat.Value >= Levels[^1].MinHeat,
+            "heat.maximumHeat must accommodate the highest wanted level");
     }
 
     public int LevelFor(double heat)
@@ -78,6 +88,7 @@ public sealed class HeatSystem(HeatConfig config) : ISimSystem
         if (s.LastByCrime.TryGetValue(crime, out var last) && _now - last < Config.RepeatCrimeSeconds) { s.LastCrimeAt = _now; return 0; }
         s.LastByCrime[crime] = _now;
         s.LastCrimeAt = _now;
+        amount = System.Math.Min(amount, System.Math.Max(0, (Config.MaximumHeat ?? double.PositiveInfinity) - s.Heat));
         s.Heat += amount;
         _world.Events.Publish(new CrimeCommitted(actorId, crime, amount));
         Recompute(actorId, s);

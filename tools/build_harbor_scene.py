@@ -6,13 +6,25 @@ import random
 from collections import defaultdict
 from pathlib import Path
 
+from harbor_expansion import TERRAIN_MATERIALS, DISTRICTS, LANDMARKS, expand, open_intervals
+
 ROOT = Path(__file__).resolve().parents[1]
 SPAWN = (0, 0, 5)
+BOUNDS = {'min': (-670, -600), 'max': (620, 510)}
+WATER_LEVEL = -1.12
 obstacles = []
 roads = []
 water = []
+ground = []
 batches = defaultdict(list)
 rng = random.Random(34)
+visual_materials = []
+visual_primitives = []
+visual_assets = []
+visual_signs = []
+asset_paths = {}
+shape_ids = {'UnitBox': 'box', 'Cylinder': 'cylinder', 'Foliage': 'sphere',
+             'PineCone': 'cone', 'RoofPrism': 'gable'}
 
 
 scene = []
@@ -34,6 +46,8 @@ def val(value):
 def ext(name, path, kind='PackedScene'):
     global ext_count
     ext_count += 1
+    if kind == 'PackedScene':
+        asset_paths[name] = path
     emit(f'[ext_resource type="{kind}" path="res://{path}" id="{name}"]')
 
 
@@ -53,10 +67,13 @@ def node(name, kind, parent='.', *, instance=None, groups=None, **props):
         definition += f' groups=["{groups}"]'
     if instance:
         definition += f' instance=ExtResource("{instance}")'
+        visual_assets.append({'id': name, 'path': asset_paths[instance], 'position': props.get('position', (0, 0, 0)),
+                              'scale': props.get('scale', (1, 1, 1)), 'rotation': props.get('rotation_degrees', (0, 0, 0))})
     emit(definition + ']', *(f'{k} = {val(v)}' for k, v in props.items()))
 
 
 def material(name, color, roughness=0.92, **props):
+    visual_materials.append({'id': name, 'color': [float(c) for c in color.split(',')], 'roughness': roughness})
     sub('StandardMaterial3D', name, albedo_color=f'Color({color}, 1)', roughness=roughness, **props)
 
 
@@ -65,6 +82,7 @@ def box(name, center, size, material_name, parent, rotation=None):
     props = {'position': center, 'scale': size}
     if rotation:
         props['rotation_degrees'] = rotation
+    record_primitive(parent, material_name, center, size, rotation or (0, 0, 0), 'UnitBox')
     node(name, 'MeshInstance3D', parent, **props, mesh='SubResource("UnitBox")',
          material_override=f'SubResource("{material_name}")')
 
@@ -117,7 +135,7 @@ sub('Environment', 'CoastalLight', background_mode=2, sky='SubResource("Sky")',
     fog_sky_affect=0.35)
 sub('BoxMesh', 'UnitBox')
 sub('ShaderMaterial', 'WaterSurface', shader='ExtResource("WaterShader")')
-sub('PlaneMesh', 'Bay', material='SubResource("WaterSurface")', size='Vector2(670, 670)')
+sub('PlaneMesh', 'Bay', material='SubResource("WaterSurface")', size='Vector2(2400, 2250)')
 for label, color, scale, strength, grit in [
     ('Asphalt', '0.205, 0.231, 0.234', 0.29, 0.75, 0.17),
     ('Concrete', '0.45, 0.435, 0.392', 0.24, 0.66, 0.10),
@@ -125,7 +143,10 @@ for label, color, scale, strength, grit in [
     ('Pavers', '0.42, 0.316, 0.254', 0.69, 0.56, 0.09),
     ('Ballast', '0.25, 0.263, 0.244', 0.40, 0.90, 0.24),
     ('PlanterSoil', '0.22, 0.233, 0.177', 0.33, 0.68, 0.22),
+    *TERRAIN_MATERIALS,
 ]:
+    visual_materials.append({'id': label, 'color': [float(c) for c in color.split(',')],
+                             'roughness': 0.9, 'texture': {'scale': scale, 'strength': strength, 'grit': grit}})
     sub('ShaderMaterial', label, shader='ExtResource("PavingShader")', **{
         'shader_parameter/base_color': f'Color({color}, 1.0)',
         'shader_parameter/stain_scale': scale,
@@ -149,11 +170,23 @@ for label, color, roughness in [
     ('Leaf', '0.32, 0.43, 0.202', 0.93), ('Trunk', '0.28, 0.196, 0.12', 0.91),
     ('Roof', '0.26, 0.27, 0.26', 0.88), ('BluePaint', '0.15, 0.43, 0.57', 0.80),
     ('Whitecap', '0.51, 0.69, 0.65', 0.46), ('RedPaint', '0.68, 0.21, 0.15', 0.90),
+    ('PineDark', '0.10, 0.24, 0.17', 0.97), ('PineLight', '0.20, 0.34, 0.24', 0.96),
+    ('Sandstone', '0.69, 0.39, 0.24', 0.94), ('SandstoneLight', '0.79, 0.54, 0.34', 0.92),
+    ('BlueGlass', '0.15, 0.31, 0.39', 0.27), ('SkyGlass', '0.37, 0.54, 0.58', 0.31),
+    ('IvoryStone', '0.79, 0.77, 0.68', 0.87), ('Terracotta', '0.58, 0.27, 0.18', 0.94),
+    ('UniformOlive', '0.34, 0.36, 0.28', 0.95),
 ]:
     material(label, color, roughness)
 sub('SphereMesh', 'Foliage', radial_segments=7, rings=4, radius=0.5, height=1.0)
 sub('CylinderMesh', 'Cylinder', radial_segments=12, top_radius=0.5, bottom_radius=0.5, height=1.0)
+sub('CylinderMesh', 'PineCone', radial_segments=8, top_radius=0.0, bottom_radius=0.5, height=1.0)
+sub('PrismMesh', 'RoofPrism', size=(1, 1, 1))
 scene_nodes_start = len(scene)
+
+def record_primitive(zone, label, center, size, rotation, mesh):
+    visual_primitives.append({'center': [round(c, 5) for c in center], 'size': [round(s, 5) for s in size],
+                              'material': label, 'shape': shape_ids[mesh],
+                              'rotation': rotation, 'sector': zone})
 
 node('HarborFront', 'Node3D', None)
 node('Environment', 'WorldEnvironment', environment='SubResource("CoastalLight")')
@@ -161,7 +194,7 @@ node('LateAfternoonSun', 'DirectionalLight3D', rotation_degrees=(-38, -39, 0),
      light_color='Color(1, 0.91, 0.75, 1)', light_energy=1.33, shadow_enabled='true',
      directional_shadow_max_distance=126.0)
 node('Spawn', 'Marker3D', groups='walk_spawn', position=SPAWN)
-node('Bay', 'MeshInstance3D', position=(15, -1.12, -80), mesh='SubResource("Bay")', cast_shadow=0)
+node('Bay', 'MeshInstance3D', position=(-25, WATER_LEVEL, -45), mesh='SubResource("Bay")', cast_shadow=0)
 node('Yard', 'Node3D')
 box('Apron', (0, -0.48, -5), (48, 0.96, 48), 'Concrete', 'Yard')
 box('ServiceLane', (-5.5, -0.009, -2.4), (33, 0.029, 34), 'Asphalt', 'Yard')
@@ -193,6 +226,8 @@ box('SignBack', (-10.5, 6.12, -2.96), (8.7, 1.24, 0.10), 'DeepTeal', 'WarehouseD
 node('WarehouseSign', 'Label3D', 'WarehouseDetails', position=(-10.5, 6.16, -2.896),
      pixel_size=0.016, font_size=55, outline_size=0, modulate='Color(0.93, 0.88, 0.70, 1)',
      text='"CALLOWAY QUAY"')
+visual_signs.append({'text': 'CALLOWAY QUAY', 'position': (-10.5, 6.16, -2.896),
+                     'rotation': (0, 0, 0), 'width': 8.7, 'height': 1.24})
 for j in range(8):
     box(f'LeftSlat{j}', (-19.85, 1.3 + j * 0.46, -3.17), (4.94, 0.035, 0.04), 'DeepTeal', 'WarehouseDetails')
 for j in range(6):
@@ -226,6 +261,7 @@ for name, center, size, surface in [
 
 def primitive(zone, label, center, size, heading=0, mesh='UnitBox'):
     """Store a Godot MultiMesh row-major 3×4 transform."""
+    record_primitive(zone, label, center, size, (0, heading, 0), mesh)
     x, y, z = center
     width, height, depth = size
     angle = math.radians(heading)
@@ -248,7 +284,8 @@ def deck(zone, bounds, finish, top=0, thickness=0.6):
 def road(name, x0, z0, x1, z1, *, vertical, crossings=(), zone='Roads', bridge=False):
     width, depth = x1-x0, z1-z0
     center = ((x0+x1)/2, (z0+z1)/2)
-    roads.append({'name': name, 'center': center, 'size': (width, depth)})
+    roads.append({'name': name, 'center': center, 'size': (width, depth),
+                  'kind': 'bridge' if bridge else 'street'})
     road_top = -0.008 if vertical else 0.003
     deck(zone, (x0, z0, x1, z1), 'Asphalt', top=road_top, thickness=0.86 if bridge else 0.035)
     long_start, long_end = (z0, z1) if vertical else (x0, x1)
@@ -273,6 +310,8 @@ for bounds in [
     (-29, -195, 31, -108), (-29, -29, 31, 95),
 ]:
     deck('Ground', bounds, 'Concrete', top=-0.028, thickness=2.58)
+    x0, z0, x1, z1 = bounds
+    ground.append({'center': ((x0+x1)/2, (z0+z1)/2), 'size': (x1-x0, z1-z0), 'theme': 'harbor'})
 water.append({'center': (1, -68.5), 'size': (60, 79)})
 roads_x = [(-155, 6), (-85, 5.5), (-39, 5.5), (40, 5.5), (99, 6)]
 roads_z = [(-175, 5), (-119, 6), (33, 6.5), (71, 4.5)]
@@ -301,6 +340,8 @@ def sign(name, text, center, angle=0, width=4.0, height=0.62):
     rad = math.radians(angle)
     primitive('Signs', 'DeepTeal', center, (width, height, 0.09), angle)
     position = (x+math.sin(rad)*0.06, y, z+math.cos(rad)*0.06)
+    visual_signs.append({'text': text, 'position': position, 'rotation': (0, angle, 0),
+                         'width': width, 'height': height})
     node(name, 'Label3D', 'DistrictSigns', position=position,
          rotation_degrees=(0, angle, 0), pixel_size=0.0068,
          font_size=48, outline_size=0, modulate='Color(0.95, 0.89, 0.69, 1)',
@@ -364,9 +405,13 @@ for x in (-22, 24):
 for x0, z0, x1, z1 in [(140, -195, 145, 95), (-215, 91, 145, 95)]:
     deck('OceanEdge', (x0, z0, x1, z1), 'Sidewalk', top=0.05)
 quay_wall('EastPromenade', 'OceanEdge', (-195, 144.72), 95, 'z')
-quay_wall('SouthPromenade', 'OceanEdge', (-215, 94.73), 145, 'x')
-quay_wall('WestPerimeter', 'OceanEdge', (-195, -214.74), 95, 'z')
-quay_wall('NorthPerimeter', 'OceanEdge', (-215, -194.74), 145, 'x')
+for edge, fixed, axis, start, end, openings in [
+    ('SouthPromenade', 94.73, 'x', -215, 145, [(-165, -145), (88, 110)]),
+    ('WestPerimeter', -214.74, 'z', -195, 95, [(-181, -168), (-127, -111), (-48, -34), (24, 42), (64, 78)]),
+    ('NorthPerimeter', -194.74, 'x', -215, 145, [(-165, -145), (-93, -77), (-47, -31), (32, 48), (89, 109)]),
+]:
+    for index, (first, last) in enumerate(open_intervals(start, end, openings)):
+        quay_wall(f'{edge}{index}', 'OceanEdge', (first, fixed), last, axis)
 
 # Working harbor silhouettes line a dry quay immediately beyond the encounter.
 for index, (x, z, scale, heading) in enumerate([
@@ -961,7 +1006,7 @@ def serialize():
     scene.extend(node_sections)
     node('DistrictGeometry', 'Node3D')
     for index, (zone, material_name, mesh) in enumerate(batches):
-        no_shadow = zone in ('Roads', 'Ground', 'YardPaint') or material_name in (
+        no_shadow = zone in ('Roads', 'Ground', 'YardPaint') or zone.startswith(('Ground_', 'Road_', 'Markings_')) or material_name in (
             'PaintAmber', 'PaintIvory', 'Whitecap', 'WarmGlass', 'Glass', 'PlanterSoil',
         )
         node(zone+material_name+mesh, 'MultiMeshInstance3D', 'DistrictGeometry',
@@ -970,21 +1015,30 @@ def serialize():
     path = ROOT / 'game/scenes/world/HarborFront.tscn'
     path.write_text(f'[gd_scene load_steps={ext_count + sub_count + 1} format=3]\n\n' +
                     '\n'.join(scene), encoding='utf-8')
-    layout = {'spawn': SPAWN, 'bounds': {'min': (-215, -195), 'max': (145, 95)},
-              'roads': roads, 'water': water, 'obstacles': obstacles}
+    layout = {'spawn': SPAWN, 'bounds': BOUNDS, 'waterLevel': WATER_LEVEL, 'roads': roads, 'water': water,
+              'ground': ground, 'districts': DISTRICTS, 'landmarks': LANDMARKS, 'obstacles': obstacles}
+    write_json(ROOT / 'data/world/harbor_front.json', layout)
+    visuals = {'version': 1, 'waterLevel': WATER_LEVEL, 'materials': visual_materials, 'primitives': visual_primitives,
+               'assets': visual_assets, 'signs': visual_signs}
+    write_json(ROOT / 'data/world/harbor_visuals.json', visuals, compact=True)
+
+
+def write_json(path, document, *, compact=False):
     # Keep each marker on a single line so changes in building and cover placement remain reviewable.
     lines = ['{']
-    for key, value in layout.items():
-        if key in ('roads', 'water', 'obstacles'):
-            items = [f'    {json.dumps(item)}' for item in value]
+    for index, (key, value) in enumerate(document.items()):
+        if isinstance(value, list):
+            separators = (',', ':') if compact else None
+            items = [f'    {json.dumps(item, separators=separators)}' for item in value]
             serialized = '[\n' + ',\n'.join(items) + '\n  ]'
         else:
             serialized = json.dumps(value)
-        suffix = '' if key == 'obstacles' else ','
+        suffix = '' if index == len(document) - 1 else ','
         lines.append(f'  "{key}": {serialized}{suffix}')
     lines.append('}')
-    (ROOT / 'data/world/harbor_front.json').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
 
 
 if __name__ == '__main__':
+    expand(primitive, collider, prop, sign, deck, quay_wall, roads, water, ground)
     serialize()

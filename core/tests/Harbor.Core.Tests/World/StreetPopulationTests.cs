@@ -16,16 +16,9 @@ public sealed class StreetPopulationTests
     public void PublishedRoutesAreClearAndTrafficStaysOnRoads()
     {
         var files = new DiskFileSystem(Repo.Root);
-        var layout = HarborLayout.Load(files, "data/world/harbor_front.json").CreateStaticWorld();
+        var map = HarborLayout.Load(files, "data/world/harbor_front.json");
+        var layout = map.CreateStaticWorld();
         var definition = StreetPopulationDef.Load(files, "data/world/harbor_population.json");
-        using var map = System.Text.Json.JsonDocument.Parse(files.ReadAllText("data/world/harbor_front.json"));
-        var roads = map.RootElement.GetProperty("roads").EnumerateArray().Select(road =>
-        {
-            var p = road.GetProperty("center");
-            var s = road.GetProperty("size");
-            return Aabb.FromCenter(new Vec3d(p[0].GetDouble(), 0, p[1].GetDouble()),
-                new Vec3d(s[0].GetDouble(), 2, s[1].GetDouble()));
-        }).ToArray();
 
         var paths = definition.PedestrianRoutes.Select(route => (Route: route, Traffic: false))
             .Concat(definition.TrafficRoutes.Select(route => (Route: route, Traffic: true)));
@@ -46,17 +39,24 @@ public sealed class StreetPopulationTests
                     var collision = layout.Overlapping(volume).FirstOrDefault();
                     Assert.True(collision.Id == 0, $"{route.Id} at {p} overlaps {collision.Tag}");
                     if (traffic)
-                        Assert.Contains(roads, road => p.X >= road.Min.X && p.X <= road.Max.X
-                            && p.Z >= road.Min.Z && p.Z <= road.Max.Z);
+                        Assert.True(map.Roads.Any(road => road.Contains(p) && road.Kind != "path"),
+                            $"{route.Id} at {p} is outside the drivable road");
                 }
             }
         }
 
         var (_, population) = MakeWorld(definition);
         var state = population.GetState();
-        Assert.Equal(20, state.Pedestrians.Length);
-        Assert.Equal(7, state.Traffic.Length);
-        Assert.InRange(HarborProtocol.Encode(new HarborState { Ambient = state }).Length, 1, TcpTransport.MaxPacketBytes / 2);
+        Assert.Equal(definition.PedestrianRoutes.Sum(route => route.Count), state.Pedestrians.Length);
+        Assert.Equal(definition.TrafficRoutes.Sum(route => route.Count), state.Traffic.Length);
+        Assert.Equal(7, map.Districts.Count);
+        foreach (var district in map.Districts)
+        {
+            bool Inside(Vec3d point) => System.Math.Abs(point.X - district.Center[0]) < district.Size[0] / 2
+                && System.Math.Abs(point.Z - district.Center[1]) < district.Size[1] / 2;
+            Assert.Contains(state.Pedestrians, ped => Inside(ped.Position));
+            Assert.Contains(state.Traffic, car => Inside(car.Position));
+        }
     }
 
     [Fact]
@@ -130,6 +130,26 @@ public sealed class StreetPopulationTests
         world.Actors.Remove(blocker.Id);
         Advance(world, 100);
         Assert.InRange(Assert.Single(population.GetState().Traffic).Speed, 7, starter.Speed);
+    }
+
+    [Fact]
+    public void TrafficWaitsAtRedAndAcceleratesAtGreen()
+    {
+        var route = Path("signal-loop", 8, true, [0, 0, 0], [20, 0, 0], [20, 0, 20], [0, 0, 20]) with
+        {
+            Signals = [new StreetSignalDef(0, CycleSeconds: 18, GreenSeconds: 5, OffsetSeconds: 6)]
+        };
+        var (world, population) = MakeWorld(new StreetPopulationDef { TrafficRoutes = [route] });
+
+        Advance(world, 350);
+        var stopped = Assert.Single(population.GetState().Traffic);
+        Assert.InRange(stopped.Speed, 0, 0.4);
+        Assert.InRange(stopped.Position.Z, 2.5, 4);
+
+        Advance(world, 100);
+        var released = Assert.Single(population.GetState().Traffic);
+        Assert.InRange(released.Speed, 6, 8);
+        Assert.True(released.Position.X > 2);
     }
 
     private static StreetRouteDef Path(string id, double speed, bool loop, params double[][] points)

@@ -4,12 +4,11 @@ using Harbor.Core.Math;
 using Harbor.Core.Missions;
 using Harbor.Core.Net;
 using Harbor.Core.Sim;
-using Harbor.Core.Vehicles;
 
 namespace Harbor.Core.Server;
 
 /// <summary>Runs one shared district job at a time. Progress and payouts use server-owned actors only.</summary>
-public sealed class HarborJobs(HarborJobCatalog catalog, HarborLockdown lockdown, ArcadeVehicle vehicle) : ISimSystem
+public sealed class HarborJobs(HarborJobCatalog catalog, HarborLockdown lockdown) : ISimSystem
 {
     private const double PartnerRadius = 30;
     private const double ParkingSpeed = 1.25;
@@ -114,7 +113,7 @@ public sealed class HarborJobs(HarborJobCatalog catalog, HarborLockdown lockdown
             case HarborJobStep.Checkpoint when DriverAt(active, stage):
                 Advance(active);
                 break;
-            case HarborJobStep.Park when DriverAt(active, stage) && System.Math.Abs(vehicle.Speed) <= ParkingSpeed:
+            case HarborJobStep.Park when DriverAt(active, stage) && System.Math.Abs(lockdown.GetVehicleSpeed(active.OwnerId)) <= ParkingSpeed:
                 Advance(active);
                 break;
         }
@@ -127,19 +126,19 @@ public sealed class HarborJobs(HarborJobCatalog catalog, HarborLockdown lockdown
 
     private bool CanStart(Actor actor, HarborJobDef job) =>
         _run == null && lockdown.Phase == LockdownPhase.FreeRoam && actor.Kind == ActorKind.Player && actor.IsAlive
-        && (lockdown.DriverId == actor.Id) == (job.Kind == HarborJobKind.Drive)
+        && lockdown.IsDriving(actor.Id) == (job.Kind == HarborJobKind.Drive)
         && At(actor, job.StartPosition, job.Radius);
 
     private bool CanRecover(Run active, Actor actor) => active.Current.Type == HarborJobStep.Recover
-        && active.Participants.Contains(actor.Id) && lockdown.DriverId != actor.Id
+        && active.Participants.Contains(actor.Id) && !lockdown.IsDriving(actor.Id)
         && At(actor, active.Current.Position, active.Current.Radius);
 
     private bool ParticipantsAt(Run active, HarborJobStageDef stage) =>
         active.Participants.Any(id => _world.Actors.TryGet(id, out var actor) && At(actor, stage.Position, stage.Radius));
 
     private bool DriverAt(Run active, HarborJobStageDef stage) =>
-        lockdown.DriverId == active.OwnerId && _world.Actors.TryGet(active.OwnerId, out var driver) && driver.IsAlive
-        && ActorQueries.FlatDistance(vehicle.Position, stage.Position) <= stage.Radius;
+        lockdown.IsDriving(active.OwnerId) && _world.Actors.TryGet(active.OwnerId, out var driver) && driver.IsAlive
+        && ActorQueries.FlatDistance(driver.Position, stage.Position) <= stage.Radius;
 
     private int CountEnemies(Run active) =>
         active.Enemies.Count(id => _world.Actors.TryGet(id, out var actor) && actor.IsAlive);

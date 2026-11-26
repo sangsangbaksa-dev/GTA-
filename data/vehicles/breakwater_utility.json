@@ -1,0 +1,23 @@
+{
+  "id": "breakwater_utility",
+  "displayName": "Breakwater Utility",
+  "class": "truck",
+  "massKg": 2270,
+  "engine": { "maxTorqueNm": 390, "maxRpm": 4950, "gearRatios": [4.2, 2.4, 1.59, 1.0, 0.75] },
+  "handling": { "steerAngleDeg": 34, "suspensionStiffness": 35, "frictionSlip": 2.5 },
+  "seats": 2,
+  "modelAsset": "res://assets/vehicles/veh_breakwater_utility.glb",
+  "shape": { "halfWidth": 1.04, "halfLength": 2.51, "roofHeight": 1.83, "wheelRadius": 0.40, "wheelbase": 3.16 },
+  "arcade": {
+    "forwardSpeed": 17.5,
+    "reverseSpeed": 5.2,
+    "acceleration": 5.4,
+    "reverseAcceleration": 3.8,
+    "brakeAcceleration": 14.5,
+    "coastDeceleration": 2.2,
+    "steeringRate": 2.65,
+    "maxSteerDegrees": 34,
+    "highSpeedSteerLoss": 0.58,
+    "cornerGrip": 0.79
+  }
+}

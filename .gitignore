@@ -8,6 +8,8 @@ obj/
 .vs/
 .idea/
 TestResults/
+# Asset generators
+__pycache__/
 # OS
 .DS_Store
 Thumbs.db

@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Port Calloway shared map",
+  "type": "object",
+  "required": ["spawn", "obstacles"],
+  "properties": {
+    "spawn": { "$ref": "#/$defs/point" },
+    "bounds": {
+      "type": "object",
+      "required": ["min", "max"],
+      "properties": { "min": { "$ref": "#/$defs/pair" }, "max": { "$ref": "#/$defs/pair" } }
+    },
+    "waterLevel": { "type": "number" },
+    "water": { "type": "array", "items": { "$ref": "#/$defs/area" } },
+    "ground": { "type": "array", "items": { "$ref": "#/$defs/area" } },
+    "roads": { "type": "array", "items": { "$ref": "#/$defs/road" } },
+    "districts": { "type": "array", "items": { "$ref": "#/$defs/district" } },
+    "landmarks": { "type": "array", "items": { "$ref": "#/$defs/landmark" } },
+    "obstacles": { "type": "array", "items": { "$ref": "#/$defs/obstacle" } }
+  },
+  "$defs": {
+    "point": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number" } },
+    "pair": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } },
+    "extent": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number", "exclusiveMinimum": 0 } },
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "area": {
+      "type": "object",
+      "required": ["center", "size"],
+      "properties": {
+        "center": { "$ref": "#/$defs/pair" },
+        "size": { "$ref": "#/$defs/extent" },
+        "theme": { "$ref": "#/$defs/id" }
+      }
+    },
+    "road": {
+      "allOf": [{ "$ref": "#/$defs/area" }],
+      "dependentRequired": { "from": ["to"], "to": ["from"] },
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["arterial", "street", "bridge", "service", "path", "runway"] },
+        "yaw": { "type": "number", "description": "Y-axis rotation in degrees. Rotated road length runs along local Z." },
+        "from": { "$ref": "#/$defs/pair" },
+        "to": { "$ref": "#/$defs/pair" }
+      }
+    },
+    "district": {
+      "allOf": [{ "$ref": "#/$defs/area" }],
+      "required": ["id", "name", "theme"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 }
+      }
+    },
+    "landmark": {
+      "type": "object",
+      "required": ["id", "name", "position", "district", "kind"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 },
+        "position": { "$ref": "#/$defs/point" },
+        "district": { "$ref": "#/$defs/id" },
+        "kind": { "$ref": "#/$defs/id" }
+      }
+    },
+    "obstacle": {
+      "type": "object",
+      "required": ["center", "size", "tag", "material"],
+      "properties": {
+        "center": { "$ref": "#/$defs/point" },
+        "size": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number", "exclusiveMinimum": 0 } },
+        "tag": { "type": "string", "minLength": 1 },
+        "material": { "enum": ["concrete", "metal", "thinMetal", "wood", "glass", "earth"] }
+      }
+    }
+  }
+}

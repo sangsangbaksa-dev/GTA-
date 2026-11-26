@@ -1,14 +1,22 @@
 # Project Harbor
 
-Port Calloway의 항만과 시가지를 무대로 한 오리지널 1인용 3인칭 오픈월드 액션 게임이다. 도로를 달리거나 시민과 차량이 오가는 항만에서 의뢰를 시작한다. 전투·운전·의뢰 판정은 게임 내부의 로컬 권한형 코어가 맡는다.
+Port Calloway를 자유롭게 돌아다니는 1인용 3인칭 오픈월드 게임이다. 항만, 도심, 숲, 사막, 군사기지, 부촌, 빈민가를 연결하는 길을 걷거나 차로 달릴 수 있다. 시민과 교통이 도시에 반응하며, 게임 속 범죄에 따라 경찰 수배가 바뀐다.
 
-## 플레이
+## 데스크톱 실행
 
-[GitHub Release](https://github.com/sangsangbaksa-dev/GTA-/releases/tag/v0.2.0)에서 Windows 또는 Linux x86_64 아카이브를 내려받아 모두 푼다. `ProjectHarbor` 실행 파일을 열고 **Start game**을 선택한다.
+이 브랜치는 .NET 8과 Godot 4.4.1 .NET으로 실행한다. `git lfs pull` 후 Godot에서 `game/project.godot`을 열고 F5를 누른다. **Start game**을 선택하면 항만에서 자유 탐험이 시작된다. **Harbor characters**에서는 캐릭터를 확대하고 돌려볼 수 있다.
 
-- **Harbor characters**에서 Rook, 항만 경찰, 라이벌 크루, 항만 전기 기술자의 3D 모델을 돌려보고 얼굴을 확대할 수 있다.
-- **City jobs**에서 항만 봉쇄, 화물 회수, 야드 전투, 주행 체크포인트, 배달 등 6개 의뢰를 확인하고 지도에 표시한다.
-- **City operations**에서 Port Calloway의 기존 도시 의뢰와 활동을 싱글 플레이로 연다.
+## 브라우저 실행
+
+프로젝트 루트에서 .NET 8 SDK의 `dotnet workload install wasm-tools`를 실행하고, Node.js 22로 다음 명령을 실행한다. WebGL 2 지원 브라우저에서 터미널에 표시된 주소를 연다.
+
+```bash
+git lfs pull
+npm --prefix web ci
+npm --prefix web run dev
+```
+
+배포용 정적 파일은 `npm --prefix web run build`로 `web/dist/`에 만든다. 브라우저는 페이지를 여는 것만으로 플레이할 수 있다. 정적 빌드 실행과 검증 방법은 [브라우저 플레이 문서](web/README.md)에 있다.
 
 | 입력 | 동작 |
 |---|---|
@@ -16,9 +24,10 @@ Port Calloway의 항만과 시가지를 무대로 한 오리지널 1인용 3인�
 | 마우스 오른쪽 / 왼쪽 | 조준 / 사격 |
 | R / 1과 2 | 재장전 / 무기 전환 |
 | Shift / C | 달리기 / 웅크리기 |
-| E | 차량 승하차, 의뢰 시작, 화물 회수 |
+| F | 차량 승하차 · 정차하거나 느리게 움직이는 NPC 차량 탈취 |
+| G | 가까운 보행자의 소매치기 또는 방치된 화물 훔치기 |
 | W/S · A/D · Space | 가속과 후진 · 조향 · 브레이크 |
-| M / J / Esc | 지역 지도 / 의뢰 목록 / 메뉴 |
+| M / Esc | 전체 지도 / 메뉴 |
 
 ## 개발
 
@@ -26,6 +35,8 @@ Port Calloway의 항만과 시가지를 무대로 한 오리지널 1인용 3인�
 git lfs install
 git lfs pull
 dotnet test core/tests/Harbor.Core.Tests
+dotnet build game/Harbor.csproj
+npm --prefix web test
 ```
 
-Godot 4.4.1 .NET에서 `game/project.godot`을 열고 F5를 누른다. [구조](ARCHITECTURE.md), [데스크톱 빌드](docs/desktop-build.md), [공용 3D 모델](https://github.com/sangsangbaksa-dev/Set)을 참고한다.
+[구조](ARCHITECTURE.md), [데스크톱 빌드](docs/desktop-build.md), [공용 3D 모델](https://github.com/sangsangbaksa-dev/Set)을 참고한다.

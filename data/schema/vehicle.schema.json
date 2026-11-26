@@ -2,44 +2,174 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Vehicle",
   "type": "object",
-  "required": ["id", "displayName", "class", "massKg", "engine", "handling"],
+  "required": [
+    "id",
+    "displayName",
+    "class",
+    "massKg",
+    "engine",
+    "handling"
+  ],
   "properties": {
-    "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
-    "displayName": { "type": "string" },
-    "class": { "enum": ["compact", "sedan", "sports", "suv", "truck", "van", "bike", "emergency"] },
-    "massKg": { "type": "number", "minimum": 50 },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "class": {
+      "enum": [
+        "compact",
+        "sedan",
+        "sports",
+        "suv",
+        "truck",
+        "van",
+        "bike",
+        "emergency"
+      ]
+    },
+    "massKg": {
+      "type": "number",
+      "minimum": 50
+    },
     "engine": {
       "type": "object",
-      "required": ["maxTorqueNm", "maxRpm", "gearRatios"],
+      "required": [
+        "maxTorqueNm",
+        "maxRpm",
+        "gearRatios"
+      ],
       "properties": {
-        "maxTorqueNm": { "type": "number" },
-        "maxRpm": { "type": "number" },
-        "gearRatios": { "type": "array", "items": { "type": "number" } }
+        "maxTorqueNm": {
+          "type": "number"
+        },
+        "maxRpm": {
+          "type": "number"
+        },
+        "gearRatios": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
       }
     },
     "handling": {
       "type": "object",
-      "required": ["steerAngleDeg", "suspensionStiffness", "frictionSlip"],
+      "required": [
+        "steerAngleDeg",
+        "suspensionStiffness",
+        "frictionSlip"
+      ],
       "properties": {
-        "steerAngleDeg": { "type": "number" },
-        "suspensionStiffness": { "type": "number" },
-        "frictionSlip": { "type": "number" }
+        "steerAngleDeg": {
+          "type": "number"
+        },
+        "suspensionStiffness": {
+          "type": "number"
+        },
+        "frictionSlip": {
+          "type": "number"
+        }
       }
     },
-    "seats": { "type": "integer", "minimum": 1, "default": 2 },
-    "modelAsset": { "type": "string", "description": "res:// path of the visual scene" },
+    "seats": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 2
+    },
+    "modelAsset": {
+      "type": "string",
+      "description": "res:// path of the visual scene"
+    },
     "arcade": {
       "type": "object",
-      "required": ["forwardSpeed", "reverseSpeed", "acceleration", "reverseAcceleration", "brakeAcceleration", "coastDeceleration", "steeringRate", "maxSteerDegrees"],
+      "required": [
+        "forwardSpeed",
+        "reverseSpeed",
+        "acceleration",
+        "reverseAcceleration",
+        "brakeAcceleration",
+        "coastDeceleration",
+        "steeringRate",
+        "maxSteerDegrees"
+      ],
       "properties": {
-        "forwardSpeed": { "type": "number", "exclusiveMinimum": 0 },
-        "reverseSpeed": { "type": "number", "exclusiveMinimum": 0 },
-        "acceleration": { "type": "number", "exclusiveMinimum": 0 },
-        "reverseAcceleration": { "type": "number", "exclusiveMinimum": 0 },
-        "brakeAcceleration": { "type": "number", "exclusiveMinimum": 0 },
-        "coastDeceleration": { "type": "number", "exclusiveMinimum": 0 },
-        "steeringRate": { "type": "number", "exclusiveMinimum": 0 },
-        "maxSteerDegrees": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 90 }
+        "forwardSpeed": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "reverseSpeed": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "acceleration": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "reverseAcceleration": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "brakeAcceleration": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "coastDeceleration": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "steeringRate": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "maxSteerDegrees": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 90
+        },
+        "highSpeedSteerLoss": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 1
+        },
+        "cornerGrip": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "shape": {
+      "type": "object",
+      "properties": {
+        "halfWidth": {
+          "type": "number",
+          "exclusiveMinimum": 0.49,
+          "maximum": 1.5
+        },
+        "halfLength": {
+          "type": "number",
+          "exclusiveMinimum": 0.99,
+          "maximum": 3.5
+        },
+        "roofHeight": {
+          "type": "number",
+          "exclusiveMinimum": 0.79,
+          "maximum": 3
+        },
+        "wheelRadius": {
+          "type": "number",
+          "exclusiveMinimum": 0.14,
+          "maximum": 0.6
+        },
+        "wheelbase": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 7
+        }
       }
     }
   }

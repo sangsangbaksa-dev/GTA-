@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Port Calloway presentation geometry",
+  "type": "object",
+  "required": ["version", "waterLevel", "materials", "primitives", "assets", "signs"],
+  "properties": {
+    "version": { "const": 1 },
+    "waterLevel": { "type": "number" },
+    "materials": { "type": "array", "items": { "$ref": "#/$defs/material" } },
+    "primitives": { "type": "array", "items": { "$ref": "#/$defs/primitive" } },
+    "assets": { "type": "array", "items": { "$ref": "#/$defs/asset" } },
+    "signs": { "type": "array", "items": { "$ref": "#/$defs/sign" } }
+  },
+  "$defs": {
+    "vector": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number" } },
+    "positive": { "type": "number", "exclusiveMinimum": 0 },
+    "text": { "type": "string", "minLength": 1 },
+    "material": {
+      "type": "object",
+      "required": ["id", "color", "roughness"],
+      "properties": {
+        "id": { "$ref": "#/$defs/text" },
+        "color": { "$ref": "#/$defs/vector" },
+        "roughness": { "type": "number", "minimum": 0, "maximum": 1 },
+        "texture": {
+          "type": "object",
+          "required": ["scale", "strength", "grit"],
+          "properties": {
+            "scale": { "$ref": "#/$defs/positive" },
+            "strength": { "type": "number" },
+            "grit": { "type": "number" }
+          }
+        }
+      }
+    },
+    "primitive": {
+      "type": "object",
+      "required": ["center", "size", "material", "shape", "rotation", "sector"],
+      "properties": {
+        "center": { "$ref": "#/$defs/vector" },
+        "size": { "$ref": "#/$defs/vector" },
+        "material": { "$ref": "#/$defs/text" },
+        "shape": { "enum": ["box", "cylinder", "sphere", "cone", "gable"] },
+        "rotation": { "$ref": "#/$defs/vector" },
+        "sector": { "$ref": "#/$defs/text" }
+      }
+    },
+    "asset": {
+      "type": "object",
+      "required": ["id", "path", "position", "scale", "rotation"],
+      "properties": {
+        "id": { "$ref": "#/$defs/text" },
+        "path": { "type": "string", "pattern": "^assets/.+\\.glb$" },
+        "position": { "$ref": "#/$defs/vector" },
+        "scale": { "$ref": "#/$defs/vector" },
+        "rotation": { "$ref": "#/$defs/vector" }
+      }
+    },
+    "sign": {
+      "type": "object",
+      "required": ["text", "position", "rotation", "width", "height"],
+      "properties": {
+        "text": { "$ref": "#/$defs/text" },
+        "position": { "$ref": "#/$defs/vector" },
+        "rotation": { "$ref": "#/$defs/vector" },
+        "width": { "$ref": "#/$defs/positive" },
+        "height": { "$ref": "#/$defs/positive" }
+      }
+    }
+  }
+}

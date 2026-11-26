@@ -25,6 +25,7 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import characters  # noqa: E402  (higher-fidelity humans, see human.py)
 import harbor_people  # noqa: E402
+import locomotion  # noqa: E402
 
 # ---------------------------------------------------------------- utilities
 
@@ -132,14 +133,15 @@ def empty(name, loc, parent=None):
     return e
 
 
-def export(path):
+def export(path, animated=False):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     bpy.ops.export_scene.gltf(
         filepath=path,
         export_format="GLB",
         export_apply=True,
         export_yup=True,
-        export_animations=False,
+        export_animations=animated,
+        export_animation_mode="NLA_TRACKS",
     )
     print(f"[harbor] wrote {path}")
 
@@ -598,13 +600,14 @@ def character_group(roster):
     def setup(builder):
         def build():
             reset()
-            builder()
+            rig, _ = builder()
+            return rig
         return build
     return [(rel, setup(fn)) for rel, fn in roster]
 
 
 GROUPS = {
-    "characters": character_group(characters.ROSTER),
+    "characters": character_group(characters.ROSTER + [harbor_people.CIVILIAN]),
     "harbor_people": character_group(harbor_people.ROSTER),
     "weapons": [
         ("weapons/wpn_pistol_kestrel.glb", wpn_pistol),
@@ -634,8 +637,11 @@ def main():
         if selected is None:
             ap.error(f"unknown asset group or ID: {name}")
         for rel, fn in selected:
-            fn()
-            export(os.path.abspath(os.path.join(a.out, rel)))
+            rig = fn()
+            if rig is not None:
+                scale = rig.data.bones["hips"].head_local.z / 0.98
+                locomotion.create_clips(rig, scale)
+            export(os.path.abspath(os.path.join(a.out, rel)), animated=rig is not None)
 
 
 if __name__ == "__main__":

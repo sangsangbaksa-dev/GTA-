@@ -78,6 +78,106 @@
       41,
       0,
       23
+    ],
+    [
+      -132,
+      0,
+      -430
+    ],
+    [
+      -25,
+      0,
+      -435
+    ],
+    [
+      95,
+      0,
+      -345
+    ],
+    [
+      -158,
+      0,
+      -285
+    ],
+    [
+      -561,
+      0,
+      -119
+    ],
+    [
+      -398,
+      0,
+      -41
+    ],
+    [
+      -314,
+      0,
+      32
+    ],
+    [
+      -580,
+      0,
+      -385
+    ],
+    [
+      -517,
+      0,
+      -443
+    ],
+    [
+      -293,
+      0,
+      -277
+    ],
+    [
+      227,
+      0,
+      -310
+    ],
+    [
+      386,
+      0,
+      -337
+    ],
+    [
+      480,
+      0,
+      -531
+    ],
+    [
+      -554,
+      0,
+      239
+    ],
+    [
+      -282,
+      0,
+      321
+    ],
+    [
+      -483,
+      0,
+      435
+    ],
+    [
+      -152,
+      0,
+      252
+    ],
+    [
+      98,
+      0,
+      254
+    ],
+    [
+      384,
+      0,
+      356
+    ],
+    [
+      475,
+      0,
+      435
     ]
   ],
   "policeSpeed": 3.1,
@@ -88,7 +188,11 @@
     "repeatCrimeSeconds": 3.5,
     "crimeHeat": {
       "shots_fired": 12,
-      "attack_police": 20
+      "attack_police": 20,
+      "pickpocket": 4,
+      "pickpocket_spotted": 14,
+      "vehicle_theft": 17,
+      "cargo_theft": 11
     },
     "levels": [
       {
@@ -101,20 +205,35 @@
         "level": 1,
         "minHeat": 9,
         "units": 1,
-        "responseSeconds": 4.0
+        "responseSeconds": 4
       },
       {
         "level": 2,
         "minHeat": 27,
-        "units": 1,
-        "responseSeconds": 3.0
+        "units": 2,
+        "responseSeconds": 3
       },
       {
         "level": 3,
-        "minHeat": 55,
-        "units": 1,
-        "responseSeconds": 2.0
+        "minHeat": 48,
+        "units": 3,
+        "responseSeconds": 2.6
+      },
+      {
+        "level": 4,
+        "minHeat": 72,
+        "units": 4,
+        "responseSeconds": 2.1
+      },
+      {
+        "level": 5,
+        "minHeat": 96,
+        "units": 5,
+        "responseSeconds": 1.75
       }
-    ]
-  }
+    ],
+    "maximumHeat": 118
+  },
+  "vehicleEntrySpeed": 4.5,
+  "vehicleExitSpeed": 3.5
 }

@@ -3,29 +3,186 @@
   "title": "Street population",
   "type": "object",
   "additionalProperties": false,
-  "required": ["pedestrianRoutes", "trafficRoutes"],
+  "required": [
+    "pedestrianRoutes",
+    "trafficRoutes"
+  ],
   "properties": {
-    "seed": {"type": "integer"},
-    "visibilityRadius": {"type": "number", "exclusiveMinimum": 0, "maximum": 400},
-    "hearingRadius": {"type": "number", "exclusiveMinimum": 0, "maximum": 100},
-    "fleeSeconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 30},
-    "fleeSpeed": {"type": "number", "exclusiveMinimum": 0, "maximum": 12},
+    "seed": {
+      "type": "integer"
+    },
+    "visibilityRadius": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 400
+    },
+    "hearingRadius": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 100
+    },
+    "fleeSeconds": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 30
+    },
+    "fleeSpeed": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 12
+    },
     "pedestrianRoutes": {
-      "type": "array", "maxItems": 24,
+      "type": "array",
+      "maxItems": 48,
       "items": {
         "allOf": [
-          {"$ref": "#/$defs/route"},
-          {"properties": {"speed": {"maximum": 4}}}
+          {
+            "$ref": "#/$defs/route"
+          },
+          {
+            "properties": {
+              "speed": {
+                "maximum": 4
+              }
+            }
+          }
         ]
       }
     },
     "trafficRoutes": {
-      "type": "array", "maxItems": 8,
+      "type": "array",
+      "maxItems": 32,
       "items": {
         "allOf": [
-          {"$ref": "#/$defs/route"},
-          {"properties": {"loop": {"const": true}, "pauseSeconds": {"const": 0}, "count": {"maximum": 8}}}
+          {
+            "$ref": "#/$defs/route"
+          },
+          {
+            "properties": {
+              "loop": {
+                "const": true
+              },
+              "pauseSeconds": {
+                "const": 0
+              },
+              "count": {
+                "maximum": 32
+              }
+            }
+          }
         ]
+      }
+    },
+    "pickpocketRadius": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 4
+    },
+    "pickpocketCooldownSeconds": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 600
+    },
+    "pickpocketMinCash": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "pickpocketMaxCash": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "trafficAcceleration": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 12
+    },
+    "trafficBraking": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 20
+    },
+    "trafficLookAhead": {
+      "type": "number",
+      "minimum": 8,
+      "maximum": 30
+    },
+    "cargoInteractionRadius": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 4
+    },
+    "parkedVehicles": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "required": [
+          "modelId",
+          "position"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "modelId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "position": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "number",
+              "minimum": -2000,
+              "maximum": 2000
+            }
+          },
+          "yawDegrees": {
+            "type": "number",
+            "minimum": -360,
+            "maximum": 360
+          }
+        }
+      }
+    },
+    "cargo": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "position",
+          "cash"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "position": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "number",
+              "minimum": -2000,
+              "maximum": 2000
+            }
+          },
+          "cash": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "refillSeconds": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 1800
+          }
+        }
       }
     }
   },
@@ -33,23 +190,112 @@
     "route": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "count", "speed", "loop", "points"],
+      "required": [
+        "id",
+        "count",
+        "speed",
+        "loop",
+        "points"
+      ],
       "properties": {
-        "id": {"type": "string", "minLength": 1},
-        "count": {"type": "integer", "minimum": 1, "maximum": 24},
-        "speed": {"type": "number", "exclusiveMinimum": 0, "maximum": 30},
-        "pauseSeconds": {"type": "number", "minimum": 0, "maximum": 12},
-        "loop": {"type": "boolean"},
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 48
+        },
+        "speed": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 30
+        },
+        "pauseSeconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 12
+        },
+        "loop": {
+          "type": "boolean"
+        },
         "points": {
-          "type": "array", "minItems": 2, "maxItems": 64,
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 64,
           "items": {
-            "type": "array", "minItems": 3, "maxItems": 3,
-            "items": {"type": "number", "minimum": -2000, "maximum": 2000}
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "number",
+              "minimum": -2000,
+              "maximum": 2000
+            }
+          }
+        },
+        "vehicleModels": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "signals": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "required": [
+              "waypoint",
+              "cycleSeconds",
+              "greenSeconds"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "waypoint": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 63
+              },
+              "cycleSeconds": {
+                "type": "number",
+                "minimum": 3,
+                "maximum": 120
+              },
+              "greenSeconds": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 120
+              },
+              "offsetSeconds": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 120
+              }
+            }
           }
         }
       },
-      "if": {"properties": {"loop": {"const": true}}},
-      "then": {"properties": {"points": {"minItems": 3}, "pauseSeconds": {"const": 0}}}
+      "if": {
+        "properties": {
+          "loop": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "points": {
+            "minItems": 3
+          },
+          "pauseSeconds": {
+            "const": 0
+          }
+        }
+      }
     }
   }
 }

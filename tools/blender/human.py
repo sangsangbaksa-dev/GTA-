@@ -3,7 +3,7 @@
 Pipeline per character:
   1. Body = union of ellipsoids / capsules (torso, limbs, 5-finger hands, face features)
   2. Voxel remesh -> light smooth -> eye sockets & mouth (boolean) -> decimate
-  3. Armature (A-pose, 52 bones incl. fingers) + automatic (bone heat) weights
+  3. Armature (A-pose, 51 bones incl. fingers) + automatic (bone heat) weights
   4. Garments = copies of the weighted body, cropped by region, pushed along
      normals and solidified, so they inherit skin weights automatically
   5. Rigid accessories (eyes, gear) bound 100% to one bone
@@ -63,6 +63,8 @@ def ellipsoid(c, r, rot=None, seg=24, name="ell"):
     bmesh.ops.transform(bm, matrix=Matrix.Translation(Vector(c)) @ m, verts=bm.verts)
     bm.to_mesh(me)
     bm.free()
+    for polygon in me.polygons:
+        polygon.use_smooth = True
     return _link(bpy.data.objects.new(name, me))
 
 
@@ -104,6 +106,8 @@ def torus(c, R, r, rot=None, scale=(1, 1, 1), name="tor"):
     if rot is not None:
         m = rot.to_4x4() @ m
     o.data.transform(Matrix.Translation(Vector(c)) @ m)
+    for polygon in o.data.polygons:
+        polygon.use_smooth = True
     return o
 
 
@@ -142,15 +146,16 @@ def skeleton(p):
     J["spine"] = Vector((0, 0, 1.10))
     J["chest"] = Vector((0, 0.005, 1.25))
     J["neck"] = Vector((0, 0.01, 1.47))
-    J["head"] = Vector((0, 0.0, 1.57))
-    J["head_top"] = Vector((0, 0.0, 1.785))
-    a = math.radians(A_POSE_DEG)
+    neck_length = 0.012 if p.get("portrait") else 0
+    J["head"] = Vector((0, 0.0, 1.57 - neck_length))
+    J["head_top"] = Vector((0, 0.0, 1.785 - neck_length))
+    a = math.radians(p.get("arm_angle", A_POSE_DEG))
     for side, sx in (("L", 1), ("R", -1)):
         dirv = Vector((sx * math.cos(a), 0.0, -math.sin(a)))
         J[f"clav.{side}"] = Vector((sx * 0.025, -0.005, 1.455))
         J[f"shoulder.{side}"] = Vector((sx * 0.185 * sw, 0.005, 1.445))
-        J[f"elbow.{side}"] = J[f"shoulder.{side}"] + dirv * 0.285
-        J[f"wrist.{side}"] = J[f"elbow.{side}"] + dirv * 0.255
+        J[f"elbow.{side}"] = J[f"shoulder.{side}"] + dirv * p.get("upper_arm_length", 0.285)
+        J[f"wrist.{side}"] = J[f"elbow.{side}"] + dirv * p.get("forearm_length", 0.255)
         J[f"knuckle.{side}"] = J[f"wrist.{side}"] + dirv * 0.085
         J[f"hip.{side}"] = Vector((sx * 0.092 * hw, 0.0, 0.935))
         J[f"knee.{side}"] = Vector((sx * 0.098 * hw, -0.012, 0.515))
@@ -275,6 +280,79 @@ class Blobs:
         return bpy.context.active_object
 
 
+
+# Height, lateral radius, front and back depth of the continuous Harbor head.
+HEAD_PROFILE = (
+    (1.576, 0.018, -0.067, 0.030), (1.594, 0.047, -0.087, 0.042),
+    (1.621, 0.060, -0.090, 0.065), (1.650, 0.070, -0.091, 0.087),
+    (1.679, 0.078, -0.095, 0.103), (1.707, 0.080, -0.097, 0.108),
+    (1.735, 0.077, -0.087, 0.106), (1.762, 0.069, -0.073, 0.092),
+    (1.783, 0.047, -0.047, 0.068), (1.803, 0.008, -0.005, 0.028),
+)
+
+
+def profile_section(p, z):
+    i = next((i for i in range(1, len(HEAD_PROFILE) - 1) if z <= HEAD_PROFILE[i][0]),
+             len(HEAD_PROFILE) - 1)
+    a, b = HEAD_PROFILE[i - 1], HEAD_PROFILE[i]
+    previous, following = HEAD_PROFILE[max(0, i - 2)], HEAD_PROFILE[min(i + 1, len(HEAD_PROFILE) - 1)]
+    span = b[0] - a[0]
+    t = min(1.0, max(0.0, (z - a[0]) / span))
+    t2, t3 = t * t, t * t * t
+    values = []
+    for k in range(1, 4):
+        da = (b[k] - previous[k]) / (b[0] - previous[0])
+        db = (following[k] - a[k]) / (following[0] - a[0])
+        values.append((2 * t3 - 3 * t2 + 1) * a[k] + (t3 - 2 * t2 + t) * da * span
+                      + (-2 * t3 + 3 * t2) * b[k] + (t3 - t2) * db * span)
+    width, front, back = values
+    jaw = math.exp(-((z - 1.609) / 0.042) ** 2)
+    width *= p["face_width"] * (1 + (p["jaw_width"] - 1) * jaw - p["fem"] * 0.065 * jaw)
+    return width, (front + back) * 0.5, (back - front) * 0.5
+
+
+def face_relief(p, x, z):
+    def bump(cx, cz, w, h):
+        return math.exp(-((x - cx) / w) ** 2 - ((z - cz) / h) ** 2)
+
+    eye = abs(x) - 0.034
+    socket = 0.012 * math.exp(-(eye / 0.022) ** 2 - ((z - 1.693) / 0.0135) ** 2)
+    cheek = -0.006 * bump(0.046 if x > 0 else -0.046, 1.672, 0.029, 0.021)
+    bridge = -0.018 * bump(0, 1.680, 0.012 * p["nose_bridge"], 0.031)
+    tip = -0.015 * bump(0, 1.658, 0.013 * p["nose_width"], 0.010)
+    wing = -0.009 * bump(0.010 if x > 0 else -0.010, 1.655, 0.009 * p["nose_width"], 0.007)
+    lips = -0.009 * bump(0, 1.627, 0.025, 0.009)
+    chin = -0.006 * bump(0, 1.600, 0.029 * p["chin_width"], 0.011)
+    return socket + cheek + (bridge + tip + wing) * p["nose_depth"] + lips + chin
+
+
+def portrait_head(p, hp):
+    name = "portrait_head"
+    rings, resolution = 57, 80
+    vertices = []
+    for i in range(rings):
+        z = 1.576 + (1.803 - 1.576) * i / (rings - 1)
+        width, center, depth = profile_section(p, z)
+        for j in range(resolution):
+            angle = math.tau * j / resolution
+            x, front = math.sin(angle) * width, math.cos(angle)
+            y = center - depth * front
+            if front > 0:
+                y += face_relief(p, x, z) * min(1.0, front * 2)
+            vertices.append(hp((x, y, z)))
+    faces = []
+    for i in range(rings - 1):
+        for j in range(resolution):
+            a, b = i * resolution + j, i * resolution + (j + 1) % resolution
+            faces.append((a, b, b + resolution, a + resolution))
+    faces.append(tuple(reversed(range(resolution))))
+    faces.append(tuple(range((rings - 1) * resolution, rings * resolution)))
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    return _link(bpy.data.objects.new(name, mesh))
+
+
 def body_parts(p, J):
     b, mu, fem = p["bulk"], p["muscle"], p["fem"]
     hw, sw = p["hip"], p["shoulder"]
@@ -302,27 +380,31 @@ def body_parts(p, J):
     hs, hc = p["head"], J["head"]
     hp = lambda c: hc + (Vector(c) - Vector((0, 0, 1.585))) * hs
     H = lambda c, r, rot=None: E(hp(c), tuple(x * hs for x in r), rot)
-    H((0, 0.014, 1.705), (0.079, 0.097, 0.099))  # cranium
-    H((0, -0.026, 1.648), ((0.064 - 0.004 * fem) * p["face_width"], 0.072, 0.074))  # face
-    H((0, -0.035, 1.604), ((0.055 - 0.008 * fem) * p["jaw_width"], 0.05, 0.03))  # jaw
-    H((0, -0.07, 1.597), ((0.024 - 0.004 * fem) * p["chin_width"], 0.02, 0.019))  # chin
-    for sx in (1, -1):
-        H((sx * 0.046, -0.07, 1.673), (0.02, 0.014, 0.013))  # cheekbones
-    H((0, -0.083, 1.716), (0.055, 0.015, 0.012 - 0.003 * fem))  # brow
-    H((0, -0.088, 1.627), (0.021, 0.012, 0.0105))  # lips
+    if p.get("portrait"):
+        B.hard.append(portrait_head(p, hp))
+    else:
+        H((0, 0.014, 1.705), (0.079, 0.097, 0.099))  # cranium
+        H((0, -0.026, 1.648), ((0.064 - 0.004 * fem) * p["face_width"], 0.072, 0.074))  # face
+        H((0, -0.035, 1.604), ((0.055 - 0.008 * fem) * p["jaw_width"], 0.05, 0.03))  # jaw
+        H((0, -0.07, 1.597), ((0.024 - 0.004 * fem) * p["chin_width"], 0.02, 0.019))  # chin
+        for sx in (1, -1):
+            H((sx * 0.046, -0.07, 1.673), (0.02, 0.014, 0.013))  # cheekbones
+        H((0, -0.083, 1.716), (0.055, 0.015, 0.012 - 0.003 * fem))  # brow
+        H((0, -0.088, 1.627), (0.021, 0.012, 0.0105))  # lips
     for sx in (1, -1):
         B.hard.append(ellipsoid(hp((sx * 0.08, 0.012, 1.678)), (0.012 * hs, 0.022 * hs, 0.031 * hs),
                                 rot=Matrix.Rotation(sx * math.radians(12), 3, "Z"), seg=16, name="ear"))
-    B.hard.append(capsule(hp((0, -0.094, 1.707)), hp((0, -0.114 * p["nose_depth"], 1.664)),
-                          0.0075 * hs * p["nose_bridge"], 0.011 * hs * p["nose_bridge"]))
-    B.hard.append(ellipsoid(hp((0, -0.106 * p["nose_depth"], 1.657)),
-                            (0.017 * hs * p["nose_width"], 0.012 * hs, 0.0095 * hs), seg=16))
+    if not p.get("portrait"):
+        B.hard.append(capsule(hp((0, -0.094, 1.707)), hp((0, -0.114 * p["nose_depth"], 1.664)),
+                              0.0075 * hs * p["nose_bridge"], 0.011 * hs * p["nose_bridge"]))
+        B.hard.append(ellipsoid(hp((0, -0.106 * p["nose_depth"], 1.657)),
+                                (0.017 * hs * p["nose_width"], 0.012 * hs, 0.0095 * hs), seg=16))
     # ---- arms
     for s, sx in (("L", 1), ("R", -1)):
         sh, el, wr = J[f"shoulder.{s}"], J[f"elbow.{s}"], J[f"wrist.{s}"]
         u = (el - sh).normalized()
         rot = basis(u, Vector((0, -1, 0)))
-        E(sh + Vector((sx * 0.005, 0.0, 0.0)), (0.06, 0.05 * mu * b, 0.052 * mu * b), rot=rot)  # deltoid
+        E(sh + Vector((sx * 0.005, 0.0, -0.007)), (0.058, 0.047 * mu * b, 0.047 * mu * b), rot=rot)  # deltoid
         B.chain(sh, el, 0.047 * b, 0.037 * b)
         E(sh.lerp(el, 0.5) + Vector((0, -0.008, 0)), (0.09, 0.040 * mu * b, 0.043 * mu * b), rot=rot)  # biceps
         B.chain(el, wr, 0.038 * b, 0.025 * b)
@@ -355,7 +437,7 @@ def body_parts(p, J):
 
 def build_body(p, J, voxel=0.0042, target_faces=22000):
     B = body_parts(p, J)
-    flesh = B.build()
+    flesh = B.build(res=p.get("metaball_resolution", 0.0045))
     body = join([flesh] + B.hard, "body")
     rm = body.modifiers.new("remesh", "REMESH")
     rm.mode = "VOXEL"
@@ -367,20 +449,21 @@ def build_body(p, J, voxel=0.0042, target_faces=22000):
     sm.smooth_type = "SIMPLE"
     sm.use_only_smooth = True
     apply_mod(body, sm)
-    # eye sockets + mouth line
-    hs, hc = p["head"], J["head"]
-    hp = lambda v: hc + (Vector(v) - Vector((0, 0, 1.585))) * hs
-    eye_height = 0.0096 if p.get("portrait_eye_socket") else 0.012
-    cutters = [ellipsoid(hp((sx * 0.033, -0.097, 1.692)), (0.0165 * hs, 0.016 * hs, eye_height * hs), seg=16)
-               for sx in (1, -1)]
-    cutters.append(ellipsoid(hp((0, -0.1005, 1.627)), (0.02 * hs, 0.008 * hs, 0.0016 * hs), seg=16))
-    cut = join(cutters, "cutters")
-    bo = body.modifiers.new("bool", "BOOLEAN")
-    bo.operation = "DIFFERENCE"
-    bo.object = cut
-    bo.solver = "EXACT"
-    apply_mod(body, bo)
-    bpy.data.objects.remove(cut)
+    if not p.get("portrait"):
+        # eye sockets + mouth line
+        hs, hc = p["head"], J["head"]
+        hp = lambda v: hc + (Vector(v) - Vector((0, 0, 1.585))) * hs
+        eye_height = 0.0096 if p.get("portrait_eye_socket") else 0.012
+        cutters = [ellipsoid(hp((sx * 0.033, -0.097, 1.692)), (0.0165 * hs, 0.016 * hs, eye_height * hs), seg=16)
+                   for sx in (1, -1)]
+        cutters.append(ellipsoid(hp((0, -0.1005, 1.627)), (0.02 * hs, 0.008 * hs, 0.0016 * hs), seg=16))
+        cut = join(cutters, "cutters")
+        bo = body.modifiers.new("bool", "BOOLEAN")
+        bo.operation = "DIFFERENCE"
+        bo.object = cut
+        bo.solver = "EXACT"
+        apply_mod(body, bo)
+        bpy.data.objects.remove(cut)
     dec = body.modifiers.new("dec", "DECIMATE")
     dec.ratio = min(1.0, target_faces / max(1, len(body.data.polygons)))
     apply_mod(body, dec)
@@ -422,6 +505,19 @@ def skin_auto(body, rig):
     return missing
 
 
+def limit_skin_weights(mesh):
+    """Normalize the four weights that fit glTF's portable skin input."""
+    groups = mesh.vertex_groups
+    for vertex in mesh.data.vertices:
+        weights = sorted(((g.group, g.weight) for g in vertex.groups), key=lambda g: g[1], reverse=True)
+        total = sum(weight for _, weight in weights[:4])
+        if total > 0:
+            for group, weight in weights[:4]:
+                groups[group].add([vertex.index], weight / total, "REPLACE")
+            for group, _ in weights[4:]:
+                groups[group].remove([vertex.index])
+
+
 def bind_rigid(obj, bone, rig):
     vg = obj.vertex_groups.new(name=bone)
     vg.add(list(range(len(obj.data.vertices))), 1.0, "REPLACE")
@@ -450,7 +546,9 @@ def garment(body, name, material, keep, offset=0.01, thick=0.006, smooth=2, nois
     bm.normal_update()
     kill = [v for v in bm.verts if not keep(v.co)]
     bmesh.ops.delete(bm, geom=kill, context="VERTS")
-    # drop small islands (stray bits from the region test)
+    # Bisect and vertex deletion can leave new faces with duplicate stale indices.
+    bm.faces.index_update()
+    # Drop small islands from the region cut.
     seen = set()
     for f in bm.faces:
         if f.index in seen or not f.is_valid:
@@ -537,7 +635,7 @@ def make_character(name, params, dress, height=None):
     p = dict(DEFAULT)
     p.update(params)
     J = skeleton(p)
-    body = build_body(p, J)
+    body = build_body(p, J, voxel=p.get("voxel_size", 0.0042), target_faces=p.get("body_faces", 22000))
     body.data.materials.append(p["skin_mat"])
     rig = build_rig(J, f"{name}_rig")
     missing = skin_auto(body, rig)
@@ -582,6 +680,8 @@ def make_character(name, params, dress, height=None):
         bpy.context.view_layer.objects.active = mesh
         bpy.ops.object.modifier_move_to_index(modifier=dec.name, index=0)
         bpy.ops.object.modifier_apply(modifier=dec.name)
+    if p.get("portrait"):
+        limit_skin_weights(mesh)
     s = p["height"] / 1.80
     if abs(s - 1) > 1e-4:
         rig.scale = (s, s, s)

@@ -26,21 +26,22 @@ public partial class CoreHost : Node
 
     public ClientSession Client { get; private set; } = null!;
     public StaticWorld Level { get; private set; } = null!;
-    public HarborLockdownState Lockdown => _state.Lockdown;
-    public HarborJobsState Jobs => _state.Jobs;
+    public HarborLayout Layout => _layout;
     public StreetPopulationState Ambient => _state.Ambient;
     public HarborPlayerCombat PlayerCombat => _state.PlayerCombat;
-    public double? BestTime => _state.BestTime;
     public int WantedLevel => _state.WantedLevel;
+    public int MaxWantedLevel => _state.MaxWantedLevel;
+    public int PoliceUnits => _state.PoliceUnits;
     public bool IsDriving => _state.IsDriving;
-    public bool CanEnterVehicle => _state.CanEnterVehicle;
-    public int DriverId => _state.DriverId;
     public int RunGeneration { get; private set; }
     public bool IsPaused { get; private set; }
-    public ArcadeVehicle Vehicle => _authority.Vehicle;
+    public HarborVehicleState Vehicle { get; private set; }
+    public HarborVehicleState[] Vehicles => _state.Vehicles;
+    public HarborStreetAction StreetAction => _state.StreetAction;
+    public HarborStreetCrime StreetCrime => _state.StreetCrime;
     public IEnumerable<Actor> Enemies => _enemies;
     public bool HasPlayer => Client is { IsJoined: true } && Client.LocalServerState.Id == Client.LocalActorId;
-    public Vec3d RenderPosition => IsDriving ? Vehicle.Position
+    public Vec3d RenderPosition => IsDriving ? Vec3d.Lerp(_previousVehiclePosition, Vehicle.Position, _clock.Alpha)
         : HasPlayer ? Vec3d.Lerp(_previousPosition, Client.Predicted.Position, _clock.Alpha) : _layout.SpawnPosition;
 
     private HarborAuthority _authority = null!;
@@ -48,20 +49,20 @@ public partial class CoreHost : Node
     private GameData _data = null!;
     private HarborLayout _layout = null!;
     private HarborLockdownDef _encounter = null!;
-    private HarborJobCatalog _jobs = null!;
     private StreetPopulationDef _ambient = null!;
     private ArcadeVehicleTuning _vehicleTuning = null!;
+    private VehicleCatalog _vehicles = null!;
     private FixedTickLoop _clock = new();
     private HarborState _state = new();
     private Actor[] _enemies = [];
     private Vec3d _previousPosition;
+    private Vec3d _previousVehiclePosition;
     private Vector2 _movement;
     private float _yaw;
     private float _pitch;
     private InputButtons _buttons;
     private InputButtons _pulses;
     private byte _weaponSlot;
-    private bool _stepWhilePaused;
 
     public override void _Ready()
     {
@@ -70,9 +71,9 @@ public partial class CoreHost : Node
         Level = _layout.CreateStaticWorld();
         _data = GameData.LoadCombat(files);
         _encounter = HarborLockdownDef.Load(files, "data/missions/harbor_lockdown.json", _data.Weapons);
-        _jobs = HarborJobCatalog.Load(files, "data/missions/harbor_jobs.json");
         _ambient = StreetPopulationDef.Load(files, "data/world/harbor_population.json");
         _vehicleTuning = ArcadeVehicleTuning.Load(files, "data/vehicles/calloway_compact.json");
+        _vehicles = VehicleCatalog.Load(files, "data/vehicles", _vehicleTuning);
 
         StartLocalSession();
     }
@@ -82,21 +83,15 @@ public partial class CoreHost : Node
         RunGeneration++;
         _clock = new FixedTickLoop();
         _state = new HarborState();
+        Vehicle = default;
+        _previousVehiclePosition = default;
         _enemies = [];
         _pulses = InputButtons.None;
-        _stepWhilePaused = false;
         _localNetwork = new InMemoryNetwork { LatencySeconds = 0 };
         var serverEndpoint = _localNetwork.CreateServer();
         _authority = new HarborAuthority(_data, _encounter, _layout, _vehicleTuning, serverEndpoint,
-            new GodotLog(), maxPlayers: 1, jobs: _jobs, ambient: _ambient);
+            new GodotLog(), maxPlayers: 1, ambient: _ambient, vehicles: _vehicles, sandbox: true);
         Client = new ClientSession(_localNetwork.Connect(serverEndpoint), "Rook", staticWorld: Level, interpolationDelayTicks: 0);
-    }
-
-    public void RestartLockdown()
-    {
-        if (!HasPlayer) return;
-        Client.SendRequest(HarborProtocol.Restart, ReadOnlySpan<byte>.Empty);
-        _stepWhilePaused = true;
     }
 
     public void SetPaused(bool paused)
@@ -112,13 +107,12 @@ public partial class CoreHost : Node
 
     public override void _Process(double delta)
     {
-        if (!IsPaused || !HasPlayer || _stepWhilePaused) _clock.Advance(delta, Tick);
+        if (!IsPaused || !HasPlayer) _clock.Advance(delta, Tick);
     }
 
     private void Tick(double seconds)
     {
-        if (IsPaused && HasPlayer && !_stepWhilePaused) return;
-        _stepWhilePaused = false;
+        if (IsPaused && HasPlayer) return;
         var hadPlayer = HasPlayer;
         _previousPosition = Client.Predicted.Position;
         _localNetwork.Advance(seconds);
@@ -136,6 +130,12 @@ public partial class CoreHost : Node
         Client.Poll();
         DrainEvents();
         if (!hadPlayer && HasPlayer) _previousPosition = Client.Predicted.Position;
+        if (HasPlayer)
+        {
+            var previous = Vehicle;
+            Vehicle = _authority.GetPlayerVehicle(Client.LocalActorId);
+            _previousVehiclePosition = previous.Id == Vehicle.Id ? previous.Position : Vehicle.Position;
+        }
     }
 
     private void DrainEvents()
@@ -147,8 +147,8 @@ public partial class CoreHost : Node
                 switch (message.Type)
                 {
                     case HarborProtocol.State when HarborProtocol.Decode<HarborState>(message.Payload) is
-                        { Lockdown: not null, Jobs.Available: not null, Ambient.Pedestrians: not null,
-                            Ambient.Traffic: not null, PlayerCombat: not null, Enemies: not null } state:
+                        { Ambient.Pedestrians: not null, Ambient.Traffic: not null, PlayerCombat: not null,
+                            Enemies: not null, Vehicles: not null, StreetAction: not null, StreetCrime: not null } state:
                         if (state.RunGeneration != _state.RunGeneration)
                         {
                             RunGeneration++;
