@@ -32,6 +32,7 @@ public partial class CoreHost : Node
     public HarborPlayerCombat PlayerCombat => _state.PlayerCombat;
     public double? BestTime => _state.BestTime;
     public int WantedLevel => _state.WantedLevel;
+    public CrimeStatus Crime => _state.Crime;
     public bool IsDriving => _state.IsDriving;
     public bool CanEnterVehicle => _state.CanEnterVehicle;
     public int DriverId => _state.DriverId;

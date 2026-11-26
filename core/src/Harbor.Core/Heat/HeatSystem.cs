@@ -78,7 +78,8 @@ public sealed class HeatSystem(HeatConfig config) : ISimSystem
         if (s.LastByCrime.TryGetValue(crime, out var last) && _now - last < Config.RepeatCrimeSeconds) { s.LastCrimeAt = _now; return 0; }
         s.LastByCrime[crime] = _now;
         s.LastCrimeAt = _now;
-        s.Heat += amount;
+        // Bound excess heat so sustained crime cannot make a maximum-level pursuit permanent.
+        s.Heat = System.Math.Min(s.Heat + amount, Config.Levels[^1].MinHeat + System.Math.Max(amount, Config.DecayPerSecond * 10));
         _world.Events.Publish(new CrimeCommitted(actorId, crime, amount));
         Recompute(actorId, s);
         return amount;

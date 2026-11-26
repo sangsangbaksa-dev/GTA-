@@ -132,6 +132,27 @@ public sealed class StreetPopulationTests
         Assert.InRange(Assert.Single(population.GetState().Traffic).Speed, 7, starter.Speed);
     }
 
+    [Fact]
+    public void WalletIsTakenOnlyOnceAndAssaultMakesCivilianFlee()
+    {
+        var definition = new StreetPopulationDef
+        {
+            PedestrianRoutes = [Path("street", 1.4, false, [0, 0, 0], [50, 0, 0])]
+        };
+        var (world, population) = MakeWorld(definition);
+        var victim = Assert.Single(population.GetState().Pedestrians);
+        var player = world.Actors.Spawn(ActorKind.Player, victim.Position);
+        Assert.True(population.TryStreetCrime(player, false, _ => true, out var cash, out var reported, out _));
+        Assert.True(cash > 0);
+        Assert.False(reported);
+        Assert.False(population.TryStreetCrime(player, false, _ => true, out _, out _, out _));
+        Assert.True(population.TryStreetCrime(player, true, _ => true, out _, out reported, out _));
+        Assert.True(reported);
+        Assert.True(Assert.Single(population.GetState().Pedestrians).Fleeing);
+        population.ResetCrimes();
+        Assert.True(population.TryStreetCrime(player, false, _ => true, out _, out _, out _));
+    }
+
     private static StreetRouteDef Path(string id, double speed, bool loop, params double[][] points)
         => new() { Id = id, Count = 1, Speed = speed, Loop = loop, Points = points };
 

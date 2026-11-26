@@ -7,6 +7,7 @@ using Harbor.Core.Net;
 using Harbor.Core.Ports;
 using Harbor.Core.Sim;
 using Harbor.Core.Vehicles;
+using Harbor.Core.World;
 
 namespace Harbor.Core.Server;
 
@@ -81,6 +82,9 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
     public double StartRadius => definition.StartRadius;
     public int DriverId { get; private set; } = -1;
     internal HarborJobs? Jobs { get; set; }
+    internal StreetPopulation? Ambient { get; set; }
+    private readonly StreetCrimeState _crime = new();
+    public CrimeStatus CrimeOf(int actorId) => _crime.Get(actorId);
     public int WantedLevel(int actorId) => heat.LevelOf(actorId);
     public bool CanStart(int actorId) => Phase == LockdownPhase.FreeRoam && DriverId != actorId && Jobs?.IsActive != true
         && PlayerIsNear(actorId, StartPosition, StartRadius);
@@ -106,6 +110,7 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
         public Actor Actor { get; } = actor;
         public byte Slot { get; } = slot;
         public double ShotDelay { get; set; } = delay;
+        public Vec3d LastKnown { get; set; } = actor.Position;
     }
 
     public void Initialize(SimWorld world)
@@ -191,6 +196,8 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
             EquipPlayer(player);
         }
         _interactHeld.Clear();
+        _crime.Clear();
+        Ambient?.ResetCrimes();
         _policeTargetId = -1;
         _policeDelay = 0;
         Elapsed = 0;
@@ -205,6 +212,7 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
         if (DriverId == actorId) ClearDriver();
         heat.Clear(actorId);
         _interactHeld.Remove(actorId);
+        _crime.Remove(actorId);
         EquipPlayer(actor);
     }
 
@@ -220,6 +228,7 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
         if (DriverId == left.ActorId) ClearDriver();
         _players.Remove(left.ActorId);
         _interactHeld.Remove(left.ActorId);
+        _crime.Remove(left.ActorId);
         heat.Clear(left.ActorId);
         combat.Unregister(left.ActorId);
         if (_players.Count == 0) Reset();
@@ -245,6 +254,8 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
         if (Phase is LockdownPhase.Succeeded or LockdownPhase.Failed
             || !_players.TryGetValue(actorId, out var actor) || !actor.IsAlive) return;
         var cmd = applied.Cmd;
+        if (Phase == LockdownPhase.FreeRoam && Jobs?.IsActive != true && DriverId != actorId)
+            HandleStreetCrime(actor, cmd, applied.ServerTick);
         if (!cmd.Has(InputButtons.Interact))
         {
             _interactHeld.Remove(actorId);
@@ -272,6 +283,36 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
         combat.ProcessInput(actorId, new CombatInput(cmd.Has(InputButtons.Fire), cmd.Has(InputButtons.Aim),
             cmd.Has(InputButtons.Reload), false, cmd.WeaponSlot, cmd.YawRadians, cmd.PitchRadians, applied.ViewTick),
             _world.Loop.StepSeconds);
+    }
+
+    private void HandleStreetCrime(Actor actor, InputCmd cmd, long tick)
+    {
+        if (Ambient == null) return;
+        var action = cmd.Buttons & (InputButtons.Pickpocket | InputButtons.Melee | InputButtons.Carjack);
+        if (!_crime.TryAct(actor.Id, action, tick, _world.Loop.StepSeconds)) return;
+        bool Reachable(Vec3d p)
+        {
+            var origin = actor.Position + new Vec3d(0, 1, 0);
+            var d = p + new Vec3d(0, 1, 0) - origin;
+            return d.Length < 0.01 || !level.Raycast(origin, d, d.Length, out _);
+        }
+        if (action.HasFlag(InputButtons.Carjack))
+        {
+            if (DriverId >= 0 || !Ambient.TryTakeTraffic(actor, Reachable, out var car))
+            { _crime.Record(actor.Id, "NO AVAILABLE VEHICLE", 0); return; }
+            vehicle.Restore(car.Position, car.Yaw, 0, 0, 0);
+            DriverId = actor.Id;
+            heat.Report(actor.Id, "vehicle_theft");
+            _crime.Record(actor.Id, "VEHICLE STOLEN", 0);
+            return;
+        }
+        var assault = action.HasFlag(InputButtons.Melee);
+        if (!Ambient.TryStreetCrime(actor, assault, Reachable, out var cash, out var reported, out var counter))
+        { _crime.Record(actor.Id, "NO AVAILABLE TARGET", 0); return; }
+        if (reported) heat.Report(actor.Id, assault ? "assault" : "pickpocket");
+        if (counter) combat.ApplyDamage(actor, null, 9, HitZone.Torso, false, "civilian_counter");
+        _crime.Record(actor.Id, assault ? (counter ? "CIVILIAN FOUGHT BACK" : "ASSAULT REPORTED") :
+            reported ? "THEFT REPORTED" : $"WALLET +${cash}", cash);
     }
 
     private bool PlayerIsNear(int actorId, Vec3d point, double radius) =>
@@ -338,23 +379,37 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
             return;
         }
 
-        var police = _enemies.FirstOrDefault(e => e.Actor.Team == 3 && e.Actor.IsAlive);
-        if (police == null)
+        var tier = heat.Config.Levels[WantedLevel(player.Id)];
+        // Retire dead units and surplus officers; keep the roster bounded.
+        var officers = _enemies.Where(e => e.Actor.Team == 3).ToList();
+        foreach (var officer in officers.Where(e => !e.Actor.IsAlive)
+                     .Concat(officers.Where(e => e.Actor.IsAlive).Skip(tier.Units)).ToArray())
         {
-            _policeDelay += dt;
-            if (_policeDelay < heat.Config.Levels[WantedLevel(player.Id)].ResponseSeconds) return;
-            _policeDelay = 0;
-            ClearPolice();
-            var points = definition.PoliceSpawns.Select(HarborLockdownDef.Point);
-            var spawn = points.MinBy(p => PoliceSpawnCost(p, player.Position));
-            SpawnEnemy(spawn, 3, definition.EnemyStartDelay);
-            return;
+            RemoveEnemy(officer.Actor.Id);
+            _enemyIds.Remove(officer.Actor.Id);
+            _enemies.Remove(officer);
         }
-
-        var from = police.Actor.Position + new Vec3d(0, 1.5, 0);
-        var delta = player.Position + new Vec3d(0, 1.25, 0) - from;
-        if (delta.Length < definition.PoliceSightDistance && !level.Raycast(from, delta, delta.Length, out _))
-            heat.KeepPursuit(player.Id);
+        officers = _enemies.Where(e => e.Actor.Team == 3).ToList();
+        foreach (var officer in officers)
+        {
+            var from = officer.Actor.Position + new Vec3d(0, 1.5, 0);
+            var delta = player.Position + new Vec3d(0, 1.25, 0) - from;
+            if (delta.Length < definition.PoliceSightDistance && !level.Raycast(from, delta, delta.Length, out _))
+            {
+                heat.KeepPursuit(player.Id);
+                officer.LastKnown = player.Position;
+            }
+        }
+        if (officers.Count >= tier.Units) { _policeDelay = 0; return; }
+        _policeDelay += dt;
+        if (_policeDelay < tier.ResponseSeconds) return;
+        _policeDelay = 0;
+        var points = definition.PoliceSpawns.Select(HarborLockdownDef.Point);
+        var spawn = points.OrderBy(p => PoliceSpawnCost(p, player.Position))
+            .FirstOrDefault(p => officers.All(o => (o.Actor.Position - p).LengthSquared > 9));
+        if (spawn == default && !points.Contains(spawn)) return;
+        SpawnEnemy(spawn, 3, definition.EnemyStartDelay);
+        _enemies[^1].LastKnown = player.Position;
     }
 
     private double PoliceSpawnCost(Vec3d spawn, Vec3d player)
@@ -362,7 +417,7 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
         var delta = player - spawn;
         var distance = delta.Length;
         var blocked = level.Raycast(spawn + new Vec3d(0, 1.25, 0), delta, distance, out _);
-        return System.Math.Abs(distance - definition.PoliceSightDistance - 4) + (blocked ? 22 : 0);
+        return System.Math.Abs(distance - definition.PoliceSightDistance - 14) + (blocked ? 0 : 22);
     }
 
     private void RemoveEnemy(int id)
@@ -426,10 +481,10 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
     private void TickEnemy(Enemy enemy, Actor player, double dt)
     {
         var actor = enemy.Actor;
-        var delta = player.Position - actor.Position;
+        var police = actor.Team == 3;
+        var delta = (police ? enemy.LastKnown : player.Position) - actor.Position;
         var distance = delta.WithY(0).Length;
         var yaw = DirectionYaw(delta);
-        var police = actor.Team == 3;
         var holdDistance = police ? 7 : definition.EnemyHoldDistance;
         var movement = distance > holdDistance ? 1.0 : 0;
         Movement.Step(ref actor.Move, InputCmd.Create(0, 0, 0, movement, yaw, 0, InputButtons.None),
@@ -439,7 +494,8 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
         var origin = actor.Position + new Vec3d(0, combat.Config.EyeHeight, 0);
         var target = player.Position + new Vec3d(0, player.Move.Crouched ? 0.68 : 1.12, 0);
         var toTarget = target - origin;
-        var canFire = enemy.ShotDelay <= 0 && !level.Raycast(origin, toTarget, toTarget.Length, out _);
+        var canFire = enemy.ShotDelay <= 0 && (!police || toTarget.Length < definition.PoliceSightDistance)
+            && !level.Raycast(origin, toTarget, toTarget.Length, out _);
         var pitch = System.Math.Atan2(toTarget.Y, toTarget.WithY(0).Length);
         var sway = System.Math.Sin(Elapsed * 2.8 + actor.Id * 1.7) * 0.055;
         var loadout = combat.LoadoutOf(actor.Id)!;
