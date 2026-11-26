@@ -170,7 +170,9 @@ Godot: 이벤트 받아 피격 애니메이션·이펙트·HUD
 
 ### 3.10 에셋 파이프라인
 - 원본 = `tools/blender/build_assets.py` (블렌더 4.2 헤드리스, `bpy`). 산출물 `.glb`는 Git LFS.
-- 사람: `human.py` + `characters.py` — 메타볼 몸 → 리메시 → 51본 리그(손가락 포함) 자동 웨이트 → 옷 레이어가 몸 웨이트 상속. 캐릭터당 ~5만 면.
+- 사람: 공용 51본 리그(`*_rig`, 손가락 포함, 42° A포즈, 발 원점) 규격을 쓴다.
+  - 절차 생성 캐릭터: `human.py` + `characters.py` / `harbor_people.py` (메타볼 몸 → 리메시 → 자동 웨이트).
+  - MakeHuman 기반 캐릭터 ([ADR 0008](docs/adr/0008-makehuman-character-pipeline.md)): `setup_makehuman.sh`로 MPFB2 + CC0 에셋 팩을 준비하고, `makehuman_person.py`에서 인체·의상·헤어·안경을 조합한 뒤 51본 리그로 리매핑해 내보낸다 (`chr_harbor_clerk`).
 - 캐릭터·총기·건물 → `game/assets/{characters,weapons,buildings}/`. 범용 소품 → **sangsangbaksa-dev/Set** 리포 `props/`.
 - Harbor Front 씬에 배치한 소품은 Set과 동일한 GLB를 `game/assets/props/`에 둔다. `tools/blender/build_props.py`가 새 소품과 카탈로그를 생성한다. Calloway Compact는 `game/assets/vehicles/`와 Set의 `vehicles/`에 둔다.
 - 명명: `chr_*`, `wpn_*`, `bldg_*`, `prop_*`. 충돌이 필요한 메시는 이름 끝 `-col`(Godot 임포트가 충돌 생성).

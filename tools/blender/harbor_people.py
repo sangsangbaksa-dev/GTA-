@@ -6,6 +6,7 @@ import bpy
 from mathutils import Matrix, Vector
 
 import human as H
+import makehuman_person
 from characters import G, arm_info, feet, hair, hand_region, is_hand, legs_band, rigid, skin, torso_band
 from human import mat
 
@@ -325,89 +326,8 @@ def dockhand():
 
 
 def freight_clerk():
-    """Quay freight clerk in an ochre chore coat, oatmeal knit sweater, spectacles, and leather manifest satchel."""
-    def smooth_rigid(ctx, obj, material, bone):
-        for polygon in obj.data.polygons:
-            polygon.use_smooth = True
-        return rigid(ctx, obj, material, bone)
-
-    def dress(ctx):
-        coat = mat("clerk_ochre_coat", (0.52, 0.33, 0.11), rough=0.76)
-        sweater = mat("clerk_oat_knit", (0.58, 0.52, 0.41), rough=0.92)
-        trim = mat("clerk_cord_brown", (0.13, 0.078, 0.052), rough=0.84)
-        chinos = mat("clerk_slate_chinos", (0.11, 0.145, 0.175), rough=0.84)
-        leather = mat("clerk_saddle_leather", (0.20, 0.095, 0.048), rough=0.56)
-        sole = mat("clerk_crepe_sole", (0.048, 0.044, 0.040), rough=0.86)
-        brass = mat("clerk_aged_brass", (0.68, 0.51, 0.21), metal=0.78, rough=0.34)
-        paper = mat("clerk_manifest_ivory", (0.78, 0.75, 0.65), rough=0.72)
-        hairm = mat("clerk_chestnut_hair", (0.055, 0.032, 0.022), rough=0.76)
-
-        hs = ctx.p["head"]
-        hp = lambda v: head_point(ctx, v)
-        portrait(ctx, (0.21, 0.145, 0.072), hairm, 0.92, (0.31, 0.135, 0.105))
-        hair(ctx, "short", hairm, offset=0.009, noise=0.005, scale=50.0)
-        smooth_rigid(ctx, H.ellipsoid(hp((-0.022, -0.082, 1.756)), (0.042 * hs, 0.015 * hs, 0.010 * hs),
-                                      rot=Matrix.Rotation(math.radians(-16), 3, "Y"), seg=18), hairm, "head")
-        smooth_rigid(ctx, H.ellipsoid(hp((0.036, -0.078, 1.753)), (0.025 * hs, 0.012 * hs, 0.009 * hs),
-                                      rot=Matrix.Rotation(math.radians(20), 3, "Y"), seg=16), hairm, "head")
-
-        # Wire-rim spectacles fitted to the carved eye sockets and ears.
-        lens_rot = Matrix.Rotation(math.radians(90), 3, "X")
-        for sx in (-1, 1):
-            smooth_rigid(ctx, H.torus(hp((sx * 0.034, -0.1035, 1.692)), 0.0152 * hs, 0.0017 * hs,
-                                      rot=lens_rot, scale=(1.12, 0.88, 1.0), name="glasses_rim"), brass, "head")
-            smooth_rigid(ctx, H.capsule(hp((sx * 0.051, -0.101, 1.695)), hp((sx * 0.079, 0.006, 1.688)),
-                                        0.0016 * hs, 0.0014 * hs, seg=10, name="glasses_temple"), brass, "head")
-        smooth_rigid(ctx, H.capsule(hp((-0.017, -0.104, 1.696)), hp((0.017, -0.104, 1.696)),
-                                    0.0017 * hs, 0.0017 * hs, seg=10, name="glasses_bridge"), brass, "head")
-
-        G(ctx, "knit_sweater", sweater, torso_band(0.96, 1.512, sleeve=0.95), offset=0.009,
-          thick=0.003, smooth=3, noise_amp=0.003, noise_scale=30)
-        G(ctx, "chore_coat", coat, torso_band(0.89, 1.468, sleeve=0.86),
-          offset=0.018, thick=0.005, smooth=4, noise_amp=0.004, noise_scale=18)
-        G(ctx, "harbor_chinos", chinos, legs_band(0.16, 1.02), offset=0.013, thick=0.004, smooth=3)
-        footwear(ctx, leather, sole, paper, cut=0.18)
-
-        smooth_rigid(ctx, H.torus((0, 0.008, 1.492), 0.059, 0.013, scale=(1.05, 1.02, 1.0),
-                                  rot=Matrix.Rotation(math.radians(-8), 3, "X")), sweater, "neck")
-        smooth_rigid(ctx, H.torus((0, 0.014, 1.466), 0.071, 0.015, scale=(1.06, 1.10, 1.0),
-                                  rot=Matrix.Rotation(math.radians(-12), 3, "X")), trim, "chest")
-        for side in ("L", "R"):
-            arm_ring(ctx, side, 0.70, 0.036, 0.007, trim)
-            arm_ring(ctx, side, 0.89, 0.029, 0.005, sweater)
-        arm_ring(ctx, "L", 0.92, 0.030, 0.0045, brass)
-
-        strip(ctx, "coat_placket", (0.012, 1.06), (0.012, 1.42), 0.015, 0.029, trim)
-        for z in (1.10, 1.20, 1.30, 1.40):
-            rounded(ctx, surface(ctx, 0.012, z, 0.033), (0.012, 0.006, 0.012), brass,
-                    "chest", width=0.003, name="coat_button")
-        pocket = surface(ctx, 0.078, 1.29, 0.033)
-        rounded(ctx, pocket, (0.056, 0.012, 0.070), trim, "chest", width=0.004, name="chest_pocket")
-        rounded(ctx, pocket + Vector((0, -0.004, 0.033)), (0.040, 0.005, 0.020), paper,
-                "chest", width=0.002, name="manifest_slip")
-        badge = surface(ctx, -0.076, 1.31, 0.033)
-        rounded(ctx, badge, (0.044, 0.009, 0.062), leather, "chest", width=0.003, name="port_pass")
-        rounded(ctx, badge + Vector((0, -0.005, 0.002)), (0.032, 0.004, 0.042), paper,
-                "chest", width=0.002, name="port_pass_card")
-
-        strip(ctx, "satchel_strap_front", (0.096, 1.415), (-0.098, 1.105), 0.030, 0.034, leather)
-        strip(ctx, "satchel_strap_back", (0.100, 1.415), (-0.100, 1.115), 0.030, 0.034, leather, back=True)
-        rounded(ctx, surface(ctx, 0.038, 1.315, 0.040), (0.038, 0.010, 0.026), brass,
-                "chest", name="strap_buckle")
-        rounded(ctx, (-0.142, 0.018, 0.965), (0.074, 0.190, 0.172), leather,
-                "hips", width=0.018, name="manifest_satchel")
-        rounded(ctx, (-0.176, 0.018, 1.008), (0.015, 0.178, 0.076), trim,
-                "hips", width=0.006, name="satchel_flap")
-        rounded(ctx, (-0.185, 0.018, 0.972), (0.008, 0.025, 0.026), brass,
-                "hips", width=0.002, name="satchel_clasp")
-        rounded(ctx, (0.126, -0.024, 0.975), (0.032, 0.110, 0.114), coat,
-                "hips", width=0.008, name="hip_pocket")
-        return covered(ctx)
-
-    return make_person("chr_harbor_clerk", dict(skin_mat=skin("tan"), height=1.76,
-        bulk=0.99, shoulder=0.95, hip=1.01, muscle=0.90, belly=0.12, head=1.04,
-        face_width=1.01, jaw_width=0.96, chin_width=0.95, nose_bridge=0.95, nose_width=0.95,
-        nose_depth=0.98), dress)
+    """Quay freight clerk built with MakeHuman (MPFB2 + CC0 MakeHuman garments, hair, and spectacles)."""
+    return makehuman_person.build_makehuman_clerk("chr_harbor_clerk", height=1.76)
 
 
 ROSTER = [
