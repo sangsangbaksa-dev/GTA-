@@ -406,9 +406,10 @@ public sealed class HarborLockdown(HarborLockdownDef definition, CombatSystem co
         _policeDelay = 0;
         var points = definition.PoliceSpawns.Select(HarborLockdownDef.Point);
         var spawn = points.OrderBy(p => PoliceSpawnCost(p, player.Position))
-            .FirstOrDefault(p => officers.All(o => (o.Actor.Position - p).LengthSquared > 9));
-        if (spawn == default && !points.Contains(spawn)) return;
-        SpawnEnemy(spawn, 3, definition.EnemyStartDelay);
+            .Where(p => officers.All(o => (o.Actor.Position - p).LengthSquared > 9))
+            .Select(p => (Vec3d?)p).FirstOrDefault();
+        if (spawn is not { } position) return;
+        SpawnEnemy(position, 3, definition.EnemyStartDelay);
         _enemies[^1].LastKnown = player.Position;
     }
 
