@@ -65,6 +65,7 @@ public partial class ThirdPersonController : Node3D
     private float _cameraDistance = 4.25f;
     private float _cameraShoulder = 0.65f;
     private float _manualOrbitLeft;
+    private float _zoomOffset;
 
     public override void _Ready()
     {
@@ -165,6 +166,14 @@ public partial class ThirdPersonController : Node3D
         }
         else if (!IsPaused && _host.HasPlayer)
         {
+            if (@event is InputEventMouseButton { Pressed: true } scroll
+                && scroll.ButtonIndex is MouseButton.WheelUp or MouseButton.WheelDown)
+            {
+                _zoomOffset = Mathf.Clamp(_zoomOffset + (scroll.ButtonIndex == MouseButton.WheelUp ? -0.65f : 0.65f),
+                    -1.5f, 4f);
+                GetViewport().SetInputAsHandled();
+                return;
+            }
             if (@event is InputEventMouseMotion motion && IsCaptured)
             {
                 UpdateLook(motion.ScreenRelative * MouseSensitivity * (IsAiming ? 0.7f : 1f));
@@ -255,7 +264,7 @@ public partial class ThirdPersonController : Node3D
 
         var targetHeight = driving ? 2.18f : state.Crouched ? 1.17f : 1.55f;
         _cameraHeight = Mathf.Lerp(_cameraHeight, targetHeight, blend);
-        _cameraDistance = Mathf.Lerp(_cameraDistance, driving ? 6.7f : IsAiming ? 2.62f : CameraDistance, blend);
+        _cameraDistance = Mathf.Lerp(_cameraDistance, driving ? 6.7f + _zoomOffset : IsAiming ? 2.62f : Mathf.Max(1.5f, CameraDistance + _zoomOffset), blend);
         _cameraShoulder = Mathf.Lerp(_cameraShoulder, driving ? 0 : IsAiming ? 0.76f : 0.65f, blend);
         _camera.Fov = Mathf.Lerp(_camera.Fov, driving ? 73 : IsAiming ? 52 : 68, blend);
         var pivot = position + Vector3.Up * _cameraHeight;

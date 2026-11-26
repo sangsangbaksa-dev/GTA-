@@ -110,7 +110,7 @@ public sealed class ArcadeVehicle
             }
             Yaw = nextYaw;
             Position = nextPosition;
-            Distance += distance / pieces;
+            Distance += M.Abs(distance / pieces);
         }
     }
 

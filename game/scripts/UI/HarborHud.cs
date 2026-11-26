@@ -153,7 +153,7 @@ public partial class HarborHud : CanvasLayer
         _health.Value = combat.MaxHealth > 0 ? (double)combat.Health / combat.MaxHealth : 0;
         _armor.Value = combat.MaxArmor > 0 ? (double)combat.Armor / combat.MaxArmor : 0;
         _vitals.Text = $"{combat.Health:00} HEALTH          {combat.Armor:00} ARMOR";
-        _weapon.Text = movingInCar ? "CALLOWAY COMPACT" : combat.WeaponName.ToUpperInvariant();
+        _weapon.Text = movingInCar ? $"TRIP  {_host.Vehicle.Distance / 1000:0.00} km" : combat.WeaponName.ToUpperInvariant();
         _ammo.Text = movingInCar ? $"{System.Math.Abs(_host.Vehicle.Speed) * 3.6:00} km/h" :
             combat.IsReloading ? "RELOADING" : $"{combat.Magazine:00}  /  {combat.Reserve:00}";
         UpdateJobNotice((float)delta);
@@ -371,6 +371,7 @@ public partial class HarborHud : CanvasLayer
         Text(column, "CONTROLS", 62, White, _design);
         ControlRow(column, "Move / steer", "WASD / arrows", "Left stick");
         ControlRow(column, "Look", "Mouse", "Right stick");
+        ControlRow(column, "Camera distance", "Mouse wheel", "-");
         ControlRow(column, "Aim / fire", "Right / left mouse", "LT / RT");
         ControlRow(column, "Reload / switch weapon", "R / 1 and 2", "RB / Y");
         ControlRow(column, "Accelerate / reverse", "W / S", "RT / LT");

@@ -69,6 +69,26 @@ public sealed class ArcadeVehicleTests
         Assert.True(car.Position.X < -2);
     }
 
+    [Fact]
+    public void TripDistanceIncreasesInBothDirectionsAndStopsWhenBlocked()
+    {
+        var world = new StaticWorld();
+        var car = new ArcadeVehicle(Vec3d.Zero);
+        Step(car, world, new VehicleInput(1, 0, false), 60);
+        Step(car, world, new VehicleInput(0, 0, true), 60);
+        var distance = car.Distance;
+        var position = car.Position;
+        Step(car, world, new VehicleInput(-1, 0, false), 60);
+        Assert.True(car.Distance > distance);
+        Assert.Equal(car.Position.Z - position.Z, car.Distance - distance, 8);
+        Step(car, world, new VehicleInput(0, 0, true), 60);
+        world.Add(Aabb.FromCenter(car.Position + new Vec3d(0, 1, -ArcadeVehicle.HalfLength - 0.02),
+            new Vec3d(10, 2, 0.02)), SurfaceMaterial.Concrete);
+        var stoppedDistance = car.Distance;
+        Step(car, world, new VehicleInput(1, 0, false), 60);
+        Assert.InRange(car.Distance - stoppedDistance, 0, 0.011);
+    }
+
     private static void Step(ArcadeVehicle car, StaticWorld world, VehicleInput input, int ticks)
     {
         for (int tick = 0; tick < ticks; tick++) car.Step(input, 1.0 / 60, world);
