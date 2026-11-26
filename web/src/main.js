@@ -282,7 +282,7 @@ async function initialize() {
   chart = createChart(layout, byId('radar'), byId('atlas'), byId('map-legend'));
   await startGodot();
   start.textContent = '도시로 들어가기';
-  status.textContent = input.coarse.matches ? '화면을 드래그해 둘러보세요.' : 'WASD 이동 · 마우스 카메라 · F 차량 · M 지도';
+  status.textContent = input.coarse.matches ? '화면을 드래그해 둘러보세요.' : 'WASD 이동 · Space 점프 · 마우스 카메라 · F 차량 · M 지도';
   start.disabled = false;
   setInterval(simulate, 1000 / 30);
 }
