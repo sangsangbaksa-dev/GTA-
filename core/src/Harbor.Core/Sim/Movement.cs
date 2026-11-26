@@ -62,8 +62,22 @@ public static class Movement
         if (delta.Length > maxDelta) delta = delta.Normalized() * maxDelta;
         s.Velocity = (s.Velocity.WithY(0) + delta).WithY(0);
 
-        s.Position += s.Velocity * dt;
-        if (world != null) ResolveCollisions(ref s, cfg, world);
+        if (world == null || cfg.Radius <= 0)
+        {
+            s.Position += s.Velocity * dt;
+            return;
+        }
+
+        // Sample the path, not just its endpoint, so sprinting and long
+        // simulation steps cannot skip a thin wall. Keep deterministic prediction.
+        var pieces = System.Math.Max(1, (int)System.Math.Ceiling(
+            s.Velocity.Length * dt / (cfg.Radius * 0.5)));
+        var step = dt / pieces;
+        for (var i = 0; i < pieces; i++)
+        {
+            s.Position += s.Velocity * step;
+            ResolveCollisions(ref s, cfg, world);
+        }
     }
 
     /// <summary>Pushes the actor's cylinder out of static boxes (up to 3 iterations) and removes
