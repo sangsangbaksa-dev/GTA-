@@ -1,3 +1,4 @@
+using Harbor.Core.Geometry;
 using Harbor.Core.Math;
 using Harbor.Core.Sim;
 
@@ -30,13 +31,15 @@ public static class Hitboxes
     {
         t = double.MaxValue;
         zone = HitZone.Torso;
-        // cheap reject: bounding cylinder
-        var rel = pose.Position - origin;
-        var along = rel.Dot(dir);
-        if (along < -1 || along > maxDist + 1) return false;
-        var closest = origin + dir * System.Math.Clamp(along, 0, maxDist);
-        var flat = (closest - pose.Position).WithY(0);
-        if (flat.LengthSquared > 1.0) return false;
+        if (!double.IsFinite(maxDist) || maxDist < 0 || !double.IsFinite(dir.LengthSquared)
+            || dir.LengthSquared < 1e-12) return false;
+        dir = dir.Normalized();
+
+        // The feet are not the center of the hit volume. A full pose AABB is
+        // conservative even for steep rays and for rays starting inside a body.
+        var bounds = new Aabb(pose.Position + new Vec3d(-0.24, -0.10, -0.24),
+            pose.Position + new Vec3d(0.24, pose.Crouched ? 1.28 : 1.78, 0.24));
+        if (!bounds.Raycast(origin, dir, maxDist, out _, out _)) return false;
 
         var found = false;
         foreach (var s in pose.Crouched ? Crouched : Standing)
@@ -56,6 +59,8 @@ public static class Hitboxes
         var oa = ro - pa;
         var baba = ba.Dot(ba);
         if (baba < 1e-12) return Sphere(ro, rd, pa, ra);
+        var nearest = pa + ba * System.Math.Clamp(ba.Dot(oa) / baba, 0, 1);
+        if ((ro - nearest).LengthSquared <= ra * ra) return 0;
         var bard = ba.Dot(rd);
         var baoa = ba.Dot(oa);
         var rdoa = rd.Dot(oa);
@@ -84,6 +89,7 @@ public static class Hitboxes
         var oc = ro - center;
         var b = oc.Dot(rd);
         var c = oc.Dot(oc) - r * r;
+        if (c <= 0) return 0;
         var h = b * b - c;
         if (h < 0) return -1;
         var t = -b - System.Math.Sqrt(h);
