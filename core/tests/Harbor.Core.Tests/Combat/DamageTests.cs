@@ -100,6 +100,36 @@ public class DamageTests
         Assert.Equal(5 - 1.64 - 0.13, t, 3);
     }
 
+    [Fact]
+    public void Short_Downward_Ray_Reaches_Head_Before_Feet()
+    {
+        var pose = new PoseSample(Vec3d.Zero, false, true);
+        Assert.True(Hitboxes.Raycast(new Vec3d(0, 3, 0), new Vec3d(0, -1, 0), 1.5, pose, out var t, out var z));
+        Assert.Equal(HitZone.Head, z);
+        Assert.Equal(1.23, t, 6);
+        Assert.False(Hitboxes.Raycast(new Vec3d(0, 3, 0), new Vec3d(0, -1, 0), 1.2, pose, out _, out _));
+    }
+
+    [Theory]
+    [InlineData(false, 1.64, HitZone.Head)]
+    [InlineData(false, 1.15, HitZone.Torso)]
+    [InlineData(true, 1.14, HitZone.Head)]
+    [InlineData(true, 0.65, HitZone.Torso)]
+    public void Ray_Starting_Inside_Pose_Registers_Immediate_Contact(bool crouched, double y, HitZone expected)
+    {
+        var pose = new PoseSample(Vec3d.Zero, crouched, true);
+        Assert.True(Hitboxes.Raycast(new Vec3d(0, y, 0), new Vec3d(1, 0, 0), 0.1, pose, out var t, out var zone));
+        Assert.Equal(0.0, t);
+        Assert.Equal(expected, zone);
+    }
+
+    [Fact]
+    public void Short_Ray_Outside_Hitbox_Does_Not_Register_Contact()
+    {
+        var pose = new PoseSample(Vec3d.Zero, false, true);
+        Assert.False(Hitboxes.Raycast(new Vec3d(0.5, 1.64, 0), new Vec3d(1, 0, 0), 0.1, pose, out _, out _));
+    }
+
     private static (StaticWorld world, Dictionary<int, PoseSample> targets) Range(SurfaceMaterial wall, double thickness)
     {
         var w = new StaticWorld();
