@@ -1,0 +1,17 @@
+{
+  "name": "project-harbor-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "prepare:assets": "node prepare.mjs",
+    "prepare:godot": "node prepare-godot.mjs",
+    "dev": "node prepare.mjs && vite",
+    "build": "node prepare.mjs && vite build",
+    "build:web-only": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4173"
+  },
+  "devDependencies": {
+    "vite": "^6.2.0"
+  }
+}
