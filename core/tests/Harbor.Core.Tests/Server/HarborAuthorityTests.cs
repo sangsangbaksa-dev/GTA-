@@ -469,6 +469,39 @@ public sealed class HarborAuthorityTests
         Assert.Equal(5, pilot.State.MaxWantedLevel);
     }
 
+    [Fact]
+    public void StreetServiceChargesOnlyWhenNeededAndInRange()
+    {
+        var files = new DiskFileSystem(Repo.Root);
+        var data = GameData.LoadCombat(files);
+        var layout = new HarborLayout { Spawn = [0, 0, 0], Landmarks =
+            [new HarborLandmark { Id = "customs_exchange_cafe", Position = [0, 0, 0] }] };
+        var world = new SimWorld(new NullLog());
+        var level = layout.CreateStaticWorld();
+        var combat = world.AddSystem(new CombatSystem(data.Combat, data.Materials, data.Weapons, level, null));
+        var ledger = new Harbor.Core.Economy.Ledger();
+        var wallet = Harbor.Core.Economy.AccountId.Wallet("test");
+        var currency = Harbor.Core.Economy.Currency.Dirty;
+        ledger.Post(new Harbor.Core.Economy.Transfer("seed", Harbor.Core.Economy.AccountId.Faucet("test"), wallet, 40, currency, "test"));
+        var actor = world.Actors.Spawn(ActorKind.Player, Vec3d.Zero);
+        combat.Register(actor);
+        var services = new HarborStreetServices(layout, combat, level, ledger);
+        Assert.Equal("health", services.Describe(actor).Id);
+        Assert.Equal("service_full", services.Use(actor, wallet, "full", 0, out _));
+        actor.Vitals.Health = 20;
+        Assert.Equal("service_wanted", services.Use(actor, wallet, "wanted", 2, out _));
+        actor.Position = new Vec3d(5, 0, 0);
+        Assert.Equal("service_unavailable", services.Use(actor, wallet, "far", 0, out _));
+        actor.Position = Vec3d.Zero;
+        Assert.Equal("service_health", services.Use(actor, wallet, "heal", 0, out var cost));
+        Assert.Equal(20, cost);
+        Assert.Equal(80, actor.Vitals.Health);
+        Assert.Equal(20, ledger.Balance(wallet, currency));
+        Assert.Equal("service_funds", services.Use(actor, wallet, "heal", 0, out _));
+        Assert.Equal(80, actor.Vitals.Health);
+        Assert.Equal(20, ledger.Balance(wallet, currency));
+    }
+
     private sealed class Harness
     {
         private const double Step = 1.0 / 30.0;

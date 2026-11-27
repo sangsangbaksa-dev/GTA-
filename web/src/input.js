@@ -6,7 +6,8 @@ const RELOAD = 1 << 4;
 const JUMP = 1 << 6;
 const VEHICLE = 1 << 8;
 const PICKPOCKET = 1 << 9;
-const PULSES = new Map([['KeyF', VEHICLE], ['KeyG', PICKPOCKET], ['KeyR', RELOAD], ['Fire', FIRE], ['Space', JUMP]]);
+const SERVICE = 1 << 10;
+const PULSES = new Map([['KeyF', VEHICLE], ['KeyG', PICKPOCKET], ['KeyR', RELOAD], ['Fire', FIRE], ['Space', JUMP], ['KeyT', SERVICE]]);
 const BUTTONS = new Set([
   'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
   'KeyQ', 'KeyE', 'KeyC', 'ShiftLeft', 'ShiftRight', 'Space', 'Digit1', 'Digit2', ...PULSES.keys(),
@@ -125,7 +126,7 @@ export function createInput(canvas, touch, active, onMenu) {
       if (held.has('KeyC')) buttons |= CROUCH;
       if (held.has('Aim')) buttons |= AIM;
       if (held.has('Fire')) buttons |= FIRE;
-      const pulses = driving ? presses & ~JUMP : presses;
+      const pulses = driving ? presses & ~(JUMP | SERVICE) : presses;
       presses = 0;
       return {
         right: axis('KeyD', 'ArrowRight', 'KeyA', 'ArrowLeft'),

@@ -49,7 +49,8 @@ export function createChart(layout, radar, atlas, legend, interiorLegend) {
   const atlasContext = atlas.getContext('2d');
   const interiors = layout.landmarks.filter(landmark => landmark.kind === 'interior');
   if (interiors.length) {
-    interiorLegend.textContent = '◆ 출입 가능 · ' + interiors.map(room => room.name).join(' · ');
+    const services = {customs_exchange_cafe:'회복 $20',atlantic_repair:'탄약 $30',alderwash_lodge:'방어구 $40'};
+    interiorLegend.textContent = '◆ 출입 가능 · ' + interiors.map(room => room.name + (services[room.id] ? ' (' + services[room.id] + ')' : '')).join(' · ');
   }
   let lastRadarAt = -Infinity;
 

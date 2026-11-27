@@ -84,7 +84,7 @@ public sealed class HarborLockdown : ISimSystem
     private readonly StreetPopulation? _ambient;
 
     internal HarborLockdown(HarborLockdownDef definition, CombatSystem combat, ServerSession session, StaticWorld level,
-        HeatSystem heat, HarborFleet fleet, StreetPopulation? ambient, bool sandbox)
+        HeatSystem heat, HarborFleet fleet, StreetPopulation? ambient, bool sandbox, HarborLayout layout)
     {
         this.definition = definition;
         this.combat = combat;
@@ -94,6 +94,7 @@ public sealed class HarborLockdown : ISimSystem
         _fleet = fleet;
         _ambient = ambient;
         Sandbox = sandbox;
+        _services = new HarborStreetServices(layout, combat, level, _streetLedger);
         ExtractionPosition = HarborLockdownDef.Point(definition.Extraction);
         StartPosition = HarborLockdownDef.Point(definition.Start);
         _enemyMovement = new MovementConfig { WalkSpeed = definition.EnemySpeed };
@@ -132,6 +133,7 @@ public sealed class HarborLockdown : ISimSystem
     private double _worldTime;
     private readonly Dictionary<int, InputButtons> _heldActions = new();
     private readonly Ledger _streetLedger = new();
+    private readonly HarborStreetServices _services;
     private readonly Dictionary<int, HarborStreetCrime> _streetResults = new();
     private int _streetSequence;
     private readonly Dictionary<int, Actor> _players = new();
@@ -317,6 +319,13 @@ public sealed class HarborLockdown : ISimSystem
             return;
         }
 
+        if (Sandbox && (pressed & InputButtons.Service) != 0 && Phase == LockdownPhase.FreeRoam)
+        {
+            var status = _services.Use(actor, Wallet(actorId), $"service:{_streetSequence + 1}", heat.LevelOf(actorId), out var cost);
+            RecordStreetResult(actorId, status, cost);
+            return;
+        }
+
         if ((pressed & InputButtons.Pickpocket) != 0 && Phase == LockdownPhase.FreeRoam)
             TryStreetTheft(actor, cmd);
 
@@ -340,6 +349,9 @@ public sealed class HarborLockdown : ISimSystem
         var (pedestrian, cargo) = TheftTarget(actor.Position);
         return new HarborStreetAction(vehicleId, pedestrian, occupied, pedestrian >= 0, cargo);
     }
+
+    public HarborServiceState GetService(int actorId) => Sandbox && !_fleet.IsDriving(actorId)
+        && _players.TryGetValue(actorId, out var actor) ? _services.Describe(actor) : new HarborServiceState();
 
     public HarborStreetCrime GetStreetCrime(int actorId) =>
         _streetResults.GetValueOrDefault(actorId, new HarborStreetCrime(DirtyCash: _streetLedger.Balance(Wallet(actorId), Currency.Dirty)));

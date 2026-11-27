@@ -14,6 +14,7 @@ public enum InputButtons : ushort
     Melee = 1 << 7,
     Vehicle = 1 << 8,
     Pickpocket = 1 << 9,
+    Service = 1 << 10,
 }
 
 /// <summary>One fixed tick of player input — the only thing a client sends about its avatar.
