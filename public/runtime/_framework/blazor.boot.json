@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "Harbor.Browser.dll",
   "resources": {
-    "hash": "sha256-7Ln4SowsPoZgMQx1FfVk0CtmlN5OoJHlkJ+3rIMTgNY=",
+    "hash": "sha256-Far/OcZKvW1ppFnj1tIxEFvYTBk7a8cQPECXLsIUyWY=",
     "jsModuleNative": {
       "dotnet.native.js": "sha256-ftpNqtARtVNE8ku5eB/jXoklb41UQ+EutUHfwmbNTBY="
     },
@@ -183,12 +183,12 @@
       "mscorlib.wasm": "sha256-BeLfFpg9iS3DkEdywsYY7sV6ML3knqkMaMq0JBEbWlw=",
       "netstandard.wasm": "sha256-VkjUtJ6DK5bFTc2JwwGHmQY3tBcNSC7zMSJXuiXcnJA=",
       "System.Private.CoreLib.wasm": "sha256-VIQEPUSb48N39LR+ncGDP5xU02xuRbyZU8MhMho26wQ=",
-      "Harbor.Core.wasm": "sha256-cDo1NiqCdRewsWQRe6MBnHxb2gfjf924LX3z4pMGsC8=",
-      "Harbor.Browser.wasm": "sha256-lMNyPabLcEXmRiKiET91GShCU5u140HXx+0b2nYCAeQ="
+      "Harbor.Core.wasm": "sha256-NUyAlsnakObn+Ltp+ttGwcsE4U+ReuaFNPcMkWuQOL8=",
+      "Harbor.Browser.wasm": "sha256-S6rvEnbIqU4up+CV7EP9wGP/ISxzjuk4oFXDwGLDDuc="
     },
     "pdb": {
-      "Harbor.Core.pdb": "sha256-/XcrJgoU3j2C7X6LUa5lQc1Zz66OKBkSsr0wsnXfiqg=",
-      "Harbor.Browser.pdb": "sha256-He+zmyQnrV6TI4Sh3vl/NmoN1rsvvKO7tHdk8rbZ30s="
+      "Harbor.Core.pdb": "sha256-A2K4BVb6J+mGWDQYI/aoWS2wVAoAFIJ2c3Ev4lJxSa0=",
+      "Harbor.Browser.pdb": "sha256-3g0HfWuC/t8RnGBhZjjKBgIgOmYaMY2Uzt0wae062Lw="
     },
     "vfs": {
       "runtimeconfig.bin": {
