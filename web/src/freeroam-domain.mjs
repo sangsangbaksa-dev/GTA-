@@ -7,13 +7,21 @@ export function createFreeRoam(layout, saved = {}) {
     {id:"harbor-loop", name:"항만 순환 코스", checkpoints:[[40,33],[40,71],[-39,71],[-39,33],[40,33]],limit:85},
     {id:"civic-run", name:"도심 대로 코스", checkpoints:[[-155,-242],[-155,-345],[-70,-345],[-70,-440],[22,-440],[22,-530]],limit:120},
     {id:"cinder-run", name:"사막 패스 코스", checkpoints:[[-595,-440],[-599,-381],[-591,-327],[-565,-275],[-530,-247],[-460,-242]],limit:100},
+    {id:"alder-drive",name:"숲속 파크웨이",checkpoints:[[-580,174],[-562,224],[-581,278],[-581,361],[-570,413],[-541,438],[-215,438]],limit:180},
+    {id:"coast-drive",name:"랜턴 포인트 해안",checkpoints:[[99,170],[99,438],[385,438],[482,438],[540,420],[568,379],[568,326],[554,287]],limit:200},
+    {id:"station-drive",name:"기지 외곽 순환",checkpoints:[[224,-530],[224,-268],[550,-268],[550,-530]],limit:180},
   ];
   const traps = [
     {id:"lighthouse", name:"Lighthouse Drive", x:99,z:-80},
     {id:"supply", name:"Supply Road", x:-105,z:-175},
     {id:"meridian", name:"Meridian Avenue", x:22,z:-470},
+    {id:"boulevard",name:"Union Boulevard",x:-110,z:-440},
+    {id:"harbor",name:"Calloway Boulevard",x:-95,z:33},
+    {id:"desert",name:"Cinder Main",x:-591,z:-327},
+    {id:"forest",name:"Alderwash Parkway",x:-581,z:320},
+    {id:"coast",name:"Seabank Road",x:290,z:438},
   ];
-  const record = {visited: Array.isArray(saved.visited) ? [...new Set(saved.visited.filter(id=>points.some(p=>p.id===id)))] : [], best:{}, speeds:{}, trip:{walk:0,drive:0,topSpeed:0,escapes:0}};
+  const record = {visited: Array.isArray(saved.visited) ? [...new Set(saved.visited.filter(id=>points.some(p=>p.id===id)))] : [], best:{}, speeds:{}, trip:{walk:0,drive:0,topSpeed:0,escapes:0,maxEscape:0}};
   for(const k of Object.keys(record.trip)) if(Number.isFinite(saved.trip?.[k])&&saved.trip[k]>=0)record.trip[k]=saved.trip[k];
   for (const r of routes) if (Number.isFinite(saved.best?.[r.id]) && saved.best[r.id]>0) record.best[r.id]=saved.best[r.id];
   for (const t of traps) if (Number.isFinite(saved.speeds?.[t.id]) && saved.speeds[t.id]>=0) record.speeds[t.id]=saved.speeds[t.id];
@@ -43,7 +51,7 @@ export function createFreeRoam(layout, saved = {}) {
     if(Number.isFinite(speed)&&speed<450&&speed>record.trip.topSpeed){record.trip.topSpeed=speed;changed=true;}
     const wanted=Math.max(0,Number(frame.state.wantedLevel)||0);
     if(wanted){wantedPeak=Math.max(wantedPeak,wanted);clearTime=0;}
-    else if(wantedPeak){clearTime+=dt;if(clearTime>=3){record.trip.escapes++;tell("추격 탈출 · "+wantedPeak+"단계");wantedPeak=0;clearTime=0;changed=true;}}
+    else if(wantedPeak){clearTime+=dt;if(clearTime>=3){record.trip.escapes++;record.trip.maxEscape=Math.max(record.trip.maxEscape,wantedPeak);tell("추격 탈출 · "+wantedPeak+"단계");wantedPeak=0;clearTime=0;changed=true;}}
     if(!driving) {
       for(const mark of points) if(!record.visited.includes(mark.id)&&d(p,mark.position[0],mark.position[2])<=10&&Math.abs(p.y-mark.position[1])<=4){
         record.visited.push(mark.id);tell("명소 발견 · "+mark.name);changed=true;
@@ -94,5 +102,5 @@ export function createFreeRoam(layout, saved = {}) {
     const target=active?{item:active.route,distance:d(p,...active.route.checkpoints[active.index]),point:active.route.checkpoints[active.index]}:route&&{...route,point:route.item.checkpoints[0]};
     return {active:active?{name:active.route.name,index:active.index,total:active.route.checkpoints.length,remaining:Math.max(0,active.route.limit-active.elapsed)}:null,target,landmark,trap,visited:record.visited.length,total:points.length,record,msg:notice>0?msg:""};
   }
-  return {update,toggle,view,cancel,reset,record,routes,points,selectRoute(id){selectedRoute=routes.some(r=>r.id===id)?id:"";active=null;},selectLandmark(id){selectedLandmark=points.some(p=>p.id===id)?id:"";}};
+  return {update,toggle,view,cancel,reset,record,routes,points,traps,selectRoute(id){selectedRoute=routes.some(r=>r.id===id)?id:"";active=null;},selectLandmark(id){selectedLandmark=points.some(p=>p.id===id)?id:"";}};
 }
