@@ -1,0 +1,33 @@
+name: Publish verified Harbor jump bundle
+on:
+  push:
+    branches: [codex/publish-harbor-jump-20261127]
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retrieve successful browser CI artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api /repos/sangsangbaksa-dev/GTA-/actions/artifacts/15172958343/zip > harbor-web-jump.zip
+          echo 'a3d3e460e16e7d6734c287c5d2a6654e39ba5ed6420a743cc91528f57e20c828  harbor-web-jump.zip' | sha256sum --check
+          unzip -tq harbor-web-jump.zip
+          unzip -p harbor-web-jump.zip index.html | grep -q 'sandbox-extras.js'
+      - name: Publish immutable browser bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: sangsangbaksa-dev/GTA-
+        run: |
+          set -euo pipefail
+          tag=harbor-web-jump-20261127
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release already exists; refusing to overwrite"
+            exit 1
+          fi
+          gh release create "$tag" harbor-web-jump.zip --target 588a5db2b8bde664d1cbc96ac0724b12967549a4 --title "Harbor browser jump bundle" --notes "Verified browser artifact from successful CI run 45942471523. Includes terrain-aware jump physics. SHA256: a3d3e460e16e7d6734c287c5d2a6654e39ba5ed6420a743cc91528f57e20c828." --prerelease
