@@ -18,7 +18,6 @@ const STRIDE := {"Walk": 1.27, "Jog": 1.85, "Run": 2.64, "CrouchWalk": 0.94}
 const TRACER_LIFETIME := 0.12
 
 var bridge: JavaScriptObject
-var low_detail := false
 var camera := Camera3D.new()
 var actor_root := Node3D.new()
 var world_stream := WorldStream.new()
@@ -26,7 +25,6 @@ var daylight := DaylightCycle.new()
 var previous_session := 0
 var displayed_minute := -1
 var render_loop_active := true
-var next_resolution_check := 0
 var player: Dictionary
 var actor_scenes: Array[PackedScene] = []
 var vehicle_scenes: Dictionary = {}
@@ -43,20 +41,16 @@ var cache_mesh := BoxMesh.new()
 var cache_material := StandardMaterial3D.new()
 var strap_mesh := BoxMesh.new()
 var strap_material := StandardMaterial3D.new()
-var contact_mesh := PlaneMesh.new()
-var contact_material := ShaderMaterial.new()
 
 func _ready() -> void:
 	if OS.has_feature("web"):
 		bridge = JavaScriptBridge.get_interface("harborView")
-		low_detail = bool(bridge.lowDetail())
-	RenderingServer.global_shader_parameter_set("harbor_reduced_effects", low_detail)
 
 	var world_scene := load(WORLD_PATH) as PackedScene
 	var world := world_scene.instantiate() as Node3D
 	add_child(world)
 	configure_lighting(world)
-	daylight.setup(world, low_detail)
+	daylight.setup(world)
 
 	for person in PEOPLE:
 		actor_scenes.append(load("res://assets/characters/%s.glb" % person))
@@ -67,7 +61,7 @@ func _ready() -> void:
 
 	camera.fov = 59
 	camera.near = 0.09
-	camera.far = 245.0 if low_detail else 660.0
+	camera.far = float(bridge.renderDistance()) if bridge != null else 300.0
 	add_child(camera)
 	camera.make_current()
 
@@ -79,24 +73,14 @@ func _ready() -> void:
 	strap_mesh.size = Vector3(0.065, 0.575, 0.522)
 	strap_material.albedo_color = Color("#f3be78")
 	strap_material.roughness = 0.62
-	var contact_shader := Shader.new()
-	contact_shader.code = """shader_type spatial;
-		render_mode unshaded, blend_mix, depth_draw_never, cull_disabled;
-		void fragment() {
-			float edge = length((UV - vec2(0.5)) * 2.0);
-			ALBEDO = vec3(0.12, 0.17, 0.20);
-			ALPHA = 0.38 * (1.0 - smoothstep(0.13, 1.0, edge));
-		}"""
-	contact_material.shader = contact_shader
-
 	var start := Vector3(0.0, 0.0, 5.0)
 	if bridge != null:
 		var initial: Dictionary = JSON.parse_string(str(bridge.frame()))
 		start = vec(initial.position)
 		world_stream.initial_chunks_ready.connect(func() -> void: bridge.ready(), CONNECT_ONE_SHOT)
 	add_child(world_stream)
-	world_stream.begin(bridge, low_detail, start)
 	look_over_harbor(start)
+	world_stream.begin(bridge, camera, start)
 
 func configure_lighting(world: Node3D) -> void:
 	var environment_node := world.get_node_or_null("Environment") as WorldEnvironment
@@ -107,7 +91,7 @@ func configure_lighting(world: Node3D) -> void:
 		atmosphere.ambient_light_energy = 0.60
 		atmosphere.fog_enabled = true
 		atmosphere.fog_light_color = Color("#9fb9c6")
-		atmosphere.fog_density = 0.00255 if low_detail else 0.00195
+		atmosphere.fog_density = 0.00195
 		atmosphere.fog_sky_affect = 0.30
 	var sunlight := world.get_node_or_null("LateAfternoonSun") as DirectionalLight3D
 	if sunlight:
@@ -115,9 +99,7 @@ func configure_lighting(world: Node3D) -> void:
 		sunlight.light_energy = 1.11
 		sunlight.rotation_degrees = Vector3(-35.5, -46.0, 0.0)
 		sunlight.directional_shadow_max_distance = 90.0
-		sunlight.shadow_enabled = not low_detail
-	if low_detail:
-		get_viewport().screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
+		sunlight.shadow_enabled = true
 
 func _process(delta: float) -> void:
 	if bridge == null:
@@ -128,7 +110,6 @@ func _process(delta: float) -> void:
 		render_loop_active = render
 		RenderingServer.set_render_loop_enabled(render)
 	if not render:
-		next_resolution_check = Time.get_ticks_msec() + 1800
 		return
 	var tick := int(bridge.frameVersion())
 	if tick != last_tick:
@@ -149,22 +130,15 @@ func _process(delta: float) -> void:
 	if minute != displayed_minute:
 		displayed_minute = minute
 		bridge.showClock(minute)
+	var distance := float(bridge.renderDistance())
+	if camera.far != distance:
+		camera.far = distance
 	if mode == "intro":
 		look_over_harbor(vec(frame.position))
-	elif mode == "play":
-		var now := Time.get_ticks_msec()
-		if now >= next_resolution_check:
-			next_resolution_check = now + 1800
-			bridge.tuneResolution(Engine.get_frames_per_second())
+	else:
 		daylight.advance(delta)
-		var focus := vec(frame.position)
-		var velocity := vec(frame.velocity)
-		if state.isDriving:
-			focus = vec(state.vehicle.position)
-			var yaw := float(state.vehicle.yaw)
-			velocity = Vector3(-sin(yaw), 0.0, -cos(yaw)) * float(state.vehicle.speed)
-		world_stream.update_interest(focus, velocity)
 		follow_player(state, delta)
+	world_stream.update_interest(camera, vec(frame.position))
 
 func look_over_harbor(point: Vector3) -> void:
 	camera.position = point + Vector3(34.0, 12.7, 26.0)
@@ -209,7 +183,6 @@ func create_human(index: int) -> Dictionary:
 	var body := actor_scenes[index].instantiate() as Node3D
 	body.rotation.y = PI
 	holder.add_child(body)
-	add_contact_shadow(holder, Vector2(1.15, 0.75))
 	actor_root.add_child(holder)
 	var clips := body.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	if clips:
@@ -243,7 +216,6 @@ func create_vehicle(state: Dictionary) -> Dictionary:
 	var chassis := source.instantiate() as Node3D
 	chassis.rotation.y = PI
 	holder.add_child(chassis)
-	add_contact_shadow(holder, Vector2(float(state.halfWidth) * 2.85, float(state.halfLength) * 2.6))
 	actor_root.add_child(holder)
 	var steers: Array[Node3D] = []
 	var rollers: Array[Node3D] = []
@@ -323,7 +295,7 @@ func update_population(state: Dictionary, dt: float) -> void:
 	retire_missing(vehicles, current)
 
 	current.clear()
-	var pedestrian_range := 56.0 if low_detail else 108.0
+	const pedestrian_range := 108.0
 	for pedestrian in state.ambient.pedestrians:
 		var position := vec(pedestrian.position)
 		if position.distance_squared_to(at) > pedestrian_range * pedestrian_range:
@@ -375,18 +347,6 @@ func create_cache(point: Vector3) -> Dictionary:
 		holder.add_child(strap)
 	actor_root.add_child(holder)
 	return {"root": holder}
-
-func add_contact_shadow(parent: Node3D, size: Vector2) -> void:
-	if not low_detail:
-		return
-	var mark := MeshInstance3D.new()
-	mark.mesh = contact_mesh
-	mark.material_override = contact_material
-	mark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mark.visibility_range_end = 35.0
-	mark.position = Vector3(0.11, 0.035, 0.07)
-	mark.scale = Vector3(size.x, 1.0, size.y)
-	parent.add_child(mark)
 
 func draw_shots(shots: Array) -> void:
 	for shot in shots:

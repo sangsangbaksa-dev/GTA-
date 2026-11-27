@@ -19,6 +19,12 @@ TERRAIN = [
      'district': 'cinder_flats', 'theme': 'desert', 'material': 'DesertSand'},
     {'id': 'seabank_hill', 'name': 'Seabank Hill', 'center': (238, 343), 'size': (76, 42), 'height': 5.8,
      'district': 'lantern_point', 'theme': 'wealthy', 'material': 'VillageGrass'},
+    {'id': 'fern_glade_rise', 'center': (-514, 307), 'size': (64, 68), 'height': 7.2,
+     'theme': 'forest', 'material': 'ForestFloor'},
+    {'id': 'terrace_green', 'center': (452, 332), 'size': (64, 56), 'height': 5.6,
+     'theme': 'wealthy', 'material': 'VillageGrass'},
+    {'id': 'cinder_rise', 'center': (-463, -526), 'size': (68, 70), 'height': 9.5,
+     'theme': 'desert', 'material': 'DesertSand'},
 ]
 obstacles = []
 roads = []
@@ -36,6 +42,8 @@ interior_placements = {
     'customs_exchange_cafe': ((64.5, 0.13, -12), 'harbor_front'),
     'atlantic_repair': ((119, 0.13, -61), 'harbor_front'),
     'alderwash_lodge': ((-375, 0.01, 246), 'alderwash'),
+    'dock_dispatch': ((-15, 0.05, 15), 'harbor_front'),
+    'sluice_laundromat': ((-314, 0.05, 54), 'old_sluice'),
 }
 shape_ids = {'UnitBox': 'box', 'Cylinder': 'cylinder', 'Foliage': 'sphere',
              'PineCone': 'cone', 'RoofPrism': 'gable'}
@@ -294,9 +302,29 @@ for name, center, size, surface in [
 
 
 def primitive(zone, label, center, size, heading=0, mesh='UnitBox'):
+    width, _, length = size
+    if mesh == 'UnitBox' and label == 'ForestPath' and length > 4:
+        count = math.ceil(length / 3)
+        span = length / count
+        sin, cos = math.sin(math.radians(heading)), math.cos(math.radians(heading))
+        x, y, z = center
+        points = [(x + sin * s, z + cos * s) for s in (i * span - length / 2 for i in range(count + 1))]
+        heights = [altitude(px, pz) for px, pz in points]
+        if max(heights) > 0:
+            for i in range(count):
+                px, pz = ((a + b) / 2 for a, b in zip(points[i], points[i + 1]))
+                dy = heights[i + 1] - heights[i]
+                peak = (heights[i] + heights[i + 1]) / 2
+                surface = y + max(peak, altitude(px, pz)) + 0.025
+                batch_primitive(zone, label, (px, surface, pz), (width, size[1], span), heading, mesh, dy)
+            return
+    batch_primitive(zone, label, on_ground(center), size, heading, mesh)
+
+
+def batch_primitive(zone, label, center, size, heading, mesh, rise=0):
     """Store a Godot MultiMesh row-major 3×4 transform."""
-    center = on_ground(center)
-    record_primitive(zone, label, center, size, (0, heading, 0), mesh)
+    pitch = -math.degrees(math.atan2(rise, size[2])) if rise else 0
+    record_primitive(zone, label, center, size, (pitch, heading, 0), mesh)
     x, y, z = center
     width, height, depth = size
     angle = math.radians(heading)
@@ -304,7 +332,7 @@ def primitive(zone, label, center, size, heading=0, mesh='UnitBox'):
     batches[(zone, label, mesh)].extend(
         round(value, 5) for value in (
             width * cos, 0, depth * sin, x,
-            0, height, 0, y,
+            0, height, rise, y,
             -width * sin, 0, depth * cos, z,
         )
     )
@@ -1048,7 +1076,10 @@ def place_interiors():
             node(f'{slug}_light_{index}', 'OmniLight3D', 'Interiors', position=world(light['position']),
                  light_color=f'Color({color[0]}, {color[1]}, {color[2]}, 1)', light_energy=light['energy'],
                  omni_range=light['range'], omni_attenuation=1.35)
-        active.append({'id': slug, 'name': room['name'], 'position': position, 'district': district, 'kind': 'interior'})
+        door_x = room['entries']['front'][0]
+        entry = world((door_x, 0, room['size'][1] / 2 + 1.15))
+        active.append({'id': slug, 'name': room['name'], 'position': position, 'entrance': entry,
+                       'district': district, 'kind': 'interior'})
     return active
 
 
@@ -1074,7 +1105,8 @@ def serialize():
     active_interiors = place_interiors()
     interior_ids = {room['id'] for room in active_interiors}
     lookouts = [{'id': patch['id'], 'name': patch['name'], 'district': patch['district'], 'kind': 'lookout',
-                 'position': (patch['center'][0], patch['height'], patch['center'][1])} for patch in TERRAIN]
+                 'position': (patch['center'][0], patch['height'], patch['center'][1])} for patch in TERRAIN if 'name' in patch]
+    outdoor = [dict(item, position=on_ground(item['position'])) for item in LANDMARKS if item['id'] not in interior_ids]
     node_sections = scene[scene_nodes_start:]
     del scene[scene_nodes_start:]
     terrain_surfaces()
@@ -1105,7 +1137,7 @@ def serialize():
                     '\n'.join(scene), encoding='utf-8')
     layout = {'spawn': SPAWN, 'bounds': BOUNDS, 'waterLevel': WATER_LEVEL, 'roads': roads, 'water': water,
               'ground': ground, 'districts': DISTRICTS,
-              'landmarks': [item for item in LANDMARKS if item['id'] not in interior_ids] + active_interiors + lookouts,
+              'landmarks': outdoor + active_interiors + lookouts,
               'terrain': [{key: patch[key] for key in ('center', 'size', 'height', 'theme')} for patch in TERRAIN],
               'obstacles': obstacles}
     write_json(ROOT / 'data/world/harbor_front.json', layout)

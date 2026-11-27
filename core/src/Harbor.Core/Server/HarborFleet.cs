@@ -251,7 +251,8 @@ internal sealed class HarborFleet
         public int DriverId { get; set; } = -1;
         public VehicleInput Input { get; set; }
         public long InputTick { get; set; } = -10;
-        public HarborVehicleState State => Describe(new HarborVehicleState(Body.Position, Body.Yaw, Body.Speed, Body.Steering, Body.Distance),
+        public HarborVehicleState State => Describe(new HarborVehicleState(Body.Position, Body.Yaw, Body.Speed, Body.Steering, Body.Distance)
+            { BlockedByObstacle = Body.BlockedByObstacle },
             Id, Model, appearance, DriverId, DriverId >= 0);
     }
 }

@@ -6,6 +6,7 @@ const CHUNKS := WORLD + "chunks/"
 
 var roots: Dictionary = {}
 var batches: Dictionary = {}
+var bounds_by_root: Dictionary = {}
 
 func _initialize() -> void:
 	var result := build()
@@ -28,10 +29,10 @@ func build() -> Error:
 				move_into(node, backdrop, node.transform)
 			"Terrain":
 				for surface in node.get_children():
-					move_into(surface, backdrop, node.transform * surface.transform)
+					partition_node(surface, node.transform * surface.transform)
 			"DistrictGeometry":
 				for instance in node.get_children():
-					partition_batch(instance, backdrop)
+					partition_batch(instance)
 			"WalkCollision":
 				pass
 			_:
@@ -55,6 +56,8 @@ func build() -> Error:
 	cells.sort()
 	for cell: Vector2i in cells:
 		var root: Node3D = roots[cell]
+		var bounds: AABB = bounds_by_root.get(root, AABB(Vector3(cell.x, 0, cell.y) * Grid.SIZE, Vector3.ZERO))
+		bounds = bounds.grow(0.1)
 		var prefix := "cell_%d_%d" % [cell.x, cell.y]
 		var temporary := CHUNKS + prefix + ".scn"
 		result = save_scene(root, temporary)
@@ -65,7 +68,8 @@ func build() -> Error:
 		result = DirAccess.rename_absolute(temporary, CHUNKS + file)
 		if result != OK:
 			return result
-		index.append([cell.x, cell.y, file])
+		index.append([cell.x, cell.y, file, [bounds.position.x, bounds.position.y, bounds.position.z,
+			bounds.size.x, bounds.size.y, bounds.size.z]])
 	var manifest := FileAccess.open(WORLD + "chunk_index.json", FileAccess.WRITE)
 	if manifest == null:
 		return FileAccess.get_open_error()
@@ -81,14 +85,35 @@ func chunk_at(cell: Vector2i) -> Node3D:
 	return roots[cell]
 
 func partition_node(node: Node3D, transform: Transform3D) -> void:
-	move_into(node, chunk_at(Grid.cell_at(transform.origin)), transform)
+	var root := chunk_at(Grid.cell_at(transform.origin))
+	collect_bounds(root, node, transform)
+	move_into(node, root, transform)
 
-func partition_batch(source: MultiMeshInstance3D, backdrop: Node3D) -> void:
+func collect_bounds(root: Node3D, node: Node3D, transform: Transform3D) -> void:
+	if node is MeshInstance3D:
+		var custom: AABB = node.custom_aabb
+		include_bounds(root, transform * (custom if custom.has_volume() else node.get_aabb()))
+	elif node is OmniLight3D:
+		var extent := Vector3.ONE * float(node.omni_range)
+		include_bounds(root, AABB(transform.origin - extent, 2.0 * extent))
+	for child in node.get_children():
+		if child is Node3D:
+			collect_bounds(root, child, transform * child.transform)
+
+func include_bounds(root: Node3D, bounds: AABB) -> void:
+	if bounds_by_root.has(root):
+		var previous: AABB = bounds_by_root[root]
+		bounds = previous.merge(bounds)
+	bounds_by_root[root] = bounds
+
+func partition_batch(source: MultiMeshInstance3D) -> void:
 	var info := source.multimesh
 	var bounds := info.mesh.get_aabb()
 	var key := [info.mesh, source.material_override, source.cast_shadow]
 	var buffer := info.buffer
-	var continuous_road := String(source.name).begins_with("Road") or String(source.name).begins_with("Markings_")
+	var name := String(source.name)
+	var split_surface := info.mesh is BoxMesh and (name.begins_with("Road") or name.begins_with("Ground")
+		or name.begins_with("Markings_") or name.begins_with("BridgeWalkway"))
 	for i in info.instance_count:
 		# The headless renderer only keeps the serialized MultiMesh buffer.
 		var row := i * 12
@@ -99,26 +124,35 @@ func partition_batch(source: MultiMeshInstance3D, backdrop: Node3D) -> void:
 		)
 		var origin := Vector3(buffer[row + 3], buffer[row + 7], buffer[row + 11])
 		var transform := source.transform * Transform3D(axes, origin)
-		var size := (transform * bounds).size
-		var cell := Grid.cell_at(transform.origin)
-		# Keep the coastline, long roads and tall building silhouettes visible beyond the detail radius.
-		var root := backdrop if continuous_road or maxf(size.x, size.z) >= 48.0 or size.y >= 25.0 else chunk_at(cell)
-		# Backdrop batches still use local bounds so the renderer can cull them.
-		var batch_key := key + [cell] if root == backdrop else key
-		if not batches.has(root):
-			batches[root] = {}
-		var group: Dictionary = batches[root]
-		if not group.has(batch_key):
-			group[batch_key] = PackedFloat32Array()
-		var data: PackedFloat32Array = group[batch_key]
-		var basis := transform.basis
-		var position := transform.origin
-		data.append_array([
-			basis.x.x, basis.y.x, basis.z.x, position.x,
-			basis.x.y, basis.y.y, basis.z.y, position.y,
-			basis.x.z, basis.y.z, basis.z.z, position.z,
-		])
-		group[batch_key] = data
+		if not split_surface:
+			add_instance(key, transform, bounds)
+			continue
+		# Slice long boxes along their own axes with coincident edges, preserving turns and layer heights.
+		var halves := Grid.SIZE * 0.5
+		var columns := maxi(1, ceili(transform.basis.x.length() * bounds.size.x / halves))
+		var rows := maxi(1, ceili(transform.basis.z.length() * bounds.size.z / halves))
+		var slice := Basis(transform.basis.x / columns, transform.basis.y, transform.basis.z / rows)
+		for x in columns:
+			for z in rows:
+				var local := Vector3(((x + 0.5) / columns - 0.5) * bounds.size.x, 0.0,
+					((z + 0.5) / rows - 0.5) * bounds.size.z)
+				add_instance(key, Transform3D(slice, transform * local), bounds)
+
+func add_instance(key: Array, transform: Transform3D, bounds: AABB) -> void:
+	var root := chunk_at(Grid.cell_at(transform.origin))
+	include_bounds(root, transform * bounds)
+	if not batches.has(root):
+		batches[root] = {}
+	var group: Dictionary = batches[root]
+	var data: PackedFloat32Array = group.get(key, PackedFloat32Array())
+	var basis := transform.basis
+	var position := transform.origin
+	data.append_array([
+		basis.x.x, basis.y.x, basis.z.x, position.x,
+		basis.x.y, basis.y.y, basis.z.y, position.y,
+		basis.x.z, basis.y.z, basis.z.z, position.z,
+	])
+	group[key] = data
 
 func write_batches(root: Node3D, groups: Dictionary) -> void:
 	for key: Array in groups:

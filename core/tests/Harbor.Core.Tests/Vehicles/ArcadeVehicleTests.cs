@@ -52,9 +52,40 @@ public sealed class ArcadeVehicleTests
         var contact = car.Position.Z;
         Assert.InRange(contact, -6 + 0.025 + ArcadeVehicle.HalfLength, -3.95);
         Assert.Equal(0, car.Speed);
+        Assert.True(car.BlockedByObstacle);
 
         Step(car, world, new VehicleInput(-1, 0, false), 60);
         Assert.True(car.Position.Z > contact + 1);
+        Assert.False(car.BlockedByObstacle);
+    }
+
+    [Fact]
+    public void LowRoadCurbDoesNotInstantlyStopTheCar()
+    {
+        var world = new StaticWorld();
+        world.Add(Aabb.FromCenter(new Vec3d(0, .09, -6), new Vec3d(16, .18, .3)), SurfaceMaterial.Concrete);
+        var car = new ArcadeVehicle(Vec3d.Zero);
+
+        Step(car, world, new VehicleInput(1, 0, false), 120);
+
+        Assert.True(car.Position.Z < -10);
+        Assert.True(car.Speed > 12);
+        Assert.False(car.BlockedByObstacle);
+    }
+
+    [Fact]
+    public void GlancingWallContactCanContinueAlongTheBarrier()
+    {
+        var world = new StaticWorld();
+        world.Add(Aabb.FromCenter(new Vec3d(2.8, 1, -10), new Vec3d(.2, 2, 40)), SurfaceMaterial.Concrete);
+        var car = new ArcadeVehicle(Vec3d.Zero, -.28);
+
+        Step(car, world, new VehicleInput(1, 0, false), 170);
+
+        Assert.InRange(car.Position.X, .9, 1.45);
+        Assert.True(car.Position.Z < -12);
+        Assert.True(car.Speed > 2);
+        Assert.False(car.BlockedByObstacle);
     }
 
     [Fact]

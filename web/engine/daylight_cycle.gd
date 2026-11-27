@@ -7,22 +7,17 @@ var hour := START_HOUR
 var sunlight: DirectionalLight3D
 var atmosphere: Environment
 var sky_material: ProceduralSkyMaterial
-var low_detail := false
 var refresh_left := 0.0
 var last_hour := -1.0
 
-func setup(world: Node3D, reduced: bool) -> void:
-	low_detail = reduced
+func setup(world: Node3D) -> void:
 	sunlight = world.get_node_or_null("LateAfternoonSun") as DirectionalLight3D
 	var env := world.get_node_or_null("Environment") as WorldEnvironment
 	if env != null and env.environment != null:
 		# The packed resource is shared; duplicate it before changing it.
 		env.environment = env.environment.duplicate() as Environment
 		atmosphere = env.environment
-		if reduced:
-			atmosphere.background_mode = Environment.BG_COLOR
-			atmosphere.sky = null
-		elif atmosphere.sky != null:
+		if atmosphere.sky != null:
 			atmosphere.sky = atmosphere.sky.duplicate() as Sky
 			if atmosphere.sky.sky_material is ProceduralSkyMaterial:
 				sky_material = atmosphere.sky.sky_material.duplicate() as ProceduralSkyMaterial
@@ -33,7 +28,7 @@ func advance(dt: float) -> void:
 	hour = fposmod(hour + clampf(dt, 0.0, 0.25) * 24.0 / DAY_SECONDS, 24.0)
 	refresh_left -= dt
 	if refresh_left <= 0.0:
-		refresh_left = 0.5 if not low_detail else 1.0
+		refresh_left = 0.5
 		apply()
 
 func reset() -> void:
@@ -50,14 +45,12 @@ func apply() -> void:
 		sunlight.rotation_degrees = Vector3(-maxf(4.0, elevation * 67.0), hour * 15.0 - 279.0, 0.0)
 		sunlight.light_color = Color("#a8c8ff").lerp(Color("#fff0d2"), day).lerp(Color("#f6a370"), dusk * 0.8)
 		sunlight.light_energy = lerpf(0.08, 1.11, day)
-		sunlight.shadow_enabled = not low_detail and day > 0.10
+		sunlight.shadow_enabled = day > 0.10
 	if atmosphere != null:
 		atmosphere.ambient_light_color = ambient
 		atmosphere.ambient_light_energy = lerpf(0.27, 0.60, day)
 		atmosphere.fog_light_color = fog
-		atmosphere.fog_density = lerpf(0.0031, 0.00255 if low_detail else 0.00195, day)
-		if low_detail:
-			atmosphere.background_color = Color("#1c2e46").lerp(Color("#87adc4"), day).lerp(Color("#bf8d7e"), dusk * 0.65)
+		atmosphere.fog_density = lerpf(0.0031, 0.00195, day)
 	# Keep sky rebuilds infrequent: each quantized 20-minute time bucket.
 	if sky_material != null and (last_hour < 0.0 or absf(hour - last_hour) >= 1.0 / 3.0):
 		last_hour = hour

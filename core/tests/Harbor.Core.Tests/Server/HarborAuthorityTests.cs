@@ -525,6 +525,45 @@ public sealed class HarborAuthorityTests
         Assert.True(System.Math.Abs(pilot.Actor.Position.X - car.Position.X) > car.Shape.HalfWidth);
     }
 
+    [Fact]
+    public void MarkedPublicEntrancesAllowWalkingThroughTheBuildingFacade()
+    {
+        var files = new DiskFileSystem(Repo.Root);
+        var layout = HarborLayout.Load(files, "data/world/harbor_front.json");
+        var level = layout.CreateStaticWorld();
+        var rooms = layout.Landmarks.Where(landmark => landmark.Kind == "interior").ToArray();
+        Assert.Equal(5, rooms.Length);
+        foreach (var room in rooms)
+        {
+            var entrance = Assert.IsType<double[]>(room.Entrance);
+            var start = level.AlignToGround(new Vec3d(entrance[0], entrance[1], entrance[2]));
+            var move = new MoveState { Position = start };
+            var input = InputCmd.Create(0, 0, 0, 1, 0, 0, InputButtons.None);
+            for (var tick = 0; tick < 30; tick++)
+                Movement.Step(ref move, input, 1.0 / 30, new MovementConfig(), MoveModifiers.Default, level);
+            Assert.True(move.Position.Z < start.Z - 2.2, $"{room.Name} has a blocked entrance");
+        }
+    }
+
+    [Theory]
+    [InlineData(-514, 307, 7.2)]
+    [InlineData(452, 332, 5.6)]
+    [InlineData(-463, -526, 9.5)]
+    public void AddedTerrainGradesAreSharedByTheWorldAndMovement(double x, double z, double height)
+    {
+        var layout = HarborLayout.Load(new DiskFileSystem(Repo.Root), "data/world/harbor_front.json");
+        var world = layout.CreateStaticWorld();
+        var summit = new Vec3d(x, 0, z);
+        Assert.Equal(height, world.GroundElevation(summit), 4);
+        var move = new MoveState { Position = world.AlignToGround(summit + new Vec3d(0, 0, 12)) };
+        var before = move.Position.Y;
+        var input = InputCmd.Create(0, 0, 0, 1, 0, 0, InputButtons.None);
+        for (var tick = 0; tick < 12; tick++)
+            Movement.Step(ref move, input, 1.0 / 30, new MovementConfig(), MoveModifiers.Default, world);
+        Assert.Equal(world.GroundElevation(move.Position), move.Position.Y, 4);
+        Assert.True(move.Position.Y > before);
+    }
+
     private sealed class Harness
     {
         private const double Step = 1.0 / 30.0;

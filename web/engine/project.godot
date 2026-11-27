@@ -19,10 +19,3 @@ renderer/rendering_method.mobile="gl_compatibility"
 anti_aliasing/quality/screen_space_aa=1
 textures/default_filters/use_nearest_mipmap_filter=false
 textures/vram_compression/import_etc2_astc=true
-
-[shader_globals]
-
-harbor_reduced_effects={
-"type": "bool",
-"value": false
-}

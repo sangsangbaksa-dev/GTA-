@@ -12,7 +12,7 @@ const browser = await chromium.launch({
 });
 
 try {
-  const page = await browser.newPage({ viewport: { width: 850, height: 550 } });
+  const page = await browser.newPage({ viewport: { width: 720, height: 480 } });
   page.setDefaultTimeout(35_000);
   const errors = [];
   const fetchedChunks = new Set();
@@ -34,6 +34,7 @@ try {
   const totalChunks = +await game.getAttribute('data-total-chunks');
   assert.ok(initialChunks > 0 && initialChunks < totalChunks / 2);
   assert.ok(fetchedChunks.size >= initialChunks, 'the initial map chunks arrived separately over HTTP');
+  assert.equal(await game.evaluate(canvas => canvas.width), 720, 'the browser renders at the viewport width');
   if (process.env.HARBOR_SHOTS) await page.screenshot({ path: process.env.HARBOR_SHOTS + '-intro.png' });
   await start.focus();
   await page.keyboard.press('Enter');
@@ -41,6 +42,25 @@ try {
   assert.match(await page.locator('#district-name').textContent(), /Harbor Front/);
   assert.match(await page.locator('#equipment').textContent(), /Wasp/i);
   await page.waitForFunction(() => document.getElementById('world-clock').textContent !== '15:30');
+  await page.waitForFunction(() => Number(document.getElementById('world').dataset.visibleChunks) > 0);
+  await page.keyboard.press('Escape');
+  await page.getByLabel('청크 렌더링 거리').selectOption('180');
+  await page.getByRole('button', { name: '계속하기' }).click({ noWaitAfter: true });
+  await page.waitForFunction(() => document.getElementById('world').dataset.renderDistance === '180');
+  assert.equal(await page.evaluate(() => localStorage.getItem('harbor.renderDistance')), '180');
+
+  const facingNorth = await game.getAttribute('data-visible-cells');
+  await page.evaluate(() => {
+    const view = globalThis.harborView;
+    const yaw = view.yaw;
+    view.yaw = () => yaw() + Math.PI;
+    window.restoreHarborYaw = () => { view.yaw = yaw; delete window.restoreHarborYaw; };
+  });
+  await page.waitForFunction(previous => {
+    const { visibleCells, visibleChunks, loadedChunks } = document.getElementById('world').dataset;
+    return visibleCells && visibleCells !== previous && Number(visibleChunks) < Number(loadedChunks);
+  }, facingNorth);
+  await page.evaluate(() => window.restoreHarborYaw());
   if (process.env.HARBOR_SHOTS) await page.screenshot({ path: process.env.HARBOR_SHOTS + '-play.png' });
 
   const vehicle = page.locator('#vehicle-action');
@@ -88,13 +108,13 @@ try {
   for (const name of ['Harbor Front', 'Glass Heights', 'Old Sluice', 'Cinder Flats', 'Breakwater Station', 'Alderwash', 'Lantern Point'])
     assert.match(districts, new RegExp(name));
   const interiors = await page.locator('#map-interiors').textContent();
-  for (const name of ['Customs Exchange Cafe', 'Atlantic Repair', 'Alderwash Lodge'])
+  for (const name of ['Customs Exchange Cafe', 'Atlantic Repair', 'Alderwash Lodge', 'Dock Dispatch', 'Sluice Laundromat'])
     assert.ok(interiors.includes(name), name + ' appears on the map');
   // The supplemental activity interface must be present in the actual shipping browser build.
   const cityPanel = page.locator('#harbor-city-activities');
   await cityPanel.locator('summary').click();
   const activity = cityPanel.getByRole('combobox', { name: '도시 생활 활동' });
-  await page.waitForFunction(() => document.querySelector('#harbor-city-activities select')?.options.length === 37);
+  await page.waitForFunction(() => document.querySelector('#harbor-city-activities select')?.options.length === 39);
   assert.equal(await activity.locator('optgroup').count(), 4);
   await activity.selectOption('survey|alder_ridge');
   await cityPanel.getByRole('button', { name: '활동 선택' }).click();
@@ -128,11 +148,11 @@ try {
     view.frameVersion = () => version;
   });
   await lodge;
-  await page.waitForFunction(() => Number(document.querySelector('#world').dataset.loadedChunks) >= 9);
+  await page.waitForFunction(() => document.querySelector('#world').dataset.visibleCells?.includes('-3,2'));
   assert.ok(+await game.getAttribute('data-loaded-chunks') < fetchedChunks.size, 'distant old chunks were released');
 
   assert.deepEqual(errors, []);
-  console.log('Godot boot, on-demand chunk loading and release, vehicle controls, wanted response, map and interiors, pause/resume and reset verified.');
+  console.log('Godot boot, full resolution, camera-frustum streaming, adjustable distance, vehicle controls, interiors and activities verified.');
 } finally {
   await browser.close();
   if (previewServer) await new Promise((resolve, reject) => {

@@ -51,6 +51,7 @@ public sealed class ArcadeVehicle
     public const double RoofHeight = 1.54;
     public const double WheelRadius = 0.31;
     public const double Wheelbase = 2.36;
+    private const double CurbClearance = 0.23;
 
     private readonly ArcadeVehicleTuning _tuning;
 
@@ -68,6 +69,7 @@ public sealed class ArcadeVehicle
     public double Speed { get; private set; }
     public double Steering { get; private set; }
     public double Distance { get; private set; }
+    public bool BlockedByObstacle { get; private set; }
     public VehicleShape Shape { get; }
 
     /// <summary>Apply a spawn pose or a snapshot from the authoritative simulation.</summary>
@@ -78,11 +80,13 @@ public sealed class ArcadeVehicle
         Speed = speed;
         Steering = steering;
         Distance = distance;
+        BlockedByObstacle = false;
     }
 
     public void Step(VehicleInput input, double dt, StaticWorld world, Func<Vec3d, double, bool>? blockedByVehicle = null)
     {
         if (dt <= 0 || !double.IsFinite(dt)) return;
+        BlockedByObstacle = false;
         var throttle = ClampInput(input.Throttle);
         var turn = ClampInput(input.Turn);
         var speedRatio = M.Clamp(M.Abs(Speed) / _tuning.ForwardSpeed, 0, 1);
@@ -111,16 +115,41 @@ public sealed class ArcadeVehicle
         {
             var nextYaw = M.IEEERemainder(Yaw + headingDelta / pieces, 2 * M.PI);
             var headingMidpoint = Yaw + headingDelta / (2 * pieces) - Steering * (1 - _tuning.CornerGrip) * speedRatio;
-            var nextPosition = world.AlignToGround(Position + Vec3d.FromYawPitch(headingMidpoint, 0) * (distance / pieces));
-            if (Blocked(world, nextPosition, nextYaw, Shape) || blockedByVehicle?.Invoke(nextPosition, nextYaw) == true)
+            var movement = Vec3d.FromYawPitch(headingMidpoint, 0) * (distance / pieces);
+            var nextPosition = world.AlignToGround(Position + movement);
+            var moved = M.Abs(distance / pieces);
+            if (IsBlocked(nextPosition, nextYaw))
             {
-                Speed = 0;
-                break;
+                // A glancing contact can keep the component parallel to an obstacle.
+                var tangent = M.Abs(movement.X) > M.Abs(movement.Z)
+                    ? new Vec3d(movement.X, 0, 0) : new Vec3d(0, 0, movement.Z);
+                nextPosition = world.AlignToGround(Position + tangent);
+                var forward = tangent * M.Sign(distance);
+                var slideYaw = M.Atan2(-forward.X, -forward.Z);
+                var tangentLength = tangent.Length;
+                var canSlide = tangentLength >= moved * 0.7;
+                if (canSlide && IsBlocked(nextPosition, slideYaw))
+                {
+                    slideYaw = Yaw;
+                    canSlide = !IsBlocked(nextPosition, slideYaw);
+                }
+                if (!canSlide)
+                {
+                    Speed = 0;
+                    BlockedByObstacle = true;
+                    break;
+                }
+                Speed *= tangentLength / moved;
+                moved = tangentLength;
+                nextYaw = slideYaw;
             }
             Yaw = nextYaw;
             Position = nextPosition;
-            Distance += distance / pieces;
+            Distance += moved * M.Sign(distance);
         }
+
+        bool IsBlocked(Vec3d position, double yaw) => Blocked(world, position, yaw, Shape)
+            || blockedByVehicle?.Invoke(position, yaw) == true;
     }
 
     internal static bool Blocked(StaticWorld world, Vec3d pivot, double yaw, VehicleShape shape)
@@ -129,7 +158,7 @@ public sealed class ArcadeVehicle
         var right = new Vec3d(-forward.Z, 0, forward.X);
         var reachX = shape.HalfWidth * M.Abs(right.X) + shape.HalfLength * M.Abs(forward.X);
         var reachZ = shape.HalfWidth * M.Abs(right.Z) + shape.HalfLength * M.Abs(forward.Z);
-        var bounds = new Aabb(pivot + new Vec3d(-reachX, 0.12, -reachZ),
+        var bounds = new Aabb(pivot + new Vec3d(-reachX, CurbClearance, -reachZ),
             pivot + new Vec3d(reachX, shape.RoofHeight, reachZ));
 
         // Broad-phase supplies the two world-axis tests; these two projections test the vehicle axes.

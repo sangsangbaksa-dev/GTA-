@@ -447,11 +447,49 @@ def lodge():
     return room.export('alderwash_lodge')
 
 
+def dispatch_office():
+    room = Room('Dock Dispatch', (11.6, 8.8, 3.7), (0, 2.05, 2.65), (0, 2.05, 2.65))
+    room.shell('deep teal', 'cement')
+    room.box((0, 3.14, 4.55), (5.3, .61, .20), 'charcoal')
+    room.sign('DOCK DISPATCH', (0, 3.02, 4.68), .39, 'neon')
+    room.box((-3.6, .50, -0.6), (3.35, 1.0, 1.1), 'walnut', .03, 'wood')
+    room.box((-3.6, 1.52, -1.30), (3.10, .75, .08), 'charcoal')
+    room.sign('BERTH ALLOCATIONS', (-3.6, 1.52, -1.24), .23, 'porcelain')
+    for z in (-2.6, .35, 2.7):
+        room.box((4.88, 1.02, z), (.64, 2.04, 1.25), 'sage', .03, 'metal')
+        room.box((4.52, 1.27, z), (.12, .05, .26), 'galvanized')
+    room.table(-3.55, 2.4)
+    room.chair(-3.55, 3.22, -1)
+    room.plant(3.91, 3.55)
+    room.light(-2.5, 2.8, -.4, energy=1.65, radius=5.0)
+    room.light(2.4, 2.8, 1.35, energy=1.4, radius=5.0)
+    return room.export('dock_dispatch')
+
+
+def laundromat():
+    room = Room('Sluice Laundromat', (12, 9, 3.8), (0, 2.2, 2.70), (0, 2.05, 2.70))
+    room.shell('brick', 'cream tile')
+    room.box((0, 3.18, 4.66), (6.45, .66, .24), 'deep teal')
+    room.sign('SLUICE LAUNDRY', (0, 3.06, 4.81), .43, 'neon')
+    for x in (-5.06, -3.98, -2.90, 2.90, 3.98, 5.06):
+        room.box((x, .56, -3.54), (.96, 1.1, .94), 'painted cream', .04, 'metal')
+        room.cylinder((x, .52, -3.045), .32, .09, 'galvanized', lying=True, sides=26)
+        room.cylinder((x, .52, -2.994), .26, .030, 'deep teal', lying=True, sides=26)
+        room.box((x, .91, -3.045), (.53, .10, .09), 'charcoal')
+    room.box((-3.52, .48, .45), (2.7, .96, 1.38), 'walnut', .035, 'wood')
+    for x, z in ((3.2, 1.8), (4.25, 1.8), (-4.9, 3.55)):
+        room.chair(x, z)
+    room.sign('WASH  /  DRY  /  FOLD', (0, 2.74, -4.30), .27, 'porcelain')
+    for x in (-3.8, 0, 3.8):
+        room.light(x, 2.9, -1.2, color='fff0cb', energy=1.32, radius=4.9)
+    return room.export('sluice_laundromat')
+
+
 GLBS.mkdir(parents=True, exist_ok=True)
 if BLENDS:
     BLENDS.mkdir(parents=True, exist_ok=True)
 bpy.context.preferences.filepaths.save_version = 0
 register_material()
-metadata = [cafe(), repair_shop(), lodge()]
+metadata = [cafe(), repair_shop(), lodge(), dispatch_office(), laundromat()]
 target = ROOT / 'data/world/harbor_interiors.json'
 target.write_text(json.dumps(metadata, indent=2) + '\n', encoding='utf-8')

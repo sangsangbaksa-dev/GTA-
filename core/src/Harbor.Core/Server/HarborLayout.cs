@@ -59,6 +59,7 @@ public sealed record HarborLandmark
     public string District { get; init; } = "";
     public string Kind { get; init; } = "";
     public double[] Position { get; init; } = [];
+    public double[]? Entrance { get; init; }
 }
 
 public sealed record HarborTerrain : HarborArea
@@ -107,6 +108,7 @@ public sealed record HarborLayout
         var ids = layout.Districts!.Select(d => d.Id).ToHashSet(StringComparer.Ordinal);
         Json.Require(ids.Count == layout.Districts!.Count, $"{path}: duplicate district ID");
         Json.Require(layout.Landmarks != null && layout.Landmarks.All(l => l != null && ValidVector(l.Position)
+            && (l.Entrance == null || ValidVector(l.Entrance))
             && !string.IsNullOrWhiteSpace(l.Id) && !string.IsNullOrWhiteSpace(l.Name) && ids.Contains(l.District)),
             $"{path}: landmark needs a position, name and district");
         Json.Require(layout.Obstacles != null, $"{path}: obstacles are required");

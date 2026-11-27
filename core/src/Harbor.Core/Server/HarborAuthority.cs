@@ -32,6 +32,7 @@ public sealed record HarborPlayerCombat(int Health = 100, int MaxHealth = 100, i
 
 public readonly record struct HarborVehicleState(Vec3d Position, double Yaw, double Speed, double Steering, double Distance)
 {
+    public bool BlockedByObstacle { get; init; }
     public int Id { get; init; }
     public string ModelId { get; init; } = "";
     public string VehicleClass { get; init; } = "";

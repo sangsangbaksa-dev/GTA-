@@ -48,8 +48,9 @@ export function createChart(layout, radar, atlas, legend, interiorLegend) {
   const radarContext = radar.getContext('2d');
   const atlasContext = atlas.getContext('2d');
   const interiors = layout.landmarks.filter(landmark => landmark.kind === 'interior');
+  const entrancePosition = room => room.entrance ?? room.position;
   if (interiors.length) {
-    interiorLegend.textContent = '◆ 출입 가능 · ' + interiors.map(room => room.name).join(' · ');
+    interiorLegend.textContent = '◆ 건물 입구 · ' + interiors.map(room => room.name).join(' · ');
   }
   let lastRadarAt = -Infinity;
 
@@ -112,7 +113,10 @@ export function createChart(layout, radar, atlas, legend, interiorLegend) {
       for (const enemy of state.enemies) {
         if (enemy.team === 3 && !enemy.flags.includes('dead')) dot(ctx, ...point(enemy.position.x, enemy.position.z), '#91c8ff', 3);
       }
-      for (const room of interiors) entrance(ctx, ...point(room.position[0], room.position[2]), 2.3);
+      for (const room of interiors) {
+        const [x, , z] = entrancePosition(room);
+        entrance(ctx, ...point(x, z), 2.3);
+      }
       player(ctx, ...point(position.x, position.z), yaw);
       ctx.fillStyle = '#fff2db';
       ctx.font = 'bold 11px sans-serif';
@@ -132,7 +136,10 @@ export function createChart(layout, radar, atlas, legend, interiorLegend) {
         ctx.fillStyle = '#fff0d7';
         ctx.fillText(district.name, x, y);
       }
-      for (const room of interiors) entrance(ctx, ...point(room.position[0], room.position[2]), 4.0);
+      for (const room of interiors) {
+        const [x, , z] = entrancePosition(room);
+        entrance(ctx, ...point(x, z), 4.0);
+      }
       player(ctx, ...point(position.x, position.z), yaw);
       ctx.textAlign = 'left';
     },

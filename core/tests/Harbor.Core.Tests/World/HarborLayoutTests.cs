@@ -69,9 +69,10 @@ public sealed class HarborLayoutTests
             Assert.True(road.Contains(Vec3d.Lerp(from, to, .1)), $"{road.Name} start misses its footprint");
             Assert.True(road.Contains(Vec3d.Lerp(from, to, .9)), $"{road.Name} end misses its footprint");
             var clearance = road.Kind == "path" ? .36 : 2.45;
-            foreach (var point in Sample(from, to))
+            foreach (var horizontal in Sample(from, to))
             {
-                Assert.Equal(0, layout.ElevationAt(point), 6);
+                var point = level.AlignToGround(horizontal);
+                if (road.Kind != "path") Assert.Equal(0, point.Y, 6);
                 var volume = new Aabb(point + new Vec3d(-clearance, 0.15, -clearance),
                     point + new Vec3d(clearance, 1.75, clearance));
                 var obstruction = level.Overlapping(volume).FirstOrDefault();
@@ -84,7 +85,7 @@ public sealed class HarborLayoutTests
     public void DuneHeightGuidesWalkingDrivingAndCamera()
     {
         var layout = Load();
-        var dune = Assert.Single(layout.Terrain, terrain => terrain.Theme == "desert");
+        var dune = layout.Terrain.Where(terrain => terrain.Theme == "desert").MaxBy(terrain => terrain.Height)!;
         var peak = Point(dune.Center);
         var start = peak + new Vec3d(0, 0, dune.Size[1] / 2 + 2);
         var level = layout.CreateStaticWorld();

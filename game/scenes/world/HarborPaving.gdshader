@@ -1,7 +1,5 @@
 shader_type spatial;
 
-global uniform bool harbor_reduced_effects;
-
 uniform vec4 base_color : source_color = vec4(0.26, 0.26, 0.25, 1.0);
 uniform float stain_scale = 0.32;
 uniform float stain_strength = 0.6;
@@ -37,22 +35,16 @@ void vertex() {
 }
 
 void fragment() {
-    if (harbor_reduced_effects) {
-        ALBEDO = base_color.rgb;
-        ROUGHNESS = 0.92;
-        SPECULAR = 0.14;
-    } else {
-        vec2 surface = world_surface.xz + world_surface.y * vec2(0.54, 0.81);
-        float wear = noise2d(surface * stain_scale);
-        float patches = noise2d((surface + wear * vec2(1.7, 0.9)) * stain_scale * 3.19);
-        float stain = wear * 0.33 + patches * 0.16;
-        float grit = hash(floor(surface * 40.0)) - 0.5;
-        float visibility = 1.0 - smoothstep(0.014, 0.046, length(fwidth(surface)));
-        float fine_aggregate = (grit + smoothstep(0.16, 0.42, grit) * 0.22) * visibility;
-        float value = 1.09 - stain * stain_strength + fine_aggregate * grit_strength;
-        vec3 weathered_tint = mix(vec3(0.94, 0.97, 1.03), vec3(1.055, 1.01, 0.94), patches);
-        ALBEDO = base_color.rgb * weathered_tint * value;
-        ROUGHNESS = mix(0.84, 0.97, wear);
-        SPECULAR = mix(0.18, 0.28, patches);
-    }
+    vec2 surface = world_surface.xz + world_surface.y * vec2(0.54, 0.81);
+    float wear = noise2d(surface * stain_scale);
+    float patches = noise2d((surface + wear * vec2(1.7, 0.9)) * stain_scale * 3.19);
+    float stain = wear * 0.33 + patches * 0.16;
+    float grit = hash(floor(surface * 40.0)) - 0.5;
+    float visibility = 1.0 - smoothstep(0.014, 0.046, length(fwidth(surface)));
+    float fine_aggregate = (grit + smoothstep(0.16, 0.42, grit) * 0.22) * visibility;
+    float value = 1.09 - stain * stain_strength + fine_aggregate * grit_strength;
+    vec3 weathered_tint = mix(vec3(0.94, 0.97, 1.03), vec3(1.055, 1.01, 0.94), patches);
+    ALBEDO = base_color.rgb * weathered_tint * value;
+    ROUGHNESS = mix(0.84, 0.97, wear);
+    SPECULAR = mix(0.18, 0.28, patches);
 }

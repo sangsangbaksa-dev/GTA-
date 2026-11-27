@@ -67,6 +67,7 @@
         "id": { "$ref": "#/$defs/id" },
         "name": { "type": "string", "minLength": 1 },
         "position": { "$ref": "#/$defs/point" },
+        "entrance": { "$ref": "#/$defs/point" },
         "district": { "$ref": "#/$defs/id" },
         "kind": { "$ref": "#/$defs/id" }
       }

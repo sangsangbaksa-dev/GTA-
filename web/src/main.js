@@ -15,6 +15,15 @@ const touch = byId('touch');
 const district = byId('district-name');
 const wallet = byId('wallet');
 const worldClock = byId('world-clock');
+const renderDistance = byId('render-distance');
+const renderDistanceKey = 'harbor.renderDistance';
+try {
+  const saved = localStorage.getItem(renderDistanceKey);
+  if ([...renderDistance.options].some(option => option.value === saved)) renderDistance.value = saved;
+} catch {}
+renderDistance.addEventListener('change', () => {
+  try { localStorage.setItem(renderDistanceKey, renderDistance.value); } catch {}
+});
 const wanted = byId('wanted');
 const stars = byId('stars');
 const pursuit = byId('pursuit');
@@ -26,6 +35,8 @@ const armor = byId('armor');
 const notice = byId('notice');
 const vehicleAction = byId('vehicle-action');
 const streetHint = byId('street-action');
+const interiorHint = byId('interior-action');
+const vehicleContact = byId('vehicle-contact');
 const crimeMessages = {
   pickpocketed: (amount) => '소매치기  +$' + amount.toLocaleString('ko-KR'),
   cargo_taken: (amount) => '화물 절도  +$' + amount.toLocaleString('ko-KR'),
@@ -38,6 +49,7 @@ const crimeMessages = {
 let screen = 'intro';
 let mapParent = 'play';
 let api, frame, layout, chart;
+let interiors = [];
 let serializedFrame = "";
 let frameVersion = 0;
 let sessionId = 0;
@@ -153,6 +165,12 @@ function updateHud() {
     prefix + (streetAction.vehicleOccupied ? '차량 탈취' : '탑승') : '');
   const streetLabel = streetAction?.cargoId ? '화물 훔치기' : streetAction?.canPickpocket ? '소매치기' : '';
   hint(streetHint, alive && !isDriving && streetLabel ? (input.coarse.matches ? '' : 'G · ') + streetLabel : '');
+  vehicleContact.hidden = !isDriving || !vehicle.blockedByObstacle;
+  const entrance = alive && !isDriving && interiors.find(room => {
+    const [x, y, z] = room.entrance;
+    return Math.abs(frame.position.y - y) < 2 && (frame.position.x - x) ** 2 + (frame.position.z - z) ** 2 < 36;
+  });
+  hint(interiorHint, entrance ? '◆ ' + entrance.name + ' 입구' : '');
   if (streetCrime?.sequence && streetCrime.sequence !== crimeSequence) {
     crimeSequence = streetCrime.sequence;
     label(notice, crimeMessages[streetCrime.status]?.(streetCrime.amount) ?? '');
@@ -215,52 +233,18 @@ async function json(path) {
   return response.json();
 }
 
-function prefersLowDetail() {
-  const probe = document.createElement('canvas');
-  const gl = probe.getContext('webgl2');
-  if (!gl) throw new Error('WebGL 2 is not available');
-  const info = gl.getExtension('WEBGL_debug_renderer_info');
-  const software = info && /swiftshader|llvmpipe|software rasterizer/i.test(gl.getParameter(info.UNMASKED_RENDERER_WEBGL));
-  gl.getExtension('WEBGL_lose_context')?.loseContext();
-  return Boolean(software || input.coarse.matches);
-}
-
 async function startGodot(simulationReady) {
   let ready;
   const initialized = new Promise(resolve => { ready = resolve; });
-  const lowDetail = prefersLowDetail();
-  const maxRenderScale = lowDetail ? 0.65 : Math.min(window.devicePixelRatio || 1, 1.5);
-  let renderScale = maxRenderScale;
-  let slowSamples = 0;
-  let fastSamples = 0;
-  const resize = () => {
-    const width = Math.max(1, Math.round(canvas.clientWidth * renderScale));
-    const height = Math.max(1, Math.round(canvas.clientHeight * renderScale));
-    if (canvas.width !== width) canvas.width = width;
-    if (canvas.height !== height) canvas.height = height;
-  };
-  resize();
-  const viewportObserver = new ResizeObserver(resize);
-  viewportObserver.observe(canvas);
   globalThis.harborView = {
     ready,
-    lowDetail: () => lowDetail,
+    renderDistance: () => Number(renderDistance.value),
     screen: () => screen,
     yaw: () => input.direction().yaw,
     pitch: () => input.direction().pitch,
     frame: () => serializedFrame,
     frameVersion: () => frameVersion,
     sessionId: () => sessionId,
-    tuneResolution(fps) {
-      slowSamples = fps < 28 ? slowSamples + 1 : 0;
-      fastSamples = fps >= 53 ? fastSamples + 1 : 0;
-      if (slowSamples < 2 && fastSamples < 4) return;
-      const next = Math.max(0.5, Math.min(maxRenderScale, renderScale + (slowSamples >= 2 ? -0.15 : 0.1)));
-      slowSamples = fastSamples = 0;
-      if (next === renderScale) return;
-      renderScale = next;
-      resize();
-    },
     showClock(minute) {
       const time = [Math.floor(minute / 60), minute % 60].map(part => String(part).padStart(2, '0')).join(':');
       worldClock.dateTime = time;
@@ -279,9 +263,12 @@ async function startGodot(simulationReady) {
         })
         .then(() => complete(file, true), () => complete(file, false));
     },
-    worldChunks(loaded, total) {
+    worldChunks(loaded, visible, total, distance, visibleCells) {
       canvas.dataset.loadedChunks = String(loaded);
+      canvas.dataset.visibleChunks = String(visible);
       canvas.dataset.totalChunks = String(total);
+      canvas.dataset.renderDistance = String(distance);
+      canvas.dataset.visibleCells = visibleCells;
     },
   };
 
@@ -296,7 +283,7 @@ async function startGodot(simulationReady) {
   const engine = new globalThis.Engine({
     canvas,
     focusCanvas: false,
-    canvasResizePolicy: 0,
+    canvasResizePolicy: 2,
     ensureCrossOriginIsolationHeaders: false,
     onProgress(current, total) {
       if (total > 0) status.textContent = '3D 도시 불러오는 중 · ' + Math.floor(current / total * 100) + '%';
@@ -324,6 +311,7 @@ async function initializeSimulation() {
     json('world/harbor_front.json'),
   ]);
   layout = plan;
+  interiors = layout.landmarks.filter(room => room.kind === 'interior' && room.entrance);
   const exports = await runtime.getAssemblyExports(runtime.getConfig().mainAssemblyName);
   api = exports.Harbor.Browser.BrowserHarbor;
   replaceFrame(api.Start());

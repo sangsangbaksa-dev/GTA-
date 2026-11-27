@@ -95,11 +95,14 @@ class Pose:
         self.set(name, Matrix.LocRotScale(base.translation, change @ current, None), frame)
 
 
-def foot_path(gait, phase, ankle, side, scale):
+def foot_path(gait, phase, ankle, center_x, side, scale):
     """Return a ground-relative ankle target and world rotation for either leg."""
-    x = side * 0.012 * scale
+    rest_width = abs(ankle.x - center_x)
+    stance_width = min((0.102 if gait.drop > 0.1 else 0.09) * scale,
+                       max(0.068 * scale, rest_width * 0.70))
+    x = center_x + side * stance_width - ankle.x
     if gait.stride == 0:
-        return ankle + Vector((x, side * 0.017 * scale, 0.002 * scale)), rotation(z=side * 0.11)
+        return ankle + Vector((x, side * 0.012 * scale, 0.002 * scale)), rotation(z=side * 0.055)
 
     reach = gait.stride * gait.support * 0.5
     if phase < gait.support:
@@ -115,9 +118,9 @@ def foot_path(gait, phase, ankle, side, scale):
         travel = mix(reach, -reach, smoothstep(t)) + math.sin(math.tau * t) * overshoot
         pitch = gait.roll * mix(0.37, -0.24, smoothstep(t))
         lift = gait.lift * math.sin(math.pi * t) ** 1.48
-        x += side * 0.012 * scale * math.sin(math.pi * t)
+        x += side * 0.004 * scale * math.sin(math.pi * t)
 
-    q = rotation(x=pitch, z=side * 0.075)
+    q = rotation(x=pitch, z=side * 0.04)
     # Roll about the heel or ball of the sole so the support foot does not sink.
     pivot = Vector((0, 0.044 if pitch < 0 else -0.151, -0.088)) * scale
     target = ankle + pivot - q @ pivot + Vector((x, (travel + (0.03 if gait.support < 0.5 else 0)) * scale,
@@ -133,7 +136,7 @@ def aim_leg(pose, side, target, tilt, frame):
     delta = target - hip
     length = min(delta.length, (a + b) * 0.998)
     direction = delta.normalized()
-    bend = Vector(((0.05 if side == "L" else -0.05), -1, 0))
+    bend = Vector(((0.018 if side == "L" else -0.018), -1, 0))
     bend = (bend - direction * bend.dot(direction)).normalized()
     along = (a * a - b * b + length * length) / (2 * length)
     knee = hip + direction * along + bend * math.sqrt(max(a * a - along * along, 0))
@@ -150,22 +153,22 @@ def pose_frame(pose, gait, cycle, frame, scale):
     cross = math.cos(math.tau * cycle)
     breathing = math.sin(math.tau * cycle)
     yaw = wave * (0.087 if not crouch else 0.058) if step else 0.028 + 0.015 * wave
-    rock = cross * 0.045 if step else 0.014 * cross
+    rock = cross * (0.021 if step else 0.008)
     hip_rotation = rotation(x=-0.10 if crouch else -0.022, y=rock, z=yaw)
     targets = {}
+    hips = pose.rest["hips"].translation
     for side, sign in (("L", 1), ("R", -1)):
         phase = (cycle + (0 if sign > 0 else 0.5)) % 1.0
-        targets[side] = foot_path(gait, phase, pose.rest[f"foot.{side}"].translation, sign, scale)
+        targets[side] = foot_path(gait, phase, pose.rest[f"foot.{side}"].translation, hips.x, sign, scale)
 
     bob = -0.012 * math.cos(2 * math.tau * cycle) if step else 0.004 * breathing
     if step and gait.support < 0.5:
         bob = 0.045 * math.cos(2 * math.tau * (cycle + 0.03))
-    center = Vector(((0.023 * cross if step else 0.017 + 0.009 * cross) * scale,
+    center = Vector(((0.010 * cross if step else 0.004 + 0.004 * cross) * scale,
                      (0.11 if crouch else (0.025 if step else 0.007)) * scale,
                      (-0.025 - gait.drop + bob) * scale))
     # Compress into the actual reachable range at the widest stride frame.
     # Account for thigh/shin lengths and lateral pelvis motion as well as reach.
-    hips = pose.rest["hips"].translation
     for side, (target, _) in targets.items():
         hip = hips + hip_rotation @ (pose.rest[f"thigh.{side}"].translation - hips) + center
         reach = sum((pose.rest[f"{a}.{side}"].translation - pose.rest[f"{b}.{side}"].translation).length
