@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <WasmMainJSPath>runtime-entry.mjs</WasmMainJSPath>
+    <PublishTrimmed>false</PublishTrimmed>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\src\Harbor.Core\Harbor.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\data\**\*.json" Exclude="..\..\data\schema\**">
+      <LogicalName>data/%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\game\data\missions\harbor_lockdown.json">
+      <LogicalName>data/missions/harbor_lockdown.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\game\data\missions\harbor_jobs.json">
+      <LogicalName>data/missions/harbor_jobs.json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+</Project>

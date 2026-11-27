@@ -91,6 +91,16 @@ Save ─> (모든 모듈의 ISaveable)
 | `game/scripts/UI/` | HUD, 미니맵, 메뉴, 인게임 폰 |
 | `game/scenes/`, `game/assets/` | 씬·에셋. 에셋 규칙은 `game/assets/README.md` |
 
+### 2.3 웹 클라이언트 (`web/`, 브라우저 배포 — [ADR 0009](docs/adr/0009-browser-wasm-client.md))
+
+Godot 4.4.1 `.NET` 에디터가 직접 Web 내보내기를 지원하지 않으므로, 브라우저 배포는 `Harbor.Core`의 `.NET 8 browser-wasm` 어셈블리와 표준(비-.NET) Godot 4.4.1 WebGL2 프레젠테이션을 결합한다.
+
+| 폴더 | 책임 |
+|---|---|
+| `web/runtime/` | `Harbor.Core` + 내장 JSON 데이터를 `.NET 8 browser-wasm`으로 컴파일(`BrowserHarbor` `[JSExport]`) |
+| `web/engine/` | 표준 Godot 4.4.1 WebGL2 프로젝트 (`HarborBackdrop.scn`, 64m 청크 HTTP 스트리밍, Mixamo/RookGait 캐릭터·차량 렌더링) |
+| `web/src/` | HTML/Canvas HUD, 미니맵·전체 지도, 도시 의뢰 보드(`J`), 8인 캐릭터 뷰어, 입력 브리지 (Vite 정적 번들 `web/dist/`) |
+
 ---
 
 ## 3. 시스템별 설계
@@ -217,6 +227,7 @@ Godot: 이벤트 받아 피격 애니메이션·이펙트·HUD
 │  ├─ scenes/
 │  └─ assets/                ← 바이너리 에셋 (Git LFS): characters/ weapons/ buildings/
 ├─ server/                   ← 엔진 없는 로컬 테스트 호스트
+├─ web/                      ← 브라우저 클라이언트 (.NET 8 WASM + Godot 4.4.1 WebGL2 + Vite)
 ├─ data/                     ← JSON 게임 데이터 + schema/
 ├─ docs/
 │  ├─ adr/

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+public/
+runtime/bin/
+runtime/obj/
+engine/.godot/
+engine/.tmp_chunks/
+engine/assets/
+engine/scenes/

@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Harbor — Port Calloway</title>
+    <meta
+      name="description"
+      content="Project Harbor: third-person open-district sandbox in Port Calloway powered by Harbor.Core (.NET 8 WebAssembly) and Godot 4.4.1 WebGL2."
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="stage">
+      <canvas id="godot-canvas" tabindex="0"></canvas>
+
+      <!-- Boot Overlay -->
+      <div id="boot-screen" class="overlay visible">
+        <div class="boot-card">
+          <div class="eyebrow">PORT CALLOWAY  /  WEB CLIENT</div>
+          <h1>PROJECT HARBOR</h1>
+          <p id="boot-status">Initializing .NET 8 simulation &amp; Godot 4.4.1 WebGL2...</p>
+          <div class="progress-track">
+            <div id="boot-bar" class="progress-fill"></div>
+          </div>
+          <div id="boot-detail" class="mono muted">Loading district runtime...</div>
+        </div>
+      </div>
+
+      <!-- Title / Pause Menu -->
+      <div id="menu-screen" class="overlay">
+        <div class="title-panel">
+          <div class="eyebrow" id="menu-eyebrow">PORT CALLOWAY  /  WATERFRONT SANDBOX</div>
+          <h1 id="menu-heading">PROJECT HARBOR</h1>
+          <p class="lead" id="menu-lead">
+            Step onto the Calloway quay as freight clerk Tomas Reyes. Browse waterfront jobs, drive the compact across streamed 64 m harbor blocks, or trigger Harbor Lockdown.
+          </p>
+          <div class="button-stack">
+            <button id="btn-play" class="btn primary">Enter Port Calloway</button>
+            <button id="btn-jobs" class="btn">City jobs (J)</button>
+            <button id="btn-map" class="btn">District chart (M)</button>
+            <button id="btn-roster" class="btn">Harbor characters</button>
+            <button id="btn-controls" class="btn">Controls</button>
+            <button id="btn-restart" class="btn hidden">Restart session</button>
+          </div>
+          <div id="stream-pill" class="mono muted stream-pill">Streaming harbor chunks...</div>
+        </div>
+      </div>
+
+      <!-- Live Gameplay HUD -->
+      <div id="hud" class="hud hidden">
+        <div class="hud-top-left">
+          <div id="hud-operation" class="eyebrow">PORT CALLOWAY  /  HARBOR FRONT</div>
+          <div id="hud-objective" class="objective-title">Free roam</div>
+          <div id="hud-detail" class="mono detail-line">J  BROWSE CITY JOBS</div>
+        </div>
+
+        <div class="hud-top-right">
+          <div id="hud-wanted" class="mono wanted-line">CASH $0</div>
+          <div class="weapon-card">
+            <div id="hud-weapon" class="weapon-name">KESTREL P10</div>
+            <div id="hud-ammo" class="mono ammo-count">12  /  48</div>
+          </div>
+          <div class="quick-bar mono">
+            <span><kbd>M</kbd> Map</span>
+            <span><kbd>J</kbd> Jobs</span>
+            <span><kbd>B</kbd> Dance</span>
+            <span><kbd>Esc</kbd> Menu</span>
+          </div>
+        </div>
+
+        <div id="reticle" class="reticle">
+          <span class="tick up"></span>
+          <span class="tick right"></span>
+          <span class="tick down"></span>
+          <span class="tick left"></span>
+          <span class="dot"></span>
+        </div>
+
+        <div id="hud-prompt" class="prompt hidden">E   Enter vehicle</div>
+
+        <div id="job-toast" class="job-toast hidden">
+          <div class="eyebrow" id="toast-kind">CONTRACT UPDATE</div>
+          <div id="toast-text" class="toast-body"></div>
+        </div>
+
+        <div class="hud-bottom-left">
+          <div class="minimap-wrap">
+            <canvas id="minimap" width="228" height="164"></canvas>
+          </div>
+          <div class="vitals-card">
+            <div class="bar-row">
+              <div class="bar-track health"><div id="bar-health" class="bar-fill"></div></div>
+              <div class="bar-track armor"><div id="bar-armor" class="bar-fill"></div></div>
+            </div>
+            <div id="hud-vitals" class="mono vitals-text">100 HEALTH          00 ARMOR</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- City Jobs Modal -->
+      <div id="jobs-modal" class="overlay">
+        <div class="modal-card wide">
+          <div class="modal-header">
+            <h2>CITY JOBS</h2>
+            <div id="jobs-credits" class="mono seafoam">CREDITS  $0</div>
+          </div>
+          <p class="muted small">Choose a contract to mark its start on your radar and HUD.</p>
+          <div class="jobs-columns">
+            <div id="jobs-list" class="jobs-list"></div>
+            <div class="jobs-summary">
+              <h3 id="job-title">Harbor Lockdown</h3>
+              <p id="job-brief" class="muted"></p>
+              <div id="job-stats" class="mono seafoam small"></div>
+              <button id="btn-track-job" class="btn primary">Track on map</button>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button id="btn-jobs-back" class="btn">Back</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Full District Map Modal -->
+      <div id="map-modal" class="overlay">
+        <div class="modal-card wide">
+          <div class="modal-header">
+            <h2>PORT CALLOWAY DISTRICT CHART</h2>
+            <div class="mono muted small">Amber: Contract / Lockdown · Seafoam: Active Waypoint / Vehicle</div>
+          </div>
+          <div class="district-map-frame">
+            <canvas id="district-map" width="780" height="460"></canvas>
+          </div>
+          <div class="modal-footer">
+            <button id="btn-map-back" class="btn primary">Back</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Harbor Characters Roster -->
+      <div id="roster-modal" class="overlay roster-overlay">
+        <div class="roster-drag-zone" id="roster-drag-zone" title="Drag to rotate character"></div>
+        <div class="roster-card">
+          <div class="eyebrow seafoam">PEOPLE OF PORT CALLOWAY</div>
+          <h2 id="roster-name">Tomas Reyes</h2>
+          <div id="roster-role" class="mono amber">Freight Clerk</div>
+          <p id="roster-desc" class="muted"></p>
+          <p class="mono small muted">Drag anywhere on the stage to rotate the 3D rig.</p>
+          <div class="roster-buttons">
+            <button id="btn-roster-prev" class="btn">Previous</button>
+            <button id="btn-roster-next" class="btn">Next</button>
+            <button id="btn-roster-frame" class="btn">Face detail</button>
+          </div>
+          <button id="btn-roster-back" class="btn primary">Back</button>
+        </div>
+      </div>
+
+      <!-- Controls Modal -->
+      <div id="controls-modal" class="overlay">
+        <div class="modal-card">
+          <h2>CONTROLS</h2>
+          <div class="controls-grid mono">
+            <div><kbd>W A S D</kbd></div><div>Move / Drive Calloway Compact</div>
+            <div><kbd>Mouse</kbd></div><div>Look &amp; Over-Shoulder Camera</div>
+            <div><kbd>Left Click</kbd></div><div>Fire Weapon</div>
+            <div><kbd>Right Click</kbd></div><div>Aim Down Sights</div>
+            <div><kbd>Shift</kbd> / <kbd>Space</kbd></div><div>Sprint / Vehicle Handbrake</div>
+            <div><kbd>C</kbd> / <kbd>R</kbd></div><div>Crouch / Reload</div>
+            <div><kbd>1</kbd> <kbd>2</kbd></div><div>Switch Weapon Slot</div>
+            <div><kbd>E</kbd></div><div>Enter/Exit Car · Start Job · Recover Cargo</div>
+            <div><kbd>F</kbd> / <kbd>V</kbd> / <kbd>G</kbd></div><div>Pickpocket · Melee · Carjack</div>
+            <div><kbd>B</kbd></div><div>Dance (Mixamo mocap)</div>
+            <div><kbd>J</kbd> / <kbd>M</kbd> / <kbd>Esc</kbd></div><div>City Jobs · District Map · Pause</div>
+          </div>
+          <div class="modal-footer">
+            <button id="btn-controls-back" class="btn primary">Back</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lockdown Result Modal -->
+      <div id="result-modal" class="overlay">
+        <div class="modal-card">
+          <div id="result-eyebrow" class="eyebrow">HARBOR LOCKDOWN</div>
+          <h2 id="result-title">HARBOR CLEARED</h2>
+          <p id="result-detail" class="mono seafoam"></p>
+          <div class="button-stack">
+            <button id="btn-result-again" class="btn primary">Return to Port Calloway</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
