@@ -398,7 +398,6 @@ class Expansion:
             self.primitive('ForestRelief', 'StoneBlue', (x, h*.26, z), (w, h, d), mesh='Foliage')
             self.collider(f'AlderBluff{index}', (x, h*.21, z), (w*.68, h*.65, d*.68), 'earth')
         self.deck('Ground_Lodge', (-398, 220, -347, 266), 'ForestPath', top=.01, thickness=.10)
-        self.building('Lodge', 'AlderLodge', -375, 246, 28, 20, 5.8, 'Trunk', 'lodge')
         for index, x in enumerate((-392, -358, -350)):
             self.prop(f'LodgeBench{index}', 'Bench', (x, .01, 228), 0)
         self.label('Ranger', 'ALDERWASH FOREST', -571, 145, 180)

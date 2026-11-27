@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 
 const web = import.meta.dirname;
@@ -46,8 +46,21 @@ export async function exportGodot() {
   await Promise.all([...files].map(stage));
 
   await mkdir(output, { recursive: true });
+  const worldDir = join(project, dirname(world));
+  const generatedChunks = join(worldDir, 'chunks');
+  await Promise.all([generatedChunks, join(worldDir, 'chunk_index.json'), join(worldDir, 'HarborBackdrop.scn')]
+    .map(path => rm(path, { recursive: true, force: true })));
+  await mkdir(generatedChunks);
+  run(['--headless', '--path', project, '--import']);
+  run(['--headless', '--path', project, '--script', 'res://build/partition_world.gd']);
+  const index = JSON.parse(await readFile(join(worldDir, 'chunk_index.json'), 'utf8'));
+  if (!index.length) throw new Error('Godot generated no world chunks');
   run(['--headless', '--path', project, '--import']);
   run(['--headless', '--path', project, '--export-release', 'Web', join(output, 'harbor.html')]);
+  const publishedChunks = join(output, 'chunks');
+  await rm(publishedChunks, { recursive: true, force: true });
+  await mkdir(publishedChunks);
+  await Promise.all(index.map(([, , file]) => copyFile(join(generatedChunks, file), join(publishedChunks, file))));
   for (const suffix of ['js', 'wasm', 'pck', 'audio.worklet.js', 'audio.position.worklet.js']) {
     const file = join(output, 'harbor.' + suffix);
     if (!(await stat(file)).size) throw new Error('Empty Godot Web export file ' + file);

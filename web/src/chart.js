@@ -9,7 +9,7 @@ function rectangle(ctx, area, color) {
   ctx.restore();
 }
 
-export function createChart(layout, radar, atlas, legend) {
+export function createChart(layout, radar, atlas, legend, interiorLegend) {
   const { min, max } = layout.bounds;
   const worldWidth = max[0] - min[0];
   const worldHeight = max[1] - min[1];
@@ -39,6 +39,10 @@ export function createChart(layout, radar, atlas, legend) {
   }
   const radarContext = radar.getContext('2d');
   const atlasContext = atlas.getContext('2d');
+  const interiors = layout.landmarks.filter(landmark => landmark.kind === 'interior');
+  if (interiors.length) {
+    interiorLegend.textContent = '◆ 출입 가능 · ' + interiors.map(room => room.name).join(' · ');
+  }
   let lastRadarAt = -Infinity;
 
   function base(ctx, center, scale) {
@@ -55,6 +59,18 @@ export function createChart(layout, radar, atlas, legend) {
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  function entrance(ctx, x, y, radius) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = '#fac27d';
+    ctx.strokeStyle = '#2c2724';
+    ctx.lineWidth = 1.7;
+    ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+    ctx.strokeRect(-radius, -radius, radius * 2, radius * 2);
+    ctx.restore();
   }
 
   function player(ctx, x, y, yaw) {
@@ -88,6 +104,7 @@ export function createChart(layout, radar, atlas, legend) {
       for (const enemy of state.enemies) {
         if (enemy.team === 3 && !enemy.flags.includes('dead')) dot(ctx, ...point(enemy.position.x, enemy.position.z), '#91c8ff', 3);
       }
+      for (const room of interiors) entrance(ctx, ...point(room.position[0], room.position[2]), 2.3);
       player(ctx, ...point(position.x, position.z), yaw);
       ctx.fillStyle = '#fff2db';
       ctx.font = 'bold 11px sans-serif';
@@ -107,6 +124,7 @@ export function createChart(layout, radar, atlas, legend) {
         ctx.fillStyle = '#fff0d7';
         ctx.fillText(district.name, x, y);
       }
+      for (const room of interiors) entrance(ctx, ...point(room.position[0], room.position[2]), 4.0);
       player(ctx, ...point(position.x, position.z), yaw);
       ctx.textAlign = 'left';
     },

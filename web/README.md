@@ -31,3 +31,17 @@ npm run preview
 ```
 
 빌드는 `web/engine/`에 공용 월드와 에셋을 준비하고 Godot의 단일 스레드 Web 프리셋으로 내보낸다. `web/dist/`를 HTTP 서버에 배포하면 된다. CI는 실제 브라우저에서 차량 승하차, 운전과 제동, 사격과 수배, 지도와 일시 정지를 확인한 빌드를 `harbor-web` 아티팩트로 제공한다.
+
+웹판은 월드의 3D 디테일을 128m 격자로 나눠 `godot/chunks/`에서 내려받는다. 시작 지점 주변을 먼저 불러오고, 이동 중 진행 방향의 청크를 준비한다. 멀어진 청크는 해제하고 해안선과 큰 건물 윤곽은 유지한다. `world/harbor_front.json`과 시뮬레이션은 전체 지도와 충돌을 계속 처리한다.
+
+지도에서 ◆로 표시된 Customs Exchange Cafe, Atlantic Repair, Alderwash Lodge에는 열린 출입구로 걸어 들어갈 수 있다. Atlantic Repair의 작업 통로는 차로 양방향 통과할 수 있다.
+
+## 실내 모델 수정
+
+실내 모델은 Blender 4.3.2에서 편집한다. 바닥 평면과 지붕을 다시 생성하려면 공식 [Building Tools](https://github.com/ranjian0/building_tools)의 `0216534645b15b3f8aac0bd1d7e6674e2972b9b3` 커밋을 체크아웃한다. 저장소 루트에서 다음을 실행하면 게임용 GLB와 충돌 데이터를 다시 만든다. `--` 뒤의 디렉터리에는 편집용 `.blend`를 저장한다.
+
+```bash
+HARBOR_BUILDING_TOOLS=/path/to/building_tools blender -b --factory-startup --python-exit-code 1 \
+  --python tools/build_harbor_interiors.py -- /path/to/interior-blends
+python3 tools/build_harbor_scene.py
+```

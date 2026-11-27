@@ -1,6 +1,7 @@
 extends Node3D
 
-const WORLD_PATH := "res://scenes/world/HarborFront.tscn"
+const WorldStream := preload("res://world_stream.gd")
+const WORLD_PATH := "res://scenes/world/HarborBackdrop.scn"
 const PEOPLE := [
 	"chr_harbor_rook", "chr_npc_civilian", "chr_harbor_dockhand",
 	"chr_harbor_crew", "chr_harbor_officer",
@@ -16,6 +17,7 @@ var bridge: JavaScriptObject
 var low_detail := false
 var camera := Camera3D.new()
 var actor_root := Node3D.new()
+var world_stream := WorldStream.new()
 var player: Dictionary
 var actor_scenes: Array[PackedScene] = []
 var vehicle_scenes: Dictionary = {}
@@ -42,9 +44,6 @@ func _ready() -> void:
 
 	var world_scene := load(WORLD_PATH) as PackedScene
 	var world := world_scene.instantiate() as Node3D
-	var collisions := world.get_node_or_null("WalkCollision")
-	if collisions != null:
-		collisions.free()
 	add_child(world)
 	configure_lighting(world)
 
@@ -79,9 +78,14 @@ func _ready() -> void:
 		}"""
 	contact_material.shader = contact_shader
 
-	look_over_harbor(Vector3(0.0, 0.0, 5.0))
+	var start := Vector3(0.0, 0.0, 5.0)
 	if bridge != null:
-		bridge.ready()
+		var initial: Dictionary = JSON.parse_string(str(bridge.frame()))
+		start = vec(initial.position)
+		world_stream.initial_chunks_ready.connect(func() -> void: bridge.ready(), CONNECT_ONE_SHOT)
+	add_child(world_stream)
+	world_stream.begin(bridge, low_detail, start)
+	look_over_harbor(start)
 
 func configure_lighting(world: Node3D) -> void:
 	var environment_node := world.get_node_or_null("Environment") as WorldEnvironment
@@ -103,12 +107,6 @@ func configure_lighting(world: Node3D) -> void:
 		sunlight.shadow_enabled = not low_detail
 	if low_detail:
 		get_viewport().scaling_3d_scale = 0.86
-		for instance in world.find_children("*", "GeometryInstance3D", true, false):
-			if instance is MultiMeshInstance3D or instance is MeshInstance3D:
-				var geometry := instance as GeometryInstance3D
-				var extent := geometry.get_aabb().size.length()
-				if extent > 0.01 and extent < 40.0:
-					geometry.visibility_range_end = 125.0 + extent * 2.0
 	else:
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 
@@ -130,6 +128,13 @@ func _process(delta: float) -> void:
 	if mode == "intro":
 		look_over_harbor(vec(frame.position))
 	elif mode == "play":
+		var focus := vec(frame.position)
+		var velocity := vec(frame.velocity)
+		if state.isDriving:
+			focus = vec(state.vehicle.position)
+			var yaw := float(state.vehicle.yaw)
+			velocity = Vector3(-sin(yaw), 0.0, -cos(yaw)) * float(state.vehicle.speed)
+		world_stream.update_interest(focus, velocity)
 		follow_player(state, delta)
 
 func look_over_harbor(point: Vector3) -> void:

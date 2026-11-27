@@ -234,6 +234,21 @@ async function startGodot() {
     frame: () => serializedFrame,
     frameVersion: () => frameVersion,
     cameraDistance: (...args) => api.CameraDistance(...args),
+    requestChunk(file, complete) {
+      fetch(assetUrl('godot/chunks/' + file), { cache: 'force-cache', signal: AbortSignal.timeout(12_000) })
+        .then(response => {
+          if (!response.ok) throw new Error('Could not load world chunk ' + file);
+          return response.arrayBuffer();
+        })
+        .then(bytes => {
+          engine.copyToFS('/tmp/harbor-world/' + file, bytes);
+        })
+        .then(() => complete(file, true), () => complete(file, false));
+    },
+    worldChunks(loaded, total) {
+      canvas.dataset.loadedChunks = String(loaded);
+      canvas.dataset.totalChunks = String(total);
+    },
   };
 
   const executable = assetUrl('godot/harbor');
@@ -279,7 +294,7 @@ async function initialize() {
   const exports = await runtime.getAssemblyExports(runtime.getConfig().mainAssemblyName);
   api = exports.Harbor.Browser.BrowserHarbor;
   replaceFrame(api.Start());
-  chart = createChart(layout, byId('radar'), byId('atlas'), byId('map-legend'));
+  chart = createChart(layout, byId('radar'), byId('atlas'), byId('map-legend'), byId('map-interiors'));
   await startGodot();
   start.textContent = '도시로 들어가기';
   status.textContent = input.coarse.matches ? '화면을 드래그해 둘러보세요.' : 'WASD 이동 · 마우스 카메라 · F 차량 · M 지도';

@@ -64,6 +64,8 @@
     {"id": "cinder-supplies","position": [-581,0,-352],"cash": 32,"refillSeconds": 130},
     {"id": "station-provisions","position": [271,0,-416],"cash": 69,"refillSeconds": 130},
     {"id": "alderwash-rations","position": [-502,0,338],"cash": 34,"refillSeconds": 130},
-    {"id": "lantern-consignment","position": [-47,0,278],"cash": 58,"refillSeconds": 130}
+    {"id": "lantern-consignment","position": [-47,0,278],"cash": 58,"refillSeconds": 130},
+    {"id": "cafe-stock","position": [70.1,0,-16.95],"cash": 22,"refillSeconds": 160},
+    {"id": "lodge-supplies","position": [-364.9,0,238.55],"cash": 38,"refillSeconds": 160}
   ]
 }

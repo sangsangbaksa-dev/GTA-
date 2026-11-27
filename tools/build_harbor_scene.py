@@ -23,6 +23,12 @@ visual_primitives = []
 visual_assets = []
 visual_signs = []
 asset_paths = {}
+interiors = json.loads((ROOT / 'data/world/harbor_interiors.json').read_text(encoding='utf-8'))
+interior_placements = {
+    'customs_exchange_cafe': ((64.5, 0.13, -12), 'harbor_front'),
+    'atlantic_repair': ((119, 0.13, -61), 'harbor_front'),
+    'alderwash_lodge': ((-375, 0.01, 246), 'alderwash'),
+}
 shape_ids = {'UnitBox': 'box', 'Cylinder': 'cylinder', 'Foliage': 'sphere',
              'PineCone': 'cone', 'RoofPrism': 'gable'}
 
@@ -109,6 +115,8 @@ for resource, asset in [
     ext(resource, f'assets/buildings/bldg_{asset}.glb')
 ext('PavingShader', 'scenes/world/HarborPaving.gdshader', 'Shader')
 ext('WaterShader', 'scenes/world/HarborWater.gdshader', 'Shader')
+for interior in interiors:
+    ext(interior['id'], f"assets/interiors/{interior['id']}.glb")
 for name, filename in [
     ('PowerPedestal', 'dock_power_pedestal'), ('AccessGate', 'dock_access_gate'),
     ('SafetyRail', 'dock_safety_rail'), ('Fender', 'mooring_fender'),
@@ -685,9 +693,10 @@ for name, x, z, w, d, finish in [
     ('BondPermit', 68, 10.1, 16.5, 14, 'StoneBlue'),
 ]:
     deck(name, (x-w/2-3, z-d/2-2.6, x+w/2+3, z+d/2+2.6), 'Sidewalk', top=0.13)
-    factory(name, name, x, z, w, d, rng.uniform(6.28, 8.1), finish,
-            {'PilotSorting': 'PILOT LOGISTICS', 'CustomsOffice': 'HARBOR CUSTOMS',
-             'HarborMachinery': 'ATLANTIC REPAIR', 'BondPermit': 'BONDED FREIGHT'}.get(name))
+    height = rng.uniform(6.28, 8.1)
+    if name not in ('CustomsOffice', 'HarborMachinery'):
+        factory(name, name, x, z, w, d, height, finish,
+                {'PilotSorting': 'PILOT LOGISTICS', 'BondPermit': 'BONDED FREIGHT'}.get(name))
 
 for index, (x, z, heading) in enumerate([
     (61, -97, 90), (65, -97, 90), (67.8, -88, 0), (57, -84, 0),
@@ -994,7 +1003,31 @@ for name, position in [
     node(name, 'Marker3D', position=position)
 
 
+def place_interiors():
+    node('Interiors', 'Node3D')
+    active = []
+    for room in interiors:
+        slug = room['id']
+        position, district = interior_placements[slug]
+
+        def world(local):
+            return tuple(round(base + offset, 5) for base, offset in zip(position, local))
+
+        prop(slug, slug, position, parent='Interiors')
+        for index, (center, size, surface) in enumerate(room['colliders']):
+            collider(f'{slug}_{index:02}', world(center), size, surface)
+        for index, light in enumerate(room['lights']):
+            color = [int(light['color'][start:start+2], 16) / 255 for start in (0, 2, 4)]
+            node(f'{slug}_light_{index}', 'OmniLight3D', 'Interiors', position=world(light['position']),
+                 light_color=f'Color({color[0]}, {color[1]}, {color[2]}, 1)', light_energy=light['energy'],
+                 omni_range=light['range'], omni_attenuation=1.35)
+        active.append({'id': slug, 'name': room['name'], 'position': position, 'district': district, 'kind': 'interior'})
+    return active
+
+
 def serialize():
+    active_interiors = place_interiors()
+    interior_ids = {room['id'] for room in active_interiors}
     node_sections = scene[scene_nodes_start:]
     del scene[scene_nodes_start:]
     for index, obstacle in enumerate(obstacles):
@@ -1016,7 +1049,9 @@ def serialize():
     path.write_text(f'[gd_scene load_steps={ext_count + sub_count + 1} format=3]\n\n' +
                     '\n'.join(scene), encoding='utf-8')
     layout = {'spawn': SPAWN, 'bounds': BOUNDS, 'waterLevel': WATER_LEVEL, 'roads': roads, 'water': water,
-              'ground': ground, 'districts': DISTRICTS, 'landmarks': LANDMARKS, 'obstacles': obstacles}
+              'ground': ground, 'districts': DISTRICTS,
+              'landmarks': [item for item in LANDMARKS if item['id'] not in interior_ids] + active_interiors,
+              'obstacles': obstacles}
     write_json(ROOT / 'data/world/harbor_front.json', layout)
     visuals = {'version': 1, 'waterLevel': WATER_LEVEL, 'materials': visual_materials, 'primitives': visual_primitives,
                'assets': visual_assets, 'signs': visual_signs}

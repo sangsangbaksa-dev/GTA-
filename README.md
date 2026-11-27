@@ -2,6 +2,8 @@
 
 Port Calloway를 자유롭게 돌아다니는 1인용 3인칭 오픈월드 게임이다. 항만, 도심, 숲, 사막, 군사기지, 부촌, 빈민가를 연결하는 길을 걷거나 차로 달릴 수 있다. 시민과 교통이 도시에 반응하며, 게임 속 범죄에 따라 경찰 수배가 바뀐다.
 
+Customs Exchange Cafe와 Alderwash Lodge는 열린 출입구를 통해 실내외를 오갈 수 있다. Atlantic Repair는 차로 들어가 반대편 출입구로 나올 수 있다. 각 장소는 브라우저 지도에서 ◆로 표시된다.
+
 ## 데스크톱 실행
 
 이 브랜치는 .NET 8과 Godot 4.4.1 .NET으로 실행한다. `git lfs pull` 후 Godot에서 `game/project.godot`을 열고 F5를 누른다. **Start game**을 선택하면 항만에서 자유 탐험이 시작된다. **Harbor characters**에서는 캐릭터를 확대하고 돌려볼 수 있다.
