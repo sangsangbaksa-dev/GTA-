@@ -63,6 +63,7 @@ public sealed record HarborState
     public HarborVehicleState[] Vehicles { get; init; } = [];
     public HarborStreetAction StreetAction { get; init; } = new();
     public HarborStreetCrime StreetCrime { get; init; } = new();
+    public HarborServiceState Service { get; init; } = new();
     public HarborEnemyState[] Enemies { get; init; } = [];
     public int DriverId { get; init; } = -1;
     public int WantedLevel { get; init; }
@@ -124,7 +125,7 @@ public sealed class HarborAuthority
         if (ambient != null) Ambient = World.AddSystem(new StreetPopulation(ambient, Level));
         _fleet = new HarborFleet(encounter, Level, World, vehicles ?? VehicleCatalog.Default(vehicleTuning),
             Ambient, ambient, vehicles != null);
-        Lockdown = World.AddSystem(new HarborLockdown(encounter, Combat, Session, Level, heat, _fleet, Ambient, sandbox));
+        Lockdown = World.AddSystem(new HarborLockdown(encounter, Combat, Session, Level, heat, _fleet, Ambient, sandbox, layout));
         Jobs = World.AddSystem(new HarborJobs(sandbox ? new HarborJobCatalog() : jobs ?? new HarborJobCatalog(), Lockdown));
         Lockdown.Jobs = Jobs;
         Session.ShouldApplyMovement = actor => !_fleet.IsDriving(actor.Id)
@@ -176,7 +177,7 @@ public sealed class HarborAuthority
         {
             Lockdown = mission, Jobs = Jobs.GetState(actorId), Ambient = Ambient?.GetState(player?.Position) ?? new StreetPopulationState(),
             PlayerCombat = combat, WantedLevel = Lockdown.WantedLevel(actorId), MaxWantedLevel = Lockdown.MaxWantedLevel,
-            PoliceUnits = Lockdown.PoliceUnits, StreetAction = action, StreetCrime = Lockdown.GetStreetCrime(actorId),
+            PoliceUnits = Lockdown.PoliceUnits, StreetAction = action, StreetCrime = Lockdown.GetStreetCrime(actorId), Service = Lockdown.GetService(actorId),
             Vehicle = (driving ?? _fleet.Starter).State, Vehicles = _fleet.GetStates(player?.Position),
             Enemies = enemies.ToArray(),
             DriverId = Lockdown.DriverId, IsDriving = driving != null, PlayerVehicleId = driving?.Id ?? -1,
