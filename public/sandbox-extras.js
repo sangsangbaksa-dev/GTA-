@@ -341,7 +341,11 @@ function mount(){
   records.replaceChildren(...rows.map(([name,value])=>{const d=element("div");d.append(element("small","",name),element("strong","",value));return d;}));
   for(const option of select.options){if(!option.value)continue;const l=landmarks.find(x=>x.id===option.value);if(l)option.textContent=(visited.has(l.id)?"✓ ":"")+l.name;}
  }
- select.addEventListener("change",()=>{const l=landmarks.find(x=>x.id===select.value);target=l?{name:l.name,point:[l.position[0],l.position[2]]}:null;});
+ select.addEventListener("change",()=>{
+  const landmark=landmarks.find(x=>x.id===select.value);
+  const position=landmark?.entrance??landmark?.position;
+  target=position?{name:landmark.name,point:[position[0],position[2]]}:null;
+ });
  clear.addEventListener("click",()=>{target=null;select.value="";});
  choose.addEventListener("click",()=>{course=courses.find(c=>c.id===routeSelect.value)||null;run=course?{started:false,index:0,seconds:0}:null;if(course)announce(course.name+" · 시작점으로 이동");});
  cancel.addEventListener("click",()=>{course=null;run=null;announce("주행 코스 취소");});

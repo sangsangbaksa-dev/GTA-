@@ -7,8 +7,8 @@
   <link rel="icon" href="data:,">
   <meta name="description" content="포트 캘러웨이를 자유롭게 탐험하는 1인용 3D 오픈월드 게임">
   <title>Project Harbor</title>
-  <script type="module" crossorigin src="./assets/index-ioQUowzz.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-o3VjjKGJ.css">
+  <script type="module" crossorigin src="./assets/index-B5tU1Ha3.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CHdUsado.css">
 </head>
 <body>
   <main id="harbor">
@@ -43,10 +43,12 @@
       <div id="actions" class="actions">
         <span id="vehicle-action" class="panel" hidden></span>
         <span id="street-action" class="panel" hidden></span>
+        <span id="interior-action" class="panel" hidden></span>
       </div>
       <div class="readout panel">
         <p id="equipment" class="system">WASP SMG</p>
         <strong id="ammunition">00 / 00</strong>
+        <p id="vehicle-contact" class="system" hidden>장애물 접촉</p>
         <meter id="health" min="0" max="100" value="100" aria-label="체력"></meter>
         <meter id="armor" min="0" max="100" value="0" aria-label="방어구"></meter>
       </div>
@@ -61,6 +63,15 @@
           <button id="menu-map" class="quiet" type="button">도시 지도</button>
           <button id="reset" class="quiet" type="button">새로 시작</button>
         </div>
+        <label class="render-setting" for="render-distance">
+          <span>청크 렌더링 거리</span>
+          <select id="render-distance" class="quiet">
+            <option value="180">180m</option>
+            <option value="300" selected>300m</option>
+            <option value="460">460m</option>
+            <option value="660">660m</option>
+          </select>
+        </label>
         <dl class="controls">
           <div><dt>WASD / 방향키</dt><dd>이동 · 가속 · 조향</dd></div>
           <div><dt>마우스 / Q · E</dt><dd>카메라</dd></div>
