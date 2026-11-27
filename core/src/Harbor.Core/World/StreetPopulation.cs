@@ -138,7 +138,7 @@ public sealed record StreetPopulationState
 
 /// <summary>Authoritative ambient pedestrians and road traffic. Routes are baked from the visible map.
 /// These agents live separately from combat actors and keep the same identities between snapshots.</summary>
-public sealed class StreetPopulation(StreetPopulationDef definition) : ISimSystem
+public sealed class StreetPopulation(StreetPopulationDef definition, StaticWorld? level = null) : ISimSystem
 {
     internal const int FirstTrafficId = 1000;
     private Traveler[] _pedestrians = [];
@@ -149,6 +149,7 @@ public sealed class StreetPopulation(StreetPopulationDef definition) : ISimSyste
     private double _time;
     private int _nextDisplaced;
     internal Func<IEnumerable<(Vec3d Position, double Clearance)>>? VehicleObstacles { get; set; }
+    internal Func<IEnumerable<(Vec3d Position, double Yaw, double Speed)>>? VehicleThreats { get; set; }
     public double VisibilityRadius => definition.VisibilityRadius;
 
     public void Initialize(SimWorld world)
@@ -163,7 +164,7 @@ public sealed class StreetPopulation(StreetPopulationDef definition) : ISimSyste
         var random = new Random(definition.Seed);
         _pedestrians = CreateTravelers(definition.PedestrianRoutes, random, pedestrians: true);
         _traffic = CreateTravelers(definition.TrafficRoutes, random, pedestrians: false);
-        _cargo = definition.Cargo.Select(cargo => new CargoCache(cargo)).ToArray();
+        _cargo = definition.Cargo.Select(cargo => new CargoCache(cargo, level)).ToArray();
         _displaced.Clear();
         _nextDisplaced = definition.PedestrianRoutes.Sum(route => route.Count);
         _time = 0;
@@ -172,11 +173,31 @@ public sealed class StreetPopulation(StreetPopulationDef definition) : ISimSyste
     public void Step(double dt)
     {
         _time += dt;
+        var threats = VehicleThreats?.Invoke().Where(car => M.Abs(car.Speed) >= 5.5).ToArray() ?? [];
         foreach (var person in _pedestrians)
         {
             person.Panic = M.Max(0, person.Panic - dt);
             person.Startled = M.Max(0, person.Startled - dt);
             person.Pause = M.Max(0, person.Pause - dt);
+            if (person.Panic <= 0)
+            {
+                foreach (var threat in threats)
+                {
+                    var offset = person.Position - threat.Position;
+                    if (M.Abs(offset.Y) > 2.2) continue;
+                    var heading = Vec3d.FromYawPitch(threat.Yaw, 0) * M.Sign(threat.Speed);
+                    var flat = offset.WithY(0);
+                    var forward = flat.Dot(heading);
+                    var lateral = flat - heading * forward;
+                    var range = M.Clamp(M.Abs(threat.Speed) * 0.9, 5.0, 13.0);
+                    if (forward <= 0 || forward > range || lateral.LengthSquared > 2.5 * 2.5) continue;
+                    if (flat.Dot(person.Forward(1)) < 0) person.Direction *= -1;
+                    person.Panic = definition.FleeSeconds;
+                    person.Startled = 0.12;
+                    person.Pause = 0;
+                    break;
+                }
+            }
             person.Speed = person.Startled > 0 ? 0 : person.Panic > 0 ? definition.FleeSpeed : person.Pause > 0 ? 0 : person.Cruise;
             person.Advance(person.Speed * dt);
         }
@@ -184,7 +205,7 @@ public sealed class StreetPopulation(StreetPopulationDef definition) : ISimSyste
         foreach (var driver in _displaced)
         {
             driver.Remaining -= dt;
-            var next = driver.Position + driver.Direction * (definition.FleeSpeed * dt);
+            var next = driver.Level.AlignToGround(driver.Position + driver.Direction * (definition.FleeSpeed * dt));
             var probe = Aabb.FromCenter(next + new Vec3d(0, 0.85, 0), new Vec3d(0.65, 1.7, 0.65));
             if (driver.Level.Overlapping(probe).Any())
                 driver.Direction = new Vec3d(-driver.Direction.Z, 0, driver.Direction.X);
@@ -285,7 +306,7 @@ public sealed class StreetPopulation(StreetPopulationDef definition) : ISimSyste
 
     private static Vec3d Round(Vec3d p) => new(M.Round(p.X, 2), M.Round(p.Y, 2), M.Round(p.Z, 2));
 
-    private static Traveler[] CreateTravelers(StreetRouteDef[] routes, Random random, bool pedestrians)
+    private Traveler[] CreateTravelers(StreetRouteDef[] routes, Random random, bool pedestrians)
     {
         var travelers = new List<Traveler>();
         foreach (var route in routes)
@@ -298,7 +319,7 @@ public sealed class StreetPopulation(StreetPopulationDef definition) : ISimSyste
                 var cruise = pedestrians ? route.Speed * (0.88 + 0.24 * random.NextDouble()) : route.Speed;
                 var direction = pedestrians && !route.Loop && i % 2 == 1 ? -1 : 1;
                 var model = route.VehicleModels.Length == 0 ? null : route.VehicleModels[i % route.VehicleModels.Length];
-                travelers.Add(new Traveler(id, (id - 1) % 4, track, fraction * track.Length, cruise, direction, model));
+                travelers.Add(new Traveler(id, (id - 1) % 4, track, fraction * track.Length, cruise, direction, model, level));
             }
         }
         return travelers.ToArray();
@@ -314,7 +335,9 @@ public sealed class StreetPopulation(StreetPopulationDef definition) : ISimSyste
     {
         foreach (var person in _pedestrians)
         {
-            var away = (person.Position - origin).WithY(0);
+            var offset = person.Position - origin;
+            if (M.Abs(offset.Y) > 5) continue;
+            var away = offset.WithY(0);
             if (away.LengthSquared > radius * radius) continue;
             if (away.Dot(person.Forward(1)) < 0) person.Direction *= -1;
             person.Panic = definition.FleeSeconds;
@@ -361,7 +384,9 @@ public sealed class StreetPopulation(StreetPopulationDef definition) : ISimSyste
 
         void Yield(Vec3d position, double stopAt, double width)
         {
-            var offset = (position - car.Position).WithY(0);
+            var delta = position - car.Position;
+            if (M.Abs(delta.Y) > 2.2) return;
+            var offset = delta.WithY(0);
             var forward = offset.Dot(heading);
             var lateral = offset - heading * forward;
             if (forward > 0 && forward < definition.TrafficLookAhead && lateral.LengthSquared < width * width)
@@ -369,7 +394,7 @@ public sealed class StreetPopulation(StreetPopulationDef definition) : ISimSyste
         }
     }
 
-    private sealed class Traveler(int id, int appearance, Track path, double distance, double cruise, int direction, string? modelId)
+    private sealed class Traveler(int id, int appearance, Track path, double distance, double cruise, int direction, string? modelId, StaticWorld? level)
     {
         public int Id { get; } = id;
         public int Appearance { get; } = appearance;
@@ -386,7 +411,14 @@ public sealed class StreetPopulation(StreetPopulationDef definition) : ISimSyste
         public double Steering { get; set; }
         public bool Taken { get; set; }
         public string? ModelId { get; } = modelId;
-        public Vec3d Position => Path.Sample(Distance);
+        public Vec3d Position
+        {
+            get
+            {
+                var p = Path.Sample(Distance);
+                return level is null ? p : p.WithY(M.Max(p.Y, level.GroundElevation(p)));
+            }
+        }
         public double Yaw
         {
             get
@@ -432,10 +464,11 @@ public sealed class StreetPopulation(StreetPopulationDef definition) : ISimSyste
         public StaticWorld Level { get; } = level;
     }
 
-    private sealed class CargoCache(StreetCargoDef definition)
+    private sealed class CargoCache(StreetCargoDef definition, StaticWorld? level)
     {
         public StreetCargoDef Definition { get; } = definition;
-        public Vec3d Position { get; } = StreetPopulationDef.ToPoint(definition.Position);
+        public Vec3d Position { get; } = Grounded(StreetPopulationDef.ToPoint(definition.Position), level);
+        private static Vec3d Grounded(Vec3d p, StaticWorld? world) => world is null ? p : p.WithY(M.Max(p.Y, world.GroundElevation(p)));
         public double ReadyAt { get; set; }
     }
 
