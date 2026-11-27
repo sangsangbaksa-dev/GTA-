@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createFreeRoam} from '../src/freeroam-domain.mjs';
+import {createFreeRoam,roadGraph,roadRoute} from '../src/freeroam-domain.mjs';
 const layout={landmarks:[{id:'a',name:'A',position:[0,0,0]}]};
 const frame=(x,z,driving=false,speed=0,y=0)=>({alive:true,position:{x,y,z},state:{isDriving:driving,vehicle:{position:{x,y,z},speed}}});
 test('only on foot and at correct elevation; discoveries persist',()=>{const g=createFreeRoam(layout);assert.equal(g.update(frame(0,0,true),.1),false);assert.equal(g.update(frame(0,0,false,0,9),.1),false);assert.equal(g.update(frame(0,0),.1),true);assert.equal(g.update(frame(0,0),.1),false);assert.equal(createFreeRoam(layout,g.record).view(frame(0,0)).visited,1);});
@@ -11,3 +11,5 @@ test('explicit route and landmark selection, reset preserves records',()=>{const
 test('trip distance, speed and escape are tracked without teleports or vehicle switches',()=>{const g=createFreeRoam(layout);g.update(frame(0,0),.1);g.update(frame(1,0),.1);g.update(frame(2,0,true,15),.1);g.update(frame(3,0,true,15),.1);g.update(frame(100,0,true,15),.1);assert.equal(g.record.trip.walk,1);assert.equal(g.record.trip.drive,1);assert.equal(g.record.trip.topSpeed,54);const f=frame(100,0,true);f.state.wantedLevel=3;g.update(f,.1);f.state.wantedLevel=0;for(let i=0;i<13;i++)g.update(f,.25);assert.equal(g.record.trip.escapes,1);g.update(f,.25);assert.equal(g.record.trip.escapes,1);});
 
 test('all nine routes and eight unique speed traps are available',()=>{const g=createFreeRoam(layout);assert.equal(g.routes.length,9);assert.equal(new Set(g.routes.map(x=>x.id)).size,9);assert.equal(g.traps.length,8);});
+
+test('road graph joins crossing roads and rejects disconnected routes',()=>{const g=roadGraph([{from:[0,0],to:[100,0]},{from:[50,-50],to:[50,50]},{from:[300,0],to:[350,0]}]);const route=roadRoute(g,[0,0],[50,50]);assert.ok(route);assert.ok(Math.abs(route.meters-100)<.01);assert.equal(roadRoute(g,[0,0],[350,0]),null);});

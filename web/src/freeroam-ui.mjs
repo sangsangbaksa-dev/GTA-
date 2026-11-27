@@ -1,5 +1,5 @@
 import './drive-audio-ui.mjs';
-import { createFreeRoam } from './freeroam-domain.mjs';
+import { createFreeRoam, roadGraph, roadRoute } from './freeroam-domain.mjs';
 function installFreeRoam(createFreeRoam) {
   const key="harbor.freeroam.v1";
   const hud=document.getElementById("hud");
@@ -25,7 +25,7 @@ function installFreeRoam(createFreeRoam) {
   document.getElementById("reset")?.addEventListener("click",()=>{game?.reset();version=null;routeSelect.value="";landmarkSelect.value="";flush();});
   const mapPanel=document.querySelector("#map .map-panel");
   const mapElement=document.getElementById("map"),atlas=document.getElementById("atlas");
-  let drawPins=()=>{};
+  let drawPins=()=>{}, graph=null, road=null, routeAt=0, lastRoadTarget="";
   const details=document.createElement("details");details.style.cssText="border-top:1px solid var(--line,#ffffff2b);margin-top:10px;padding-top:10px;font-size:13px";
   const title=document.createElement("summary");title.textContent="자유 탐험 · 도시 기록";
   const routeSelect=document.createElement("select"),landmarkSelect=document.createElement("select"),stats=document.createElement("p"),records=document.createElement("p");
@@ -43,6 +43,10 @@ function installFreeRoam(createFreeRoam) {
     const v=game?.view(frame);if(!v)return;
     const p=frame.state.isDriving?frame.state.vehicle.position:frame.position;
     const lines=["명소 "+v.visited+" / "+v.total];
+    const destination=v.active||routeSelect.value?v.target?.point:landmarkSelect.value&&v.landmark?[v.landmark.item.position[0],v.landmark.item.position[2]]:null;
+    const targetKey=destination?.join(",")||"";
+    if(targetKey!==lastRoadTarget||performance.now()-routeAt>1800){routeAt=performance.now();lastRoadTarget=targetKey;road=destination?roadRoute(graph,[p.x,p.z],destination):null;}
+    if(road)lines.push("도로 경로 약 "+meters(road.meters));
     if(v.landmark){const [x,,z]=v.landmark.item.position;lines.push(v.landmark.item.name+" · "+bearing(x,z,p)+" "+meters(v.landmark.distance));}
     if(v.target){const [x,z]=v.target.point;lines.push((v.active?"다음 체크포인트":v.target.item.name)+" · "+bearing(x,z,p)+" "+meters(v.target.distance));}
     if(v.active)lines.push("통과 "+v.active.index+"/"+v.active.total+" · 남은 "+Math.ceil(v.active.remaining)+"초");
@@ -59,6 +63,7 @@ function installFreeRoam(createFreeRoam) {
   fetch(new URL("world/harbor_front.json",document.baseURI)).then(r=>{if(!r.ok)throw Error("map");return r.json();}).then(layout=>{
     let saved={};try{saved=JSON.parse(localStorage.getItem(key)||"{}")||{};}catch{}
     game=createFreeRoam(layout,saved);
+    graph=roadGraph(layout.roads||[]);
     for(const r of game.routes)option(routeSelect,r.id,r.name);
     for(const p of game.points)option(landmarkSelect,p.id,p.name);
     if(atlas&&mapElement&&layout.bounds){
@@ -74,6 +79,7 @@ function installFreeRoam(createFreeRoam) {
       drawPins=()=>{
         if(mapElement.hidden||!ctx)return;
         ctx.clearRect(0,0,overlay.width,overlay.height);
+        if(road?.points.length){ctx.beginPath();road.points.forEach(([x,z],i)=>{const [a,b]=project(x,z);if(i)ctx.lineTo(a,b);else ctx.moveTo(a,b);});ctx.lineWidth=4;ctx.strokeStyle="#92e0d1";ctx.stroke();}
         const selected=game.routes.find(r=>r.id===routeSelect.value);
         if(selected){ctx.beginPath();selected.checkpoints.forEach(([x,z],i)=>{const [a,b]=project(x,z);if(i)ctx.lineTo(a,b);else ctx.moveTo(a,b);});ctx.strokeStyle="#f6c080";ctx.lineWidth=3;ctx.setLineDash([7,4]);ctx.stroke();ctx.setLineDash([]);}
         for(const p of game.points)pin(p.position[0],p.position[2],p.id===landmarkSelect.value?"#fff2d0":game.record.visited.includes(p.id)?"#8bb2a5":"#82ddcf",p.id===landmarkSelect.value?7:3.5);
