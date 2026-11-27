@@ -71,6 +71,8 @@ public sealed class StaticWorld(double cellSize = 8.0, Func<Vec3d, double>? terr
 
     public Vec3d AlignToGround(Vec3d point) => terrainElevation is null ? point : point.WithY(terrainElevation(point));
 
+    public double GroundElevation(Vec3d point) => terrainElevation?.Invoke(point) ?? 0.0;
+
     public int Add(Aabb box, SurfaceMaterial material, string tag = "")
     {
         var id = _nextId++;

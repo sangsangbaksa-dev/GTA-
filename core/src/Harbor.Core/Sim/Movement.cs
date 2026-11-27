@@ -15,6 +15,8 @@ public sealed record MovementConfig
     public double Deceleration { get; init; } = 22.0;
     public double Radius { get; init; } = 0.35;
     public double Height { get; init; } = 1.8;
+    public double JumpSpeed { get; init; } = 5.5;
+    public double Gravity { get; init; } = 16.0;
     public double CarrySpeedMultiplier { get; init; } = 0.85;
     public double DownedSpeedMultiplier { get; init; } = 0.25;
 }
@@ -60,13 +62,71 @@ public static class Movement
         var rate = wish.LengthSquared > 1e-6 ? cfg.Acceleration : cfg.Deceleration;
         var maxDelta = rate * dt;
         if (delta.Length > maxDelta) delta = delta.Normalized() * maxDelta;
-        s.Velocity = (s.Velocity.WithY(0) + delta).WithY(0);
-
+        var previous = s.Position;
+        var terrainBefore = world?.GroundElevation(previous) ?? 0.0;
+        var floorBefore = SupportBelow(previous, cfg.Radius, world, previous.Y + 0.025);
+        var grounded = s.Velocity.Y <= 0 && previous.Y <= floorBefore + 0.025;
+        var onTerrain = grounded && System.Math.Abs(previous.Y - terrainBefore) <= 0.03;
+        var jumping = grounded && mods.CanMove && mods.CanSprint && !s.Crouched && cmd.Has(InputButtons.Jump);
+        var vertical = jumping ? cfg.JumpSpeed : grounded ? 0.0 : s.Velocity.Y - cfg.Gravity * dt;
+        s.Velocity = (s.Velocity.WithY(0) + delta).WithY(vertical);
         s.Position += s.Velocity * dt;
-        if (world == null) return;
-        s.Position = world.AlignToGround(s.Position);
-        ResolveCollisions(ref s, cfg, world);
-        s.Position = world.AlignToGround(s.Position);
+
+        if (onTerrain && !jumping)
+        {
+            // Follow continuous hills while walking; never snap an airborne actor to the road.
+            s.Position = s.Position.WithY(world?.GroundElevation(s.Position) ?? 0.0);
+        }
+        else if (vertical > 0 && world != null)
+        {
+            var r = cfg.Radius;
+            var oldHead = previous.Y + cfg.Height;
+            var newHead = s.Position.Y + cfg.Height;
+            var probe = new Aabb(new Vec3d(s.Position.X - r, oldHead - 0.001, s.Position.Z - r),
+                                 new Vec3d(s.Position.X + r, newHead + 0.001, s.Position.Z + r));
+            foreach (var entry in world.Overlapping(probe))
+                if (entry.Box.Min.Y >= oldHead - 0.001 && entry.Box.Min.Y <= newHead
+                    && FootprintOverlaps(s.Position, r, entry.Box))
+                {
+                    s.Position = s.Position.WithY(System.Math.Min(s.Position.Y, entry.Box.Min.Y - cfg.Height));
+                    s.Velocity = s.Velocity.WithY(0);
+                }
+        }
+
+        if (world != null) ResolveCollisions(ref s, cfg, world);
+
+        // Resolve against the final horizontal position after sliding around a wall.
+        var terrain = world?.GroundElevation(s.Position) ?? 0.0;
+        if (onTerrain && !jumping)
+            s.Position = s.Position.WithY(terrain);
+        else if (s.Velocity.Y <= 0 || s.Position.Y < terrain)
+        {
+            var support = SupportBelow(s.Position, cfg.Radius, world, previous.Y + 0.025);
+            if (s.Position.Y <= support)
+            {
+                s.Position = s.Position.WithY(support);
+                s.Velocity = s.Velocity.WithY(0);
+            }
+        }
+    }
+
+    private static bool FootprintOverlaps(Vec3d p, double radius, Aabb box)
+    {
+        var dx = p.X - System.Math.Clamp(p.X, box.Min.X, box.Max.X);
+        var dz = p.Z - System.Math.Clamp(p.Z, box.Min.Z, box.Max.Z);
+        return dx * dx + dz * dz < radius * radius;
+    }
+
+    private static double SupportBelow(Vec3d p, double radius, StaticWorld? world, double maxY)
+    {
+        var ground = world?.GroundElevation(p) ?? 0.0;
+        if (world == null || maxY <= ground) return ground;
+        var probe = new Aabb(new Vec3d(p.X - radius, ground - 0.025, p.Z - radius),
+                             new Vec3d(p.X + radius, maxY + 0.001, p.Z + radius));
+        foreach (var entry in world.Overlapping(probe))
+            if (entry.Box.Max.Y <= maxY && FootprintOverlaps(p, radius, entry.Box))
+                ground = System.Math.Max(ground, entry.Box.Max.Y);
+        return ground;
     }
 
     /// <summary>Pushes the actor's cylinder out of static boxes (up to 3 iterations) and removes
