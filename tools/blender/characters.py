@@ -355,45 +355,9 @@ def enemy_enforcer():
 
 
 def npc_civilian():
-    """Port Calloway civilian — hoodie, jeans, sneakers, ponytail."""
-    hoodie = mat("hoodie_cobalt", (0.10, 0.24, 0.52), rough=0.95)
-    jeans = mat("jeans_light", (0.30, 0.40, 0.55), rough=0.85)
-    sneak = mat("sneaker_white", (0.88, 0.88, 0.86), rough=0.6)
-    sole = mat("sneaker_sole", (0.2, 0.2, 0.2), rough=0.7)
-    hairm = mat("hair_auburn", (0.22, 0.07, 0.03), rough=0.6)
-    string = mat("drawstring", (0.9, 0.9, 0.9), rough=0.8)
-
-    def dress(ctx):
-        J, p = ctx.J, ctx.p
-        hp = lambda v: J["head"] + (Vector(v) - Vector((0, 0, 1.585))) * p["head"]
-        H.eyes(ctx, (0.22, 0.32, 0.12))
-        H.brows(ctx, hairm, thick=0.7)
-        hair(ctx, "long", hairm, offset=0.012, noise=0.008, scale=35.0)
-        for sx in (1, -1):  # side-swept fringe
-            rigid(ctx, H.ellipsoid(hp((sx * 0.032, -0.086, 1.756)), (0.04, 0.014, 0.011), rot=Matrix.Rotation(sx * math.radians(25), 3, "Y")), hairm, "head")
-        # ponytail
-        pts = [hp((0, 0.095, 1.72)), hp((0, 0.125, 1.67)), hp((0, 0.13, 1.59)), hp((0, 0.115, 1.52))]
-        rads = [0.028, 0.03, 0.024, 0.012]
-        for i in range(3):
-            rigid(ctx, H.capsule(pts[i], pts[i + 1], rads[i], rads[i + 1]), hairm, "head" if i == 0 else "neck")
-        rigid(ctx, H.torus(hp((0, 0.1, 1.715)), 0.022, 0.006, rot=Matrix.Rotation(math.radians(70), 3, "X")), sole, "head")
-        G(ctx, "hoodie", hoodie, torso_band(0.90, 1.49, sleeve=0.97), offset=0.018, thick=0.006, smooth=4)
-        # hood bunched behind the neck + front pocket + drawstrings
-        rigid(ctx, H.torus((0, 0.03, 1.47), 0.085, 0.028, scale=(1.0, 1.1, 1.0), rot=Matrix.Rotation(math.radians(-18), 3, "X")), hoodie, "chest")
-        rigid(ctx, H.box((0, -0.12, 1.02), (0.2, 0.015, 0.11)), hoodie, "spine")
-        for sx in (1, -1):
-            rigid(ctx, H.capsule((sx * 0.03, -0.11, 1.44), (sx * 0.035, -0.125, 1.32), 0.0035, 0.0035), string, "chest")
-        G(ctx, "jeans", jeans, legs_band(0.09, 1.0), offset=0.008, thick=0.004, smooth=3)
-        G(ctx, "sneakers", sneak, feet(0.12), offset=0.014, thick=0.006, smooth=2)
-        for s, sx in (("L", 1), ("R", -1)):
-            an = J[f"ankle.{s}"]
-            rigid(ctx, H.box((an.x, -0.04, 0.008), (0.1, 0.27, 0.018)), sole, f"foot.{s}")
-        torso_hidden = lambda co: 1.0 < co.z < 1.42 and abs(co.x) < 0.13 and arm_info(co, J) is None
-        legs_hidden = lambda co: 0.15 < co.z < 0.85 and arm_info(co, J) is None and not is_hand(co, J)
-        return hide(torso_hidden, legs_hidden)
-
-    return H.make_character("chr_npc_civilian", dict(skin_mat=skin("light"), height=1.68, fem=1.0, shoulder=0.88,
-                                                     hip=1.08, bulk=0.95, muscle=0.75, head=1.04), dress)
+    """Linnea Park — Port Calloway market commuter (Pedestrian Slot 2) built with MakeHuman."""
+    import makehuman_person
+    return makehuman_person.build_linnea_park("chr_npc_civilian", height=1.66)
 
 
 ROSTER = [

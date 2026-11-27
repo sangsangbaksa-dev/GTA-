@@ -14,14 +14,22 @@ public partial class HarborRoster : CenterContainer
 
     private static readonly Role[] People =
     {
-        new("Rook", "Courier", "Rook takes the jobs that move between the port and the city.",
-            "chr_harbor_rook", "chr_player_rook"),
+        new("Tomas Reyes", "Freight Clerk", "Reyes runs cold-chain seals, customs manifests, and side jobs across the Calloway waterfront.",
+            "chr_harbor_clerk", "chr_player_rook"),
         new("Mara Vale", "Port Officer", "Vale works patrol across the quays and bridge approaches.",
             "chr_harbor_officer", "chr_enemy_enforcer"),
         new("Niko Voss", "Rival Crew", "Voss runs his crew between the yards and the market streets.",
             "chr_harbor_crew", "chr_enemy_gunman"),
-        new("Amara Cole", "Dock electrician", "Cole keeps cranes and shore power running from the loading apron to the basin.",
+        new("Rook", "Courier", "Rook takes the jobs that move between the port and the city.",
+            "chr_harbor_rook", "chr_player_rook"),
+        new("Amara Cole", "Dock Electrician", "Cole keeps cranes and shore power running from the loading apron to the basin.",
             "chr_harbor_dockhand", "chr_npc_civilian"),
+        new("Mateo Silva", "Quay Stevedore", "Silva directs container lashings and heavy winch crews along the outer berth.",
+            "chr_harbor_stevedore", "chr_npc_civilian"),
+        new("Linnea Park", "Market Commuter", "Park crosses the fish-pier arcade between the ferry terminal and the cold-storage stalls.",
+            "chr_npc_civilian", "chr_npc_civilian"),
+        new("Arthur Pendelton", "Customs Broker", "Pendelton clears bonded manifests and tariff ledgers at the harbor exchange.",
+            "chr_harbor_broker", "chr_npc_civilian"),
     };
 
     private Camera3D _camera = null!;
@@ -135,7 +143,8 @@ public partial class HarborRoster : CenterContainer
         if (_person != null)
         {
             _turntable.AddChild(_person);
-            RookGait.Create(_person)?.Update(0, 0, false, 1);
+            if (MixamoGait.Create(_person) == null)
+                RookGait.Create(_person)?.Update(0, 0, false, 1);
             foreach (var child in _person.FindChildren("*", "MeshInstance3D", true, false))
             {
                 if (child is not MeshInstance3D mesh) continue;

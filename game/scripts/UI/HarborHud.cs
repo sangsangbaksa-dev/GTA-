@@ -376,6 +376,7 @@ public partial class HarborHud : CanvasLayer
         ControlRow(column, "Accelerate / reverse", "W / S", "RT / LT");
         ControlRow(column, "Sprint / handbrake", "Shift / Space", "L3 / A");
         ControlRow(column, "Crouch", "C", "B");
+        ControlRow(column, "Dance", "B", "D-pad down");
         ControlRow(column, "Interact / enter vehicle", "E", "X");
         ControlRow(column, "Pickpocket / assault / carjack", "F / V / G", "-");
         ControlRow(column, "District map / city jobs", "M / J", "Game menu");
@@ -457,7 +458,7 @@ public partial class HarborHud : CanvasLayer
     {
         var complete = _host.Lockdown.Phase == LockdownPhase.Succeeded;
         Text(column, complete ? "LOCKDOWN CLEARED" : "RUN ENDED", 62, White, _design);
-        Text(column, complete ? $"Extraction reached in {FormatTime(_host.Lockdown.Elapsed)}." : "Rook was taken down in the harbor.", 18, Muted, null, true);
+        Text(column, complete ? $"Extraction reached in {FormatTime(_host.Lockdown.Elapsed)}." : "Tomas Reyes was taken down in the harbor.", 18, Muted, null, true);
         if (complete && _host.BestTime is { } best)
             Text(column, $"BEST  {FormatTime(best)}", 16, Amber, _detail);
         Space(column, 18);

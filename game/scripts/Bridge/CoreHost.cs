@@ -90,7 +90,7 @@ public partial class CoreHost : Node
         var serverEndpoint = _localNetwork.CreateServer();
         _authority = new HarborAuthority(_data, _encounter, _layout, _vehicleTuning, serverEndpoint,
             new GodotLog(), maxPlayers: 1, jobs: _jobs, ambient: _ambient);
-        Client = new ClientSession(_localNetwork.Connect(serverEndpoint), "Rook", staticWorld: Level, interpolationDelayTicks: 0);
+        Client = new ClientSession(_localNetwork.Connect(serverEndpoint), "Tomas", staticWorld: Level, interpolationDelayTicks: 0);
     }
 
     public void RestartLockdown()

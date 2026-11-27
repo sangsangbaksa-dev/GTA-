@@ -146,7 +146,7 @@ Godot: 이벤트 받아 피격 애니메이션·이펙트·HUD
 | Velvet Hand 건맨 | `chr_enemy_gunman` | 권총/SMG, 커버 사용, 측면 이동 |
 | Ironclad 진압요원 | `chr_enemy_enforcer` | 방탄 방패(정면 피해 차단), 천천히 전진, 소총 |
 
-**플레이어** — `chr_player_rook`. 체력 + 방어구 게이지, 무기 슬롯 4개(권총/SMG/소총/산탄총).
+**플레이어** — 주인공 Tomas Reyes (`chr_harbor_clerk`, 폴백 `chr_player_rook`). 체력 + 방어구 게이지, 무기 슬롯 4개(권총/SMG/소총/산탄총).
 
 ### 3.6 미션
 - 미션 = 데이터 (`data/missions/*.json`): 시작 조건, 목표 리스트, 실패 조건, 보상, 다음 미션.
@@ -170,7 +170,9 @@ Godot: 이벤트 받아 피격 애니메이션·이펙트·HUD
 
 ### 3.10 에셋 파이프라인
 - 원본 = `tools/blender/build_assets.py` (블렌더 4.2 헤드리스, `bpy`). 산출물 `.glb`는 Git LFS.
-- 사람: `human.py` + `characters.py` — 메타볼 몸 → 리메시 → 51본 리그(손가락 포함) 자동 웨이트 → 옷 레이어가 몸 웨이트 상속. 캐릭터당 ~5만 면.
+- 사람: 공용 51본 리그(`*_rig`, 손가락 포함, 42° A포즈, 발 원점) 규격을 쓴다.
+  - 전투 적 아키타입 3종(`chr_enemy_brawler`, `chr_enemy_gunman`, `chr_enemy_enforcer`) 및 레거시 폴백(`chr_player_rook`): `human.py` + `characters.py` (메타볼 몸 → 리메시 → 자동 웨이트).
+  - MakeHuman 기반 항구 인물 8종 ([ADR 0008](docs/adr/0008-makehuman-character-pipeline.md)): `setup_makehuman.sh`로 MPFB2 + CC0 에셋 팩과 Mixamo 모션 캐시를 준비하고, `makehuman_person.py`(`harbor_people.py`, `characters.py`에서 호출)에서 각 인물의 고유 인체·체형·얼굴·헤어·의상을 조합해 51본 리그로 내보낸다 (`chr_harbor_clerk` Tomas Reyes, `chr_harbor_officer` Mara Vale, `chr_harbor_crew` Niko Voss, `chr_harbor_rook` Rook, `chr_harbor_dockhand` Amara Cole, `chr_harbor_stevedore` Mateo Silva, `chr_npc_civilian` Linnea Park, `chr_harbor_broker` Arthur Pendelton). 주인공 `chr_harbor_clerk`에는 `mixamo_mocap.py`가 Mixamo 9종 모션(`Idle`, `Walk`, `Jog`, `Run`, `TurnLeft`, `TurnRight`, `Dance`, `CrouchIdle`, `CrouchWalk`)을 리타겟팅해 내장한다.
 - 캐릭터·총기·건물 → `game/assets/{characters,weapons,buildings}/`. 범용 소품 → **sangsangbaksa-dev/Set** 리포 `props/`.
 - Harbor Front 씬에 배치한 소품은 Set과 동일한 GLB를 `game/assets/props/`에 둔다. `tools/blender/build_props.py`가 새 소품과 카탈로그를 생성한다. Calloway Compact는 `game/assets/vehicles/`와 Set의 `vehicles/`에 둔다.
 - 명명: `chr_*`, `wpn_*`, `bldg_*`, `prop_*`. 충돌이 필요한 메시는 이름 끝 `-col`(Godot 임포트가 충돌 생성).
