@@ -13,6 +13,7 @@
     "waterLevel": { "type": "number" },
     "water": { "type": "array", "items": { "$ref": "#/$defs/area" } },
     "ground": { "type": "array", "items": { "$ref": "#/$defs/area" } },
+    "terrain": { "type": "array", "items": { "$ref": "#/$defs/terrain" } },
     "roads": { "type": "array", "items": { "$ref": "#/$defs/road" } },
     "districts": { "type": "array", "items": { "$ref": "#/$defs/district" } },
     "landmarks": { "type": "array", "items": { "$ref": "#/$defs/landmark" } },
@@ -41,6 +42,14 @@
         "yaw": { "type": "number", "description": "Y-axis rotation in degrees. Rotated road length runs along local Z." },
         "from": { "$ref": "#/$defs/pair" },
         "to": { "$ref": "#/$defs/pair" }
+      }
+    },
+    "terrain": {
+      "allOf": [{ "$ref": "#/$defs/area" }],
+      "required": ["height"],
+      "properties": {
+        "height": { "type": "number", "exclusiveMinimum": 0, "maximum": 60,
+          "description": "Peak elevation in metres. The hill tapers smoothly to zero at the elliptical footprint." }
       }
     },
     "district": {
