@@ -56,6 +56,60 @@ public class MovementTests
     }
 
     [Fact]
+    public void Jump_Rises_And_Lands_On_Terrain_Without_Air_Jump()
+    {
+        var world = new StaticWorld(terrainElevation: p => 10 + p.X * 0.1);
+        var jump = InputCmd.Create(1, 0, 0, 0, 0, 0, InputButtons.Jump);
+        var idle = InputCmd.Create(2, 0, 0, 0, 0, 0, InputButtons.None);
+        var initial = new MoveState { Position = new Vec3d(0, 10, 0) };
+        var s = Run(1, jump, world, s: initial);
+        Assert.True(s.Position.Y > 10);
+        s = Run(8, idle, world, s: s);
+        Assert.InRange(s.Position.Y, 10.5, 11.2);
+        var next = Run(1, jump, world, s: s);
+        Assert.True(next.Velocity.Y < s.Velocity.Y);
+        s = Run(40, idle, world, s: next);
+        Assert.Equal(10, s.Position.Y, 6);
+        Assert.Equal(0, s.Velocity.Y, 6);
+    }
+
+    [Fact]
+    public void Walking_Follows_Continuous_Terrain()
+    {
+        var world = new StaticWorld(terrainElevation: p => 10 + p.X * 0.1);
+        var cmd = InputCmd.Create(1, 0, 1, 0, 0, 0, InputButtons.None);
+        var initial = new MoveState { Position = new Vec3d(0, 10, 0) };
+        var s = Run(60, cmd, world, s: initial);
+        Assert.True(s.Position.X > 1);
+        Assert.Equal(world.GroundElevation(s.Position), s.Position.Y, 6);
+    }
+
+    [Fact]
+    public void Jump_Stops_Under_Ceiling()
+    {
+        var world = new StaticWorld();
+        world.Add(Aabb.FromCenter(new Vec3d(0, 2.35, 0), new Vec3d(5, 0.2, 5)), SurfaceMaterial.Concrete);
+        var jump = InputCmd.Create(1, 0, 0, 0, 0, 0, InputButtons.Jump);
+        var idle = InputCmd.Create(2, 0, 0, 0, 0, 0, InputButtons.None);
+        var s = Run(1, jump, world);
+        for (var i = 0; i < 30; i++)
+        {
+            s = Run(1, idle, world, s: s);
+            Assert.InRange(s.Position.Y, 0, 0.450001);
+        }
+        Assert.Equal(0, s.Position.Y, 6);
+    }
+
+    [Fact]
+    public void Jump_Does_Not_Launch_While_Crouched_Or_Downed()
+    {
+        var crouch = InputCmd.Create(1, 0, 0, 0, 0, 0, InputButtons.Jump | InputButtons.Crouch);
+        Assert.Equal(0, Run(1, crouch).Position.Y, 6);
+        var jump = InputCmd.Create(1, 0, 0, 0, 0, 0, InputButtons.Jump);
+        Assert.Equal(0, Run(1, jump, mods: Movement.ModifiersFor(ActorFlags.Downed, Cfg)).Position.Y, 6);
+    }
+
+    [Fact]
     public void Dead_Cannot_Move()
     {
         var s = Run(30, InputCmd.Create(1, 0, 0, 1, 0, 0, InputButtons.None), mods: Movement.ModifiersFor(ActorFlags.Dead, Cfg));

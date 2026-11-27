@@ -171,7 +171,7 @@ public sealed class ServerSession(ITransport transport, ServerConfig? config = n
             cmd = c.LastInput with
             {
                 Buttons = c.LastInput.Buttons & ~(InputButtons.Fire | InputButtons.Reload | InputButtons.Interact
-                    | InputButtons.Melee | InputButtons.Vehicle | InputButtons.Pickpocket)
+                    | InputButtons.Melee | InputButtons.Vehicle | InputButtons.Pickpocket | InputButtons.Jump)
             };
             c.MissedInputs++;
             fresh = false;
