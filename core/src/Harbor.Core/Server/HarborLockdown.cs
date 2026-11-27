@@ -115,6 +115,7 @@ public sealed class HarborLockdown : ISimSystem
     public int WantedLevel(int actorId) => heat.LevelOf(actorId);
     public int MaxWantedLevel => heat.Config.MaxLevel;
     public int PoliceUnits => _enemies.Count(enemy => enemy.Actor.Team == 3 && enemy.Actor.IsAlive);
+    public bool PoliceHasContact(int actorId) => actorId == _policeTargetId && _policeHasContact;
     public bool IsDriving(int actorId) => _fleet.IsDriving(actorId);
     public double GetVehicleSpeed(int actorId) => _fleet.Driving(actorId)?.Body.Speed ?? 0;
     public bool CanStart(int actorId) => !Sandbox && Phase == LockdownPhase.FreeRoam && !IsDriving(actorId) && Jobs?.IsActive != true
@@ -136,6 +137,8 @@ public sealed class HarborLockdown : ISimSystem
     private int _streetSequence;
     private readonly Dictionary<int, Actor> _players = new();
     private int _policeTargetId = -1;
+    private Vec3d _policeLastKnownPosition;
+    private bool _policeHasContact;
 
     private sealed class Enemy(Actor actor, byte slot, double delay)
     {
@@ -221,6 +224,7 @@ public sealed class HarborLockdown : ISimSystem
         _heldActions.Clear();
         _streetResults.Clear();
         _policeTargetId = -1;
+        _policeHasContact = false;
         _policeDelay = 0;
         _worldTime = 0;
         Elapsed = 0;
@@ -433,6 +437,7 @@ public sealed class HarborLockdown : ISimSystem
             _policeTargetId = targetId;
             ClearPolice();
             _policeDelay = 0;
+            if (player != null) _policeLastKnownPosition = player.Position;
         }
         if (player == null)
             return;
@@ -447,9 +452,13 @@ public sealed class HarborLockdown : ISimSystem
         foreach (var officer in deployed.Skip(tier.Units))
             RemovePolice(officer);
 
-        var sight = definition.PoliceSightDistance * (1 + 0.15 * (tier.Level - 1));
-        if (deployed.Take(tier.Units).Any(e => SeesPlayer(e.Actor.Position, player.Position, sight)))
+        _policeHasContact = deployed.Take(tier.Units)
+            .Any(e => SeesPlayer(e.Actor.Position, player.Position, PoliceSightDistance(tier.Level)));
+        if (_policeHasContact)
+        {
+            _policeLastKnownPosition = player.Position;
             heat.KeepPursuit(player.Id);
+        }
 
         if (deployed.Length >= tier.Units)
         {
@@ -460,9 +469,11 @@ public sealed class HarborLockdown : ISimSystem
         _policeDelay += dt;
         if (_policeDelay < tier.ResponseSeconds) return;
         _policeDelay = 0;
-        var spawns = PoliceSpawnCandidates(player.Position)
-            .Where(point => StaticPathOpen(point, point) && deployed.All(e => Vec3d.Distance(e.Actor.Position, point) > 3))
-            .OrderBy(point => PoliceSpawnCost(point, player.Position)).ToArray();
+        var searchCenter = Sandbox ? _policeLastKnownPosition : player.Position;
+        var spawns = PoliceSpawnCandidates(searchCenter)
+            .Where(point => Vec3d.Distance(player.Position, point) >= 10 && StaticPathOpen(point, point)
+                && deployed.All(e => Vec3d.Distance(e.Actor.Position, point) > 3))
+            .OrderBy(point => PoliceSpawnCost(point, searchCenter)).ToArray();
         var count = tier.Units - deployed.Length;
         foreach (var (point, index) in spawns.Take(count).Select((p, i) => (p, i)))
             SpawnEnemy(point, 3, definition.EnemyStartDelay + index * 0.25);
@@ -488,6 +499,8 @@ public sealed class HarborLockdown : ISimSystem
     private bool SeesPlayer(Vec3d officer, Vec3d player, double sight) =>
         Vec3d.Distance(officer, player) < sight && StaticPathOpen(officer, player);
 
+    private double PoliceSightDistance(int tier) => definition.PoliceSightDistance * (1 + 0.15 * (tier - 1));
+
     private bool StaticPathOpen(Vec3d from, Vec3d to)
     {
         var delta = to - from;
@@ -510,6 +523,7 @@ public sealed class HarborLockdown : ISimSystem
 
     private void ClearPolice()
     {
+        _policeHasContact = false;
         for (var i = _enemies.Count - 1; i >= 0; i--)
         {
             if (_enemies[i].Actor.Team == 3) RemovePolice(_enemies[i]);
@@ -566,12 +580,15 @@ public sealed class HarborLockdown : ISimSystem
     private void TickEnemy(Enemy enemy, Actor player, double dt)
     {
         var actor = enemy.Actor;
-        var delta = player.Position - actor.Position;
+        var police = actor.Team == 3;
+        var tier = police ? WantedLevel(player.Id) : 0;
+        var searching = police && Sandbox && !_policeHasContact;
+        var destination = searching ? _policeLastKnownPosition : player.Position;
+        var delta = destination - actor.Position;
         var distance = delta.WithY(0).Length;
         var yaw = DirectionYaw(delta);
-        var police = actor.Team == 3;
-        var holdDistance = police ? 7 : definition.EnemyHoldDistance;
-        var movement = distance > holdDistance || police && !StaticPathOpen(actor.Position, player.Position) ? 1.0 : 0;
+        var holdDistance = searching ? 1.5 : police ? 7 : definition.EnemyHoldDistance;
+        var movement = distance > holdDistance || police && !StaticPathOpen(actor.Position, destination) ? 1.0 : 0;
         if (police && movement > 0) yaw = PoliceHeading(enemy, yaw);
         Movement.Step(ref actor.Move, InputCmd.Create(0, 0, 0, movement, yaw, 0, InputButtons.None),
             dt, police ? _policeMovement : _enemyMovement, MoveModifiers.Default, level);
@@ -580,8 +597,7 @@ public sealed class HarborLockdown : ISimSystem
         var origin = actor.Position + new Vec3d(0, combat.Config.EyeHeight, 0);
         var target = player.Position + new Vec3d(0, player.Move.Crouched ? 0.68 : 1.12, 0);
         var toTarget = target - origin;
-        var tier = police ? WantedLevel(player.Id) : 0;
-        var inRange = !police || !Sandbox || distance <= definition.PoliceSightDistance * (0.95 + 0.18 * tier);
+        var inRange = !police || !Sandbox || !searching && distance <= PoliceSightDistance(tier);
         var canFire = inRange && enemy.ShotDelay <= 0 && !level.Raycast(origin, toTarget, toTarget.Length, out _);
         var pitch = System.Math.Atan2(toTarget.Y, toTarget.WithY(0).Length);
         var sway = M.Sin(_worldTime * 2.8 + actor.Id * 1.7) * 0.055;

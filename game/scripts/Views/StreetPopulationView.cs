@@ -15,15 +15,20 @@ public partial class StreetPopulationView : Node3D
     private readonly HashSet<int> _seen = new();
     private readonly List<int> _expired = new();
     private CoreHost _host = null!;
-    private PackedScene? _dockhand;
-    private PackedScene? _civilian;
+    private PackedScene?[] _civilians = [];
+    private PackedScene? _fallback;
     private int _generation;
 
     public override void _Ready()
     {
         _host = GetNode<CoreHost>("../CoreHost");
-        _dockhand = LoadOptional("res://assets/characters/chr_harbor_dockhand.glb");
-        _civilian = LoadOptional("res://assets/characters/chr_npc_civilian.glb");
+        _civilians = [
+            LoadOptional("res://assets/characters/chr_calloway_amara.glb"),
+            LoadOptional("res://assets/characters/chr_calloway_mateo.glb"),
+            LoadOptional("res://assets/characters/chr_calloway_linnea.glb"),
+            LoadOptional("res://assets/characters/chr_calloway_arthur.glb"),
+        ];
+        _fallback = LoadOptional("res://assets/characters/chr_npc_civilian.glb");
     }
 
     public override void _Process(double delta)
@@ -107,8 +112,7 @@ public partial class StreetPopulationView : Node3D
     private Pedestrian AddPedestrian(int id, int appearance, Vector3 position, float yaw)
     {
         var root = AddActorRoot("Pedestrian", id, position, yaw);
-        var worker = appearance % 2 == 0 && _dockhand != null;
-        var scene = worker ? _dockhand : _civilian ?? _dockhand;
+        var scene = _civilians[Mathf.PosMod(appearance, _civilians.Length)] ?? _fallback;
         if (scene == null) return new Pedestrian(root, null, id);
 
         var model = scene.Instantiate<Node3D>();
@@ -116,11 +120,6 @@ public partial class StreetPopulationView : Node3D
         var height = Mathf.Lerp(0.96f, 1.04f, Mathf.PosMod(id * 13, 7) / 6f);
         model.Scale = Vector3.One * height;
         root.AddChild(model);
-
-        if (worker && appearance == 2)
-            Recolor(model, "dockhand_hivis_vermilion", new Color("#c7aa50"));
-        else if (!worker)
-            Recolor(model, "hoodie_cobalt", appearance == 1 ? new Color("#755b72") : new Color("#637e81"));
 
         return new Pedestrian(root, RookGait.Create(model), id);
     }
@@ -145,26 +144,6 @@ public partial class StreetPopulationView : Node3D
     }
 
     private static PackedScene? LoadOptional(string path) => ResourceLoader.Exists(path) ? GD.Load<PackedScene>(path) : null;
-
-    private static void Recolor(Node3D root, string materialName, Color color)
-    {
-        if (root is MeshInstance3D mesh) RecolorMesh(mesh, materialName, color);
-        foreach (var node in root.FindChildren("*", "MeshInstance3D", true, false))
-            if (node is MeshInstance3D child) RecolorMesh(child, materialName, color);
-    }
-
-    private static void RecolorMesh(MeshInstance3D mesh, string materialName, Color color)
-    {
-        for (var i = 0; i < mesh.GetSurfaceOverrideMaterialCount(); i++)
-        {
-            if (mesh.GetActiveMaterial(i) is not StandardMaterial3D source || source.ResourceName != materialName)
-                continue;
-
-            var variant = (StandardMaterial3D)source.Duplicate();
-            variant.AlbedoColor = color;
-            mesh.SetSurfaceOverrideMaterial(i, variant);
-        }
-    }
 
     private void RemoveMissing<T>(Dictionary<int, T> views) where T : StreetActor
     {

@@ -35,6 +35,9 @@ public sealed record StreetPopulationDef
     public double HearingRadius { get; init; } = 23;
     public double FleeSeconds { get; init; } = 5;
     public double FleeSpeed { get; init; } = 3.9;
+    public double PedestrianPersonalSpace { get; init; } = 1.5;
+    public double PedestrianSidestepDistance { get; init; } = 2.5;
+    public double PedestrianCrossingLookAhead { get; init; } = 2;
     public double PickpocketRadius { get; init; } = 1.8;
     public double PickpocketCooldownSeconds { get; init; } = 55;
     public int PickpocketMinCash { get; init; } = 12;
@@ -53,6 +56,8 @@ public sealed record StreetPopulationDef
         var def = Json.Read<StreetPopulationDef>(files, path);
         Json.Require(def.VisibilityRadius is > 0 and <= 400 && def.HearingRadius is > 0 and <= 100
             && def.FleeSeconds is > 0 and <= 30 && def.FleeSpeed is > 0 and <= 12
+            && def.PedestrianPersonalSpace is > 0 and <= 3 && def.PedestrianSidestepDistance is > 0 and <= 4
+            && def.PedestrianCrossingLookAhead is > 0 and <= 4
             && def.PickpocketRadius is > 0 and <= 4 && def.PickpocketCooldownSeconds is > 0 and <= 600
             && def.PickpocketMinCash > 0 && def.PickpocketMaxCash >= def.PickpocketMinCash && def.PickpocketMaxCash <= 1000
             && def.TrafficAcceleration is > 0 and <= 12 && def.TrafficBraking is > 0 and <= 20
@@ -175,32 +180,7 @@ public sealed class StreetPopulation(StreetPopulationDef definition, StaticWorld
         _time += dt;
         var threats = VehicleThreats?.Invoke().Where(car => M.Abs(car.Speed) >= 5.5).ToArray() ?? [];
         foreach (var person in _pedestrians)
-        {
-            person.Panic = M.Max(0, person.Panic - dt);
-            person.Startled = M.Max(0, person.Startled - dt);
-            person.Pause = M.Max(0, person.Pause - dt);
-            if (person.Panic <= 0)
-            {
-                foreach (var threat in threats)
-                {
-                    var offset = person.Position - threat.Position;
-                    if (M.Abs(offset.Y) > 2.2) continue;
-                    var heading = Vec3d.FromYawPitch(threat.Yaw, 0) * M.Sign(threat.Speed);
-                    var flat = offset.WithY(0);
-                    var forward = flat.Dot(heading);
-                    var lateral = flat - heading * forward;
-                    var range = M.Clamp(M.Abs(threat.Speed) * 0.9, 5.0, 13.0);
-                    if (forward <= 0 || forward > range || lateral.LengthSquared > 2.5 * 2.5) continue;
-                    if (flat.Dot(person.Forward(1)) < 0) person.Direction *= -1;
-                    person.Panic = definition.FleeSeconds;
-                    person.Startled = 0.12;
-                    person.Pause = 0;
-                    break;
-                }
-            }
-            person.Speed = person.Startled > 0 ? 0 : person.Panic > 0 ? definition.FleeSpeed : person.Pause > 0 ? 0 : person.Cruise;
-            person.Advance(person.Speed * dt);
-        }
+            StepPedestrian(person, threats, dt);
 
         foreach (var driver in _displaced)
         {
@@ -239,7 +219,8 @@ public sealed class StreetPopulation(StreetPopulationDef definition, StaticWorld
                 new StreetPedestrianState(person.Id, person.Appearance, Round(person.Position), M.Round(person.Yaw, 3),
                     M.Round(person.Speed, 2), person.Panic > 0 && person.Startled == 0)
                 {
-                    Reaction = person.Startled > 0 ? "startled" : person.Panic > 0 ? "fleeing" : person.Pause > 0 ? "waiting" : "walking",
+                    Reaction = person.Startled > 0 ? "startled" : person.Panic > 0 ? "fleeing" :
+                        person.Yielding ? "yielding" : person.Pause > 0 ? "waiting" : "walking",
                 })
                 .Concat(_displaced.Where(person => Visible(person.Position)).Select(person => new StreetPedestrianState(
                     person.Id, person.Appearance, Round(person.Position), M.Atan2(-person.Direction.X, -person.Direction.Z),
@@ -343,7 +324,114 @@ public sealed class StreetPopulation(StreetPopulationDef definition, StaticWorld
             person.Panic = definition.FleeSeconds;
             person.Startled = startled ? 0.45 : 0;
             person.Pause = 0;
+            person.Yielding = false;
         }
+    }
+
+    private void StepPedestrian(Traveler person, (Vec3d Position, double Yaw, double Speed)[] threats, double dt)
+    {
+        person.Panic = M.Max(0, person.Panic - dt);
+        person.Startled = M.Max(0, person.Startled - dt);
+        person.Pause = M.Max(0, person.Pause - dt);
+        if (person.Panic == 0)
+        {
+            person.EscapeOffset = Vec3d.Zero;
+            foreach (var threat in threats)
+                if (TryDodge(person, threat)) break;
+        }
+
+        var walking = person.Panic == 0 && person.Pause == 0;
+        person.Yielding = walking && CrossingRisk(person);
+        var offset = person.Panic > 0 ? person.EscapeOffset : walking && !person.Yielding ? PassingOffset(person) : person.Offset;
+        if (person.Panic == 0 && person.Pause > 0) offset = Vec3d.Zero;
+        person.Speed = person.Startled > 0 || person.Yielding ? 0 : person.Panic > 0 ? definition.FleeSpeed :
+            walking ? person.Cruise : 0;
+
+        var before = person.Position;
+        person.Advance(person.Speed * dt);
+        var change = offset - person.Offset;
+        var maxStep = dt * (person.Panic > 0 ? definition.FleeSpeed : person.Cruise);
+        var nextOffset = person.Offset + change * (change.Length > maxStep ? maxStep / change.Length : 1);
+        if (person.Startled == 0 && CanOffset(person, nextOffset)) person.Offset = nextOffset;
+        else if (!CanOffset(person, person.Offset)) person.Offset = Vec3d.Zero;
+        var moved = (person.Position - before).WithY(0);
+        if (moved.LengthSquared > 1e-7) person.PedestrianHeading = moved.Normalized();
+    }
+
+    private bool TryDodge(Traveler person, (Vec3d Position, double Yaw, double Speed) threat)
+    {
+        var away = person.Position - threat.Position;
+        if (M.Abs(away.Y) > 2.2) return false;
+        var heading = Vec3d.FromYawPitch(threat.Yaw, 0) * M.Sign(threat.Speed);
+        var forward = away.Dot(heading);
+        var right = new Vec3d(-heading.Z, 0, heading.X);
+        var lateral = away.Dot(right);
+        var range = M.Clamp(M.Abs(threat.Speed) * 0.9, 5, 13);
+        if (forward <= 0 || forward > range || M.Abs(lateral) > definition.PedestrianSidestepDistance) return false;
+        var from = threat.Position + Vec3d.Up;
+        var line = person.Position + Vec3d.Up - from;
+        if (level != null && level.Raycast(from, line, line.Length, out _)) return false;
+
+        var side = M.Abs(lateral) >= 0.1 ? M.Sign(lateral) : person.Id % 2 == 0 ? 1 : -1;
+        var offset = right * (side * definition.PedestrianSidestepDistance);
+        person.EscapeOffset = CanOffset(person, offset) ? offset : CanOffset(person, -offset) ? -offset : Vec3d.Zero;
+        if (away.Dot(person.Forward(1)) < 0) person.Direction *= -1;
+        person.Panic = definition.FleeSeconds;
+        person.Startled = 0.12;
+        person.Pause = 0;
+        return true;
+    }
+
+    private bool CrossingRisk(Traveler person)
+    {
+        var direction = person.Forward(1);
+        var position = person.Position;
+        foreach (var car in _traffic)
+        {
+            if (car.Taken || car.Speed < 2) continue;
+            var relative = position - car.Position;
+            if (M.Abs(relative.Y) > 2.2 || relative.WithY(0).LengthSquared > definition.TrafficLookAhead * definition.TrafficLookAhead)
+                continue;
+            var heading = car.Forward(4);
+            var right = new Vec3d(-heading.Z, 0, heading.X);
+            var lateral = relative.Dot(right);
+            var across = direction.Dot(right) * person.Cruise;
+            if (M.Abs(lateral) <= 1.65 || lateral * across >= 0) continue;
+
+            var seconds = (M.Abs(lateral) - 1.65) / M.Abs(across);
+            var gap = (relative + direction * (person.Cruise * seconds)).Dot(heading) - car.Speed * seconds;
+            if (seconds <= definition.PedestrianCrossingLookAhead && gap >= -2.5 && gap <= car.Speed * 1.25) return true;
+        }
+        return false;
+    }
+
+    private Vec3d PassingOffset(Traveler person)
+    {
+        var direction = person.Forward(1);
+        var position = person.RoutePosition;
+        var range = definition.PedestrianPersonalSpace;
+        foreach (var other in _pedestrians)
+        {
+            if (other == person) continue;
+            var between = other.RoutePosition - position;
+            if (between.LengthSquared > range * range || between.Dot(direction) < 0 || direction.Dot(other.Forward(1)) > -0.4)
+                continue;
+            var right = new Vec3d(-direction.Z, 0, direction.X);
+            var offset = right * (range * 0.4);
+            if (CanOffset(person, offset)) return offset;
+        }
+        return Vec3d.Zero;
+    }
+
+    private bool CanOffset(Traveler person, Vec3d offset)
+    {
+        if (level == null || offset.LengthSquared < 1e-8) return true;
+        var route = person.RoutePosition;
+        var point = route + offset;
+        var ground = level.GroundElevation(point);
+        if (M.Abs(ground - level.GroundElevation(route)) > 0.65) return false;
+        var volume = Aabb.FromCenter(point.WithY(M.Max(route.Y, ground) + 0.85), new Vec3d(0.65, 1.5, 0.65));
+        return !level.Overlapping(volume).Any();
     }
 
     private double CarTargetSpeed(Traveler car, (Vec3d Position, double Clearance)[] obstacles)
@@ -406,16 +494,21 @@ public sealed class StreetPopulation(StreetPopulationDef definition, StaticWorld
         public double Panic { get; set; }
         public double Startled { get; set; }
         public double Pause { get; set; }
+        public bool Yielding { get; set; }
+        public Vec3d Offset { get; set; }
+        public Vec3d EscapeOffset { get; set; }
+        public Vec3d PedestrianHeading { get; set; }
         public double PickpocketAfter { get; set; }
         public double Traveled { get; private set; }
         public double Steering { get; set; }
         public bool Taken { get; set; }
         public string? ModelId { get; } = modelId;
+        public Vec3d RoutePosition => Path.Sample(Distance);
         public Vec3d Position
         {
             get
             {
-                var p = Path.Sample(Distance);
+                var p = RoutePosition + Offset;
                 return level is null ? p : p.WithY(M.Max(p.Y, level.GroundElevation(p)));
             }
         }
@@ -423,16 +516,17 @@ public sealed class StreetPopulation(StreetPopulationDef definition, StaticWorld
         {
             get
             {
-                var tangent = Forward(1);
+                var tangent = PedestrianHeading.LengthSquared > 0 ? PedestrianHeading : Forward(1);
                 return M.Atan2(-tangent.X, -tangent.Z);
             }
         }
 
         public Vec3d Forward(double lookAhead)
         {
-            var delta = Path.Sample(Distance + Direction * lookAhead) - Position;
+            var route = RoutePosition;
+            var delta = Path.Sample(Distance + Direction * lookAhead) - route;
             if (delta.LengthSquared < 1e-6)
-                delta = Position - Path.Sample(Distance - Direction * lookAhead);
+                delta = route - Path.Sample(Distance - Direction * lookAhead);
             return delta.WithY(0).Normalized();
         }
 

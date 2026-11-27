@@ -4,9 +4,12 @@ const WorldStream := preload("res://world_stream.gd")
 const DaylightCycle := preload("res://daylight_cycle.gd")
 const WORLD_PATH := "res://scenes/world/HarborBackdrop.scn"
 const PEOPLE := [
-	"chr_harbor_rook", "chr_npc_civilian", "chr_harbor_dockhand",
+	"chr_harbor_rook", "chr_calloway_amara", "chr_calloway_mateo", "chr_calloway_linnea", "chr_calloway_arthur",
 	"chr_harbor_crew", "chr_harbor_officer",
 ]
+const CIVILIANS := 4
+const CREW := 5
+const OFFICER := 6
 const CAR_IDS := ["calloway_compact", "pier_runner", "breakwater_utility"]
 const CAR_COLORS := [Color("#476d73"), Color("#973f39"), Color("#c4ad85"), Color("#40527d")]
 const PAINT_MATERIALS := ["pip_copper_orange", "vehicle_paint"]
@@ -20,7 +23,8 @@ var camera := Camera3D.new()
 var actor_root := Node3D.new()
 var world_stream := WorldStream.new()
 var daylight := DaylightCycle.new()
-var previous_generation := -1
+var previous_session := 0
+var displayed_minute := -1
 var player: Dictionary
 var actor_scenes: Array[PackedScene] = []
 var vehicle_scenes: Dictionary = {}
@@ -129,10 +133,14 @@ func _process(delta: float) -> void:
 	var state: Dictionary = frame.state
 	update_population(state, delta)
 	var mode := str(bridge.screen())
-	var generation := int(state.get("runGeneration", 0))
-	if previous_generation != -1 and generation != previous_generation:
+	var session := int(bridge.sessionId())
+	if session != previous_session:
 		daylight.reset()
-	previous_generation = generation
+	previous_session = session
+	var minute := int(daylight.hour * 60.0)
+	if minute != displayed_minute:
+		displayed_minute = minute
+		bridge.showClock(minute)
 	if mode == "intro":
 		look_over_harbor(vec(frame.position))
 	elif mode == "play":
@@ -306,7 +314,7 @@ func update_population(state: Dictionary, dt: float) -> void:
 		var id := int(pedestrian.id)
 		current[id] = true
 		if not people.has(id):
-			people[id] = create_human(1 + posmod(int(pedestrian.appearance), 3))
+			people[id] = create_human(1 + posmod(int(pedestrian.appearance), CIVILIANS))
 			people[id].root.position = position
 		update_human(people[id], position, float(pedestrian.yaw), float(pedestrian.speed),
 			false, bool(pedestrian.fleeing), true, dt)
@@ -318,7 +326,7 @@ func update_population(state: Dictionary, dt: float) -> void:
 		var id := int(enemy.id)
 		current[id] = true
 		if not police.has(id):
-			police[id] = create_human(4 if int(enemy.team) == 3 else 3)
+			police[id] = create_human(OFFICER if int(enemy.team) == 3 else CREW)
 			police[id].root.position = position
 		var flags := str(enemy.flags)
 		update_human(police[id], position, float(enemy.yaw), vec(enemy.velocity).length(),

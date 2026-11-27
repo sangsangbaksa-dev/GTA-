@@ -14,6 +14,7 @@ const map = byId('map');
 const touch = byId('touch');
 const district = byId('district-name');
 const wallet = byId('wallet');
+const worldClock = byId('world-clock');
 const wanted = byId('wanted');
 const stars = byId('stars');
 const pursuit = byId('pursuit');
@@ -39,6 +40,7 @@ let mapParent = 'play';
 let api, frame, layout, chart;
 let serializedFrame = "";
 let frameVersion = 0;
+let sessionId = 0;
 let elapsed = 0;
 let simulationTime = 0;
 let crimeSequence = 0;
@@ -97,6 +99,7 @@ function replaceFrame(raw) {
 
 function reset() {
   replaceFrame(api.Start());
+  sessionId++;
   input.reset();
   crimeSequence = 0;
   noticeUntil = 0;
@@ -125,14 +128,15 @@ function hint(el, text) {
 
 function updateHud() {
   const { state, alive } = frame;
-  const { streetAction, streetCrime, playerCombat, maxWantedLevel, wantedLevel, policeUnits, isDriving, vehicle } = state;
+  const { streetAction, streetCrime, playerCombat, maxWantedLevel, wantedLevel, policeUnits, policeHasContact, isDriving, vehicle } = state;
   label(district, districtAt(layout, frame.position));
   label(wallet, '$' + (streetCrime?.dirtyCash ?? 0).toLocaleString('ko-KR'));
   wanted.hidden = !wantedLevel;
   if (wantedLevel) {
     label(stars, '★'.repeat(wantedLevel) + '☆'.repeat(Math.max(0, maxWantedLevel - wantedLevel)));
     stars.setAttribute('aria-label', '수배 ' + wantedLevel + '단계');
-    label(pursuit, policeUnits ? '추격 중 · ' + policeUnits + '명' : '수배 중');
+    wanted.dataset.searching = String(policeUnits > 0 && !policeHasContact);
+    label(pursuit, policeHasContact ? '추격 중 · ' + policeUnits + '명' : policeUnits ? '시야 이탈 · 주변 수색 중' : '경찰 출동 중');
   }
   label(equipment, isDriving ? vehicle.displayName : playerCombat.weaponName);
   label(ammunition, isDriving ? Math.round(Math.abs(vehicle.speed) * 3.6) + ' km/h' :
@@ -233,6 +237,12 @@ async function startGodot() {
     pitch: () => input.direction().pitch,
     frame: () => serializedFrame,
     frameVersion: () => frameVersion,
+    sessionId: () => sessionId,
+    showClock(minute) {
+      const time = [Math.floor(minute / 60), minute % 60].map(part => String(part).padStart(2, '0')).join(':');
+      worldClock.dateTime = time;
+      label(worldClock, time);
+    },
     cameraDistance: (...args) => api.CameraDistance(...args),
     groundElevation: (x, z) => api.GroundElevation(x, z),
     requestChunk(file, complete) {

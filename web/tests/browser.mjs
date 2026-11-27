@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { preview } from 'vite';
 
-const previewServer = await preview({ preview: { host: '127.0.0.1', port: 0, strictPort: true } });
-const address = previewServer.httpServer.address();
+const deployedUrl = process.env.HARBOR_BASE_URL;
+const previewServer = deployedUrl ? null : await preview({ preview: { host: '127.0.0.1', port: 0, strictPort: true } });
+const baseUrl = deployedUrl || 'http://127.0.0.1:' + previewServer.httpServer.address().port + '/';
 const executablePath = process.env.CHROMIUM_PATH;
 const browser = await chromium.launch({
   executablePath,
@@ -22,7 +23,7 @@ try {
   page.on('console', message => {
     if (message.type() === 'error') errors.push(message.text());
   });
-  await page.goto('http://127.0.0.1:' + address.port + '/', { waitUntil: 'domcontentloaded' });
+  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
   const start = page.getByRole('button', { name: '도시로 들어가기' });
   await start.waitFor({ timeout: 75_000 }).catch(error => {
     throw new Error('Browser could not load the sandbox: ' + errors.join('\n'), { cause: error });
@@ -39,6 +40,7 @@ try {
   await page.locator('#hud').waitFor();
   assert.match(await page.locator('#district-name').textContent(), /Harbor Front/);
   assert.match(await page.locator('#equipment').textContent(), /Wasp/i);
+  await page.waitForFunction(() => document.getElementById('world-clock').textContent !== '15:30');
   if (process.env.HARBOR_SHOTS) await page.screenshot({ path: process.env.HARBOR_SHOTS + '-play.png' });
 
   const vehicle = page.locator('#vehicle-action');
@@ -77,6 +79,7 @@ try {
     parseInt(document.getElementById('ammunition').textContent, 10) < previous, magazine);
   await page.locator('#wanted').waitFor();
   assert.match(await page.locator('#stars').getAttribute('aria-label'), /수배 [1-5]단계/);
+  assert.match(await page.locator('#pursuit').textContent(), /경찰 출동 중|추격 중|주변 수색 중/);
 
   await page.keyboard.press('m');
   await page.locator('#atlas').waitFor();
@@ -132,7 +135,7 @@ try {
   console.log('Godot boot, on-demand chunk loading and release, vehicle controls, wanted response, map and interiors, pause/resume and reset verified.');
 } finally {
   await browser.close();
-  await new Promise((resolve, reject) => {
+  if (previewServer) await new Promise((resolve, reject) => {
     previewServer.httpServer.close(error => error ? reject(error) : resolve());
   });
 }

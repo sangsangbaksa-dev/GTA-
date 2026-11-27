@@ -26,6 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import characters  # noqa: E402  (higher-fidelity humans, see human.py)
 import harbor_people  # noqa: E402
 import locomotion  # noqa: E402
+import makehuman_person  # noqa: E402
 
 # ---------------------------------------------------------------- utilities
 
@@ -609,6 +610,7 @@ def character_group(roster):
 GROUPS = {
     "characters": character_group(characters.ROSTER + [harbor_people.CIVILIAN]),
     "harbor_people": character_group(harbor_people.ROSTER),
+    "makehuman_civilians": character_group(makehuman_person.CIVILIANS),
     "weapons": [
         ("weapons/wpn_pistol_kestrel.glb", wpn_pistol),
         ("weapons/wpn_smg_wasp.glb", wpn_smg),

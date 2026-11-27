@@ -190,6 +190,48 @@ public sealed class StreetPopulationTests
         Assert.False(Assert.Single(population.GetState().Pedestrians).Fleeing);
     }
 
+    [Fact]
+    public void PedestrianStepsOutOfVehicleLaneAndReturnsToFootpathAfterward()
+    {
+        var (world, population) = MakeWorld(new StreetPopulationDef
+        {
+            FleeSeconds = 2,
+            PedestrianRoutes = [Path("footpath", 1.4, false, [-50, 0, 0], [50, 0, 0])],
+        });
+        var before = Assert.Single(population.GetState().Pedestrians);
+        population.VehicleThreats = () => [(before.Position - new Vec3d(8, 0, 0), -System.Math.PI / 2, 12)];
+        Advance(world, 23);
+        var dodging = Assert.Single(population.GetState().Pedestrians);
+        Assert.True(dodging.Fleeing);
+        Assert.InRange(System.Math.Abs(dodging.Position.Z), 2, 2.6);
+
+        population.VehicleThreats = null;
+        Advance(world, 120);
+        var recovered = Assert.Single(population.GetState().Pedestrians);
+        Assert.Equal("walking", recovered.Reaction);
+        Assert.Equal(0, recovered.Position.Z);
+    }
+
+    [Fact]
+    public void OpposingPedestriansUseSeparateSidesOfTheFootpath()
+    {
+        var (world, population) = MakeWorld(new StreetPopulationDef
+        {
+            PedestrianRoutes = [Path("sidewalk", 1.4, false, [0, 0, 0], [8, 0, 0]) with { Count = 2 }],
+        });
+        var passed = false;
+        for (var tick = 0; tick < 90; tick++)
+        {
+            Advance(world, 1);
+            var walkers = population.GetState().Pedestrians;
+            if (System.Math.Abs(walkers[0].Position.X - walkers[1].Position.X) > .35) continue;
+            Assert.True(walkers[0].Position.Z * walkers[1].Position.Z < 0);
+            passed = true;
+            break;
+        }
+        Assert.True(passed);
+    }
+
     private static StreetRouteDef Path(string id, double speed, bool loop, params double[][] points)
         => new() { Id = id, Count = 1, Speed = speed, Loop = loop, Points = points };
 

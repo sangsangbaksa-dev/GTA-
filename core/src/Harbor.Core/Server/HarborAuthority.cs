@@ -68,6 +68,7 @@ public sealed record HarborState
     public int WantedLevel { get; init; }
     public int MaxWantedLevel { get; init; }
     public int PoliceUnits { get; init; }
+    public bool PoliceHasContact { get; init; }
     public int PlayerVehicleId { get; init; } = -1;
     public bool IsDriving { get; init; }
     public bool CanEnterVehicle { get; init; }
@@ -176,7 +177,8 @@ public sealed class HarborAuthority
         {
             Lockdown = mission, Jobs = Jobs.GetState(actorId), Ambient = Ambient?.GetState(player?.Position) ?? new StreetPopulationState(),
             PlayerCombat = combat, WantedLevel = Lockdown.WantedLevel(actorId), MaxWantedLevel = Lockdown.MaxWantedLevel,
-            PoliceUnits = Lockdown.PoliceUnits, StreetAction = action, StreetCrime = Lockdown.GetStreetCrime(actorId),
+            PoliceUnits = Lockdown.PoliceUnits, PoliceHasContact = Lockdown.PoliceHasContact(actorId),
+            StreetAction = action, StreetCrime = Lockdown.GetStreetCrime(actorId),
             Vehicle = (driving ?? _fleet.Starter).State, Vehicles = _fleet.GetStates(player?.Position),
             Enemies = enemies.ToArray(),
             DriverId = Lockdown.DriverId, IsDriving = driving != null, PlayerVehicleId = driving?.Id ?? -1,

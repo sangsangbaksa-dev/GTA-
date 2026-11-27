@@ -469,6 +469,34 @@ public sealed class HarborAuthorityTests
         Assert.Equal(5, pilot.State.MaxWantedLevel);
     }
 
+    [Fact]
+    public void SandboxPoliceSearchLastKnownPositionUntilTheySeeThePlayerAgain()
+    {
+        var game = new Harness(singlePlayer: true, sandbox: true, streetOverride: new StreetPopulationDef());
+        var pilot = game.Join("Search");
+        game.Press(pilot, InputButtons.Fire);
+        game.Ticks(130);
+        var officerState = Assert.Single(pilot.State.Enemies, enemy => enemy.Team == 3);
+        var officer = game.Authority.World.Actors.Get(officerState.Id);
+        var contact = pilot.Actor.Position;
+        officer.Position = contact + new Vec3d(0, 0, 12);
+        game.Ticks(4);
+        Assert.True(pilot.State.PoliceHasContact);
+
+        var wall = game.Authority.Level.Add(Aabb.FromCenter(contact + new Vec3d(4, 1, 0), new Vec3d(1, 3, 36)),
+            SurfaceMaterial.Concrete, "search test wall");
+        pilot.Actor.Position = contact + new Vec3d(8, 0, 0);
+        game.Ticks(30);
+        Assert.False(pilot.State.PoliceHasContact);
+        Assert.True(pilot.State.WantedLevel > 0);
+        Assert.InRange(System.Math.Abs(officer.Position.X - contact.X), 0, 0.2);
+        Assert.True(Vec3d.Distance(officer.Position, contact) < 11);
+
+        game.Authority.Level.Remove(wall);
+        game.Ticks(4);
+        Assert.True(pilot.State.PoliceHasContact);
+    }
+
     private sealed class Harness
     {
         private const double Step = 1.0 / 30.0;

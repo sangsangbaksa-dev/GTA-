@@ -31,6 +31,21 @@
       "exclusiveMinimum": 0,
       "maximum": 12
     },
+    "pedestrianPersonalSpace": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 3
+    },
+    "pedestrianSidestepDistance": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 4
+    },
+    "pedestrianCrossingLookAhead": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 4
+    },
     "pedestrianRoutes": {
       "type": "array",
       "maxItems": 48,

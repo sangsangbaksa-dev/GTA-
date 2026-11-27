@@ -3,7 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
 const root = new URL('../../', import.meta.url);
-for (const model of ['chr_harbor_rook', 'chr_harbor_officer', 'chr_harbor_crew', 'chr_harbor_dockhand', 'chr_npc_civilian']) {
+for (const model of ['chr_harbor_rook', 'chr_harbor_officer', 'chr_harbor_crew',
+  'chr_calloway_amara', 'chr_calloway_mateo', 'chr_calloway_linnea', 'chr_calloway_arthur']) {
   test(model + ' ships as a skinned animated GLB', async () => {
     const bytes = await readFile(new URL('game/assets/characters/' + model + '.glb', root));
     assert.equal(bytes.toString('ascii', 0, 4), 'glTF', 'run git lfs pull before using the models');
@@ -11,6 +12,7 @@ for (const model of ['chr_harbor_rook', 'chr_harbor_officer', 'chr_harbor_crew',
     const data = JSON.parse(bytes.toString('utf8', 20, 20 + jsonLength));
     assert.ok(data.skins.length > 0);
     assert.ok(data.skins[0].joints.length >= 45);
+    if (model.startsWith('chr_calloway_')) assert.ok(data.images.length >= 3, 'MakeHuman textures are embedded');
     const clips = new Set(data.animations.map(clip => clip.name));
     for (const name of ['Idle', 'Walk', 'Jog', 'Run', 'CrouchIdle', 'CrouchWalk'])
       assert.ok(clips.has(name), name + ' is missing from ' + model);

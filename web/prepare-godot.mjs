@@ -37,7 +37,8 @@ export async function exportGodot() {
   const scene = await readFile(join(native, world), 'utf8');
   const files = new Set([world, 'assets/props/prop_crate_wood.glb']);
   for (const match of scene.matchAll(/^\[ext_resource [^\n]*?path="res:\/\/([\w./-]+)"/gm)) files.add(match[1]);
-  for (const name of ['harbor_rook', 'harbor_dockhand', 'harbor_crew', 'harbor_officer', 'npc_civilian'])
+  for (const name of ['harbor_rook', 'calloway_amara', 'calloway_mateo', 'calloway_linnea', 'calloway_arthur',
+    'harbor_crew', 'harbor_officer'])
     files.add('assets/characters/chr_' + name + '.glb');
   for (const name of ['calloway_compact', 'pier_runner', 'breakwater_utility'])
     files.add('assets/vehicles/veh_' + name + '.glb');
