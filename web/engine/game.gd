@@ -1,6 +1,7 @@
 extends Node3D
 
 const WorldStream := preload("res://world_stream.gd")
+const DaylightCycle := preload("res://daylight_cycle.gd")
 const WORLD_PATH := "res://scenes/world/HarborBackdrop.scn"
 const PEOPLE := [
 	"chr_harbor_rook", "chr_npc_civilian", "chr_harbor_dockhand",
@@ -18,6 +19,8 @@ var low_detail := false
 var camera := Camera3D.new()
 var actor_root := Node3D.new()
 var world_stream := WorldStream.new()
+var daylight := DaylightCycle.new()
+var previous_generation := -1
 var player: Dictionary
 var actor_scenes: Array[PackedScene] = []
 var vehicle_scenes: Dictionary = {}
@@ -46,6 +49,7 @@ func _ready() -> void:
 	var world := world_scene.instantiate() as Node3D
 	add_child(world)
 	configure_lighting(world)
+	daylight.setup(world, low_detail)
 
 	for person in PEOPLE:
 		actor_scenes.append(load("res://assets/characters/%s.glb" % person))
@@ -125,9 +129,14 @@ func _process(delta: float) -> void:
 	var state: Dictionary = frame.state
 	update_population(state, delta)
 	var mode := str(bridge.screen())
+	var generation := int(state.get("runGeneration", 0))
+	if previous_generation != -1 and generation != previous_generation:
+		daylight.reset()
+	previous_generation = generation
 	if mode == "intro":
 		look_over_harbor(vec(frame.position))
 	elif mode == "play":
+		daylight.advance(delta)
 		var focus := vec(frame.position)
 		var velocity := vec(frame.velocity)
 		if state.isDriving:
