@@ -5,8 +5,8 @@ import vm from 'node:vm';
 const source=readFileSync(new URL('../public/sandbox-extras.js',import.meta.url),'utf8');
 const marker="if(document.readyState==='loading')";
 const index=source.indexOf(marker);assert.ok(index>0);
-const sandbox={};vm.runInNewContext(source.slice(0,index)+'globalThis.logic={track,mapProjection,advance,courses,traps,roadGraph,roadRoute};})();',sandbox);
-const {track,mapProjection,advance,courses,traps,roadGraph,roadRoute}=sandbox.logic;
+const sandbox={};vm.runInNewContext(source.slice(0,index)+'globalThis.logic={track,mapProjection,advance,courses,traps,roadGraph,roadRoute,audioModel,noteFrequency,musicStep,stations};})();',sandbox);
+const {track,mapProjection,advance,courses,traps,roadGraph,roadRoute,audioModel,noteFrequency,musicStep,stations}=sandbox.logic;
 const empty=()=>({driveMeters:0,walkMeters:0,escapes:0,maxEscape:0,traps:{}});
 const p={x:0,z:0,alive:true,driving:true,wanted:3,peak:3,speed:30};
 test('legitimate pursuit escape and trip distance',()=>{const r=track(p,{...p,x:10,wanted:0},empty());assert.equal(r.stats.escapes,1);assert.equal(r.stats.driveMeters,10);assert.equal(r.stats.maxEscape,3);});
@@ -17,3 +17,8 @@ test('all six courses have ordered distinct adjacent checkpoints',()=>{assert.eq
 
 test('road route uses intersections without crossing disconnected roads',()=>{const g=roadGraph([{from:[0,0],to:[100,0]},{from:[50,-50],to:[50,50]},{from:[200,0],to:[300,0]}]);assert.ok(Math.abs(roadRoute(g,[10,0],[50,40]).meters-80)<1e-4);assert.equal(roadRoute(g,[10,0],[210,0]),null);assert.ok(Math.abs(roadRoute(g,[10,0],[20,0]).meters-10)<1e-4);});
 test('real Harbor roads connect waterfront, coast and desert',()=>{const world=JSON.parse(readFileSync(new URL('../../data/world/harbor_front.json',import.meta.url),'utf8'));const g=roadGraph(world.roads);assert.ok(roadRoute(g,[40,33],[99,-36]));assert.ok(roadRoute(g,[-155,33],[385,438]));assert.ok(roadRoute(g,[-595,-440],[-70,-440]));});
+
+test('vehicle audio uses speed and proximity of live police',()=>{const f={alive:true,position:{x:0,z:0},state:{isDriving:true,vehicle:{speed:20,vehicleClass:'sport'},wantedLevel:3,enemies:[{team:3,health:100,position:{x:20,z:0}}]}};const m=audioModel(f);assert.ok(m.freq>58&&m.engine>0);assert.ok(Math.abs(m.siren-.8)<1e-6);assert.equal(audioModel({...f,alive:false}).engine,0);});
+test('original radio notes are deterministic and off is silent',()=>{assert.equal(noteFrequency(69),440);assert.equal(musicStep(stations[0],0),null);assert.ok(musicStep(stations[1],0).bass>0);assert.equal(musicStep(stations[1],1).bass,0);});
+test('session generation prevents false escape records',()=>{const a=track({...p,generation:1},{...p,generation:2,wanted:0},empty());assert.equal(a.stats.escapes,0);assert.equal(a.stats.driveMeters,0);});
+test('completed driving record cannot advance beyond last checkpoint',()=>{const run={started:true,index:courses[0].points.length,seconds:4,finished:true};assert.equal(advance(run,courses[0],{x:0,z:0},true,true,.1).seconds,4);});
