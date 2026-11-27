@@ -1,0 +1,70 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Shader" path="res://scenes/world/HarborPaving.gdshader" id="PavingShader"]
+
+[sub_resource type="BoxMesh" id="UnitBox"]
+
+[sub_resource type="ShaderMaterial" id="Concrete"]
+shader = ExtResource("PavingShader")
+shader_parameter/base_color = Color(0.45, 0.435, 0.392, 1.0)
+shader_parameter/stain_scale = 0.24
+shader_parameter/stain_strength = 0.66
+shader_parameter/grit_strength = 0.1
+
+[sub_resource type="StandardMaterial3D" id="ConcreteEdge"]
+albedo_color = Color(0.54, 0.51, 0.44, 1)
+roughness = 0.92
+
+[sub_resource type="StandardMaterial3D" id="DeepTeal"]
+albedo_color = Color(0.10, 0.22, 0.23, 1)
+roughness = 0.92
+
+[sub_resource type="StandardMaterial3D" id="Shutter"]
+albedo_color = Color(0.23, 0.29, 0.30, 1)
+roughness = 0.66
+
+[sub_resource type="MultiMesh" id="Batch000"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 1
+buffer = PackedFloat32Array(23.0, 0.0, 0.0, -203.5, 0.0, 2.58, 0.0, -1.318, 0.0, 0.0, 3.0, -193.5)
+
+[sub_resource type="MultiMesh" id="Batch001"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 2
+buffer = PackedFloat32Array(0.78, 0.0, 0.0, -214.74, 0.0, 0.81, 0.0, -0.09, 0.0, 0.0, 3.0, -193.5, 23.0, 0.0, 0.0, -203.5, 0.0, 0.81, 0.0, -0.09, 0.0, 0.0, 0.78, -194.74)
+
+[sub_resource type="MultiMesh" id="Batch002"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 2
+buffer = PackedFloat32Array(0.09, 0.0, 0.0, -214.74, 0.0, 0.08, 0.0, 0.82, 0.0, 0.0, 3.0, -193.5, 23.0, 0.0, 0.0, -203.5, 0.0, 0.08, 0.0, 0.82, 0.0, 0.0, 0.09, -194.74)
+
+[sub_resource type="MultiMesh" id="Batch003"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 14
+buffer = PackedFloat32Array(0.065, 0.0, 0.0, -214.74, 0.0, 0.05, 0.0, 0.492, 0.0, 0.0, 3.0, -193.5, 0.1, 0, 0.0, -214.74, 0, 0.82, 0, 0.41, -0.0, 0, 0.1, -195.0, 0.1, 0, 0.0, -214.74, 0, 0.82, 0, 0.41, -0.0, 0, 0.1, -192.5, 23.0, 0.0, 0.0, -203.5, 0.0, 0.05, 0.0, 0.492, 0.0, 0.0, 0.065, -194.74, 0.1, 0, 0.0, -215.0, 0, 0.82, 0, 0.41, -0.0, 0, 0.1, -194.74, 0.1, 0, 0.0, -212.5, 0, 0.82, 0, 0.41, -0.0, 0, 0.1, -194.74, 0.1, 0, 0.0, -210.0, 0, 0.82, 0, 0.41, -0.0, 0, 0.1, -194.74, 0.1, 0, 0.0, -207.5, 0, 0.82, 0, 0.41, -0.0, 0, 0.1, -194.74, 0.1, 0, 0.0, -205.0, 0, 0.82, 0, 0.41, -0.0, 0, 0.1, -194.74, 0.1, 0, 0.0, -202.5, 0, 0.82, 0, 0.41, -0.0, 0, 0.1, -194.74, 0.1, 0, 0.0, -200.0, 0, 0.82, 0, 0.41, -0.0, 0, 0.1, -194.74, 0.1, 0, 0.0, -197.5, 0, 0.82, 0, 0.41, -0.0, 0, 0.1, -194.74, 0.1, 0, 0.0, -195.0, 0, 0.82, 0, 0.41, -0.0, 0, 0.1, -194.74, 0.1, 0, 0.0, -192.5, 0, 0.82, 0, 0.41, -0.0, 0, 0.1, -194.74)
+
+[node name="Chunk_-4_-4" type="Node3D"]
+
+[node name="GroundConcreteUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch000")
+material_override = SubResource("Concrete")
+cast_shadow = 0
+
+[node name="OceanEdgeConcreteEdgeUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch001")
+material_override = SubResource("ConcreteEdge")
+cast_shadow = 1
+
+[node name="OceanEdgeDeepTealUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch002")
+material_override = SubResource("DeepTeal")
+cast_shadow = 1
+
+[node name="OceanEdgeShutterUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch003")
+material_override = SubResource("Shutter")
+cast_shadow = 1

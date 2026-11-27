@@ -1,0 +1,712 @@
+[gd_scene load_steps=80 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/buildings/bldg_corner_shop.glb" id="Shop"]
+
+[ext_resource type="Shader" path="res://scenes/world/HarborPaving.gdshader" id="PavingShader"]
+
+[ext_resource type="PackedScene" path="res://assets/props/prop_crate_stack.glb" id="Crates"]
+
+[ext_resource type="PackedScene" path="res://assets/props/prop_shipping_container.glb" id="Container"]
+
+[ext_resource type="PackedScene" path="res://assets/props/prop_street_lamp.glb" id="Lamp"]
+
+[ext_resource type="PackedScene" path="res://assets/props/prop_bench.glb" id="Bench"]
+
+[ext_resource type="PackedScene" path="res://assets/props/prop_dumpster.glb" id="Dumpster"]
+
+[ext_resource type="PackedScene" path="res://assets/props/prop_bus_shelter.glb" id="Shelter"]
+
+[ext_resource type="PackedScene" path="res://assets/props/prop_pallet_stack.glb" id="Pallet"]
+
+[sub_resource type="BoxMesh" id="UnitBox"]
+
+[sub_resource type="ShaderMaterial" id="Asphalt"]
+shader = ExtResource("PavingShader")
+shader_parameter/base_color = Color(0.205, 0.231, 0.234, 1.0)
+shader_parameter/stain_scale = 0.29
+shader_parameter/stain_strength = 0.75
+shader_parameter/grit_strength = 0.17
+
+[sub_resource type="ShaderMaterial" id="Concrete"]
+shader = ExtResource("PavingShader")
+shader_parameter/base_color = Color(0.45, 0.435, 0.392, 1.0)
+shader_parameter/stain_scale = 0.24
+shader_parameter/stain_strength = 0.66
+shader_parameter/grit_strength = 0.1
+
+[sub_resource type="ShaderMaterial" id="Sidewalk"]
+shader = ExtResource("PavingShader")
+shader_parameter/base_color = Color(0.49, 0.465, 0.423, 1.0)
+shader_parameter/stain_scale = 0.43
+shader_parameter/stain_strength = 0.48
+shader_parameter/grit_strength = 0.08
+
+[sub_resource type="ShaderMaterial" id="Pavers"]
+shader = ExtResource("PavingShader")
+shader_parameter/base_color = Color(0.42, 0.316, 0.254, 1.0)
+shader_parameter/stain_scale = 0.69
+shader_parameter/stain_strength = 0.56
+shader_parameter/grit_strength = 0.09
+
+[sub_resource type="ShaderMaterial" id="PlanterSoil"]
+shader = ExtResource("PavingShader")
+shader_parameter/base_color = Color(0.22, 0.233, 0.177, 1.0)
+shader_parameter/stain_scale = 0.33
+shader_parameter/stain_strength = 0.68
+shader_parameter/grit_strength = 0.22
+
+[sub_resource type="StandardMaterial3D" id="ConcreteEdge"]
+albedo_color = Color(0.54, 0.51, 0.44, 1)
+roughness = 0.92
+
+[sub_resource type="StandardMaterial3D" id="PaintAmber"]
+albedo_color = Color(0.95, 0.66, 0.20, 1)
+roughness = 0.92
+
+[sub_resource type="StandardMaterial3D" id="PaintIvory"]
+albedo_color = Color(0.81, 0.80, 0.67, 1)
+roughness = 0.92
+
+[sub_resource type="StandardMaterial3D" id="DeepTeal"]
+albedo_color = Color(0.10, 0.22, 0.23, 1)
+roughness = 0.92
+
+[sub_resource type="StandardMaterial3D" id="Shutter"]
+albedo_color = Color(0.23, 0.29, 0.30, 1)
+roughness = 0.66
+
+[sub_resource type="StandardMaterial3D" id="RedBrick"]
+albedo_color = Color(0.39, 0.20, 0.16, 1)
+roughness = 0.92
+
+[sub_resource type="StandardMaterial3D" id="Limestone"]
+albedo_color = Color(0.62, 0.57, 0.49, 1)
+roughness = 0.88
+
+[sub_resource type="StandardMaterial3D" id="StoneBlue"]
+albedo_color = Color(0.34, 0.40, 0.42, 1)
+roughness = 0.89
+
+[sub_resource type="StandardMaterial3D" id="Celadon"]
+albedo_color = Color(0.30, 0.40, 0.36, 1)
+roughness = 0.87
+
+[sub_resource type="StandardMaterial3D" id="OffWhite"]
+albedo_color = Color(0.66, 0.64, 0.57, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="Rust"]
+albedo_color = Color(0.40, 0.227, 0.16, 1)
+roughness = 0.74
+
+[sub_resource type="StandardMaterial3D" id="Glass"]
+albedo_color = Color(0.071, 0.153, 0.181, 1)
+roughness = 0.28
+
+[sub_resource type="StandardMaterial3D" id="Moss"]
+albedo_color = Color(0.22, 0.31, 0.168, 1)
+roughness = 0.96
+
+[sub_resource type="StandardMaterial3D" id="Leaf"]
+albedo_color = Color(0.32, 0.43, 0.202, 1)
+roughness = 0.93
+
+[sub_resource type="StandardMaterial3D" id="Trunk"]
+albedo_color = Color(0.28, 0.196, 0.12, 1)
+roughness = 0.91
+
+[sub_resource type="StandardMaterial3D" id="Roof"]
+albedo_color = Color(0.26, 0.27, 0.26, 1)
+roughness = 0.88
+
+[sub_resource type="SphereMesh" id="Foliage"]
+radial_segments = 7
+rings = 4
+radius = 0.5
+height = 1.0
+
+[sub_resource type="CylinderMesh" id="Cylinder"]
+radial_segments = 12
+top_radius = 0.5
+bottom_radius = 0.5
+height = 1.0
+
+[sub_resource type="MultiMesh" id="Batch000"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 1
+buffer = PackedFloat32Array(64.0, 0.0, 0.0, 96.0, 0.0, 2.58, 0.0, -1.318, 0.0, 0.0, 64.0, 32.0)
+
+[sub_resource type="MultiMesh" id="Batch001"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 2
+buffer = PackedFloat32Array(12.0, 0.0, 0.0, 99.0, 0.0, 0.035, 0.0, -0.0255, 0.0, 0.0, 64.0, 32.0, 64.0, 0.0, 0.0, 96.0, 0.0, 0.035, 0.0, -0.0145, 0.0, 0.0, 13.0, 33.0)
+
+[sub_resource type="MultiMesh" id="Batch002"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 19
+buffer = PackedFloat32Array(0.12, 0.0, 0.0, 99.0, 0.0, 0.009, 0.0, 0.017, 0.0, 0.0, 1.225, 0.6125, 0.12, 0, 0.0, 99.0, 0, 0.009, 0, 0.017, -0.0, 0, 2.45, 5, 0.12, 0, 0.0, 99.0, 0, 0.009, 0, 0.017, -0.0, 0, 2.45, 10, 0.12, 0, 0.0, 99.0, 0, 0.009, 0, 0.017, -0.0, 0, 2.45, 15, 0.12, 0, 0.0, 99.0, 0, 0.009, 0, 0.017, -0.0, 0, 2.45, 20, 0.12, 0, 0.0, 99.0, 0, 0.009, 0, 0.017, -0.0, 0, 2.45, 45, 0.12, 0, 0.0, 99.0, 0, 0.009, 0, 0.017, -0.0, 0, 2.45, 50, 0.12, 0, 0.0, 99.0, 0, 0.009, 0, 0.017, -0.0, 0, 2.45, 55, 0.12, 0, 0.0, 99.0, 0, 0.009, 0, 0.017, -0.0, 0, 2.45, 60, 2.225, 0.0, 0.0, 65.1125, 0.0, 0.009, 0.0, 0.017, 0.0, 0.0, 0.12, 33.0, 2.45, 0, 0.0, 70, 0, 0.009, 0, 0.017, -0.0, 0, 0.12, 33.0, 2.45, 0, 0.0, 75, 0, 0.009, 0, 0.017, -0.0, 0, 0.12, 33.0, 2.45, 0, 0.0, 80, 0, 0.009, 0, 0.017, -0.0, 0, 0.12, 33.0, 2.45, 0, 0.0, 85, 0, 0.009, 0, 0.017, -0.0, 0, 0.12, 33.0, 2.45, 0, 0.0, 90, 0, 0.009, 0, 0.017, -0.0, 0, 0.12, 33.0, 2.45, 0, 0.0, 110, 0, 0.009, 0, 0.017, -0.0, 0, 0.12, 33.0, 2.45, 0, 0.0, 115, 0, 0.009, 0, 0.017, -0.0, 0, 0.12, 33.0, 2.45, 0, 0.0, 120, 0, 0.009, 0, 0.017, -0.0, 0, 0.12, 33.0, 2.45, 0, 0.0, 125, 0, 0.009, 0, 0.017, -0.0, 0, 0.12, 33.0)
+
+[sub_resource type="MultiMesh" id="Batch003"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 49
+buffer = PackedFloat32Array(0.1, 0.0, 0.0, 93.38, 0.0, 0.009, 0.0, 0.017, 0.0, 0.0, 2.46, 1.23, 0.1, 0.0, 0.0, 104.62, 0.0, 0.009, 0.0, 0.017, 0.0, 0.0, 2.46, 1.23, 0.1, 0, 0.0, 93.38, 0, 0.009, 0, 0.017, -0.0, 0, 4.92, 5, 0.1, 0, 0.0, 104.62, 0, 0.009, 0, 0.017, -0.0, 0, 4.92, 5, 0.1, 0, 0.0, 93.38, 0, 0.009, 0, 0.017, -0.0, 0, 4.92, 10, 0.1, 0, 0.0, 104.62, 0, 0.009, 0, 0.017, -0.0, 0, 4.92, 10, 0.1, 0, 0.0, 93.38, 0, 0.009, 0, 0.017, -0.0, 0, 4.92, 15, 0.1, 0, 0.0, 104.62, 0, 0.009, 0, 0.017, -0.0, 0, 4.92, 15, 0.1, 0, 0.0, 93.38, 0, 0.009, 0, 0.017, -0.0, 0, 4.92, 20, 0.1, 0, 0.0, 104.62, 0, 0.009, 0, 0.017, -0.0, 0, 4.92, 20, 0.1, 0, 0.0, 93.38, 0, 0.009, 0, 0.017, -0.0, 0, 4.92, 45, 0.1, 0, 0.0, 104.62, 0, 0.009, 0, 0.017, -0.0, 0, 4.92, 45, 0.1, 0, 0.0, 93.38, 0, 0.009, 0, 0.017, -0.0, 0, 4.92, 50, 0.1, 0, 0.0, 104.62, 0, 0.009, 0, 0.017, -0.0, 0, 4.92, 50, 0.1, 0, 0.0, 93.38, 0, 0.009, 0, 0.017, -0.0, 0, 4.92, 55, 0.1, 0, 0.0, 104.62, 0, 0.009, 0, 0.017, -0.0, 0, 4.92, 55, 0.1, 0, 0.0, 93.38, 0, 0.009, 0, 0.017, -0.0, 0, 4.92, 60, 0.1, 0, 0.0, 104.62, 0, 0.009, 0, 0.017, -0.0, 0, 4.92, 60, 3.46, 0.0, 0.0, 65.73, 0.0, 0.009, 0.0, 0.017, 0.0, 0.0, 0.1, 26.88, 3.46, 0.0, 0.0, 65.73, 0.0, 0.009, 0.0, 0.017, 0.0, 0.0, 0.1, 39.12, 4.92, 0, 0.0, 70, 0, 0.009, 0, 0.017, -0.0, 0, 0.1, 26.88, 4.92, 0, 0.0, 70, 0, 0.009, 0, 0.017, -0.0, 0, 0.1, 39.12, 4.92, 0, 0.0, 75, 0, 0.009, 0, 0.017, -0.0, 0, 0.1, 26.88, 4.92, 0, 0.0, 75, 0, 0.009, 0, 0.017, -0.0, 0, 0.1, 39.12, 4.92, 0, 0.0, 80, 0, 0.009, 0, 0.017, -0.0, 0, 0.1, 26.88, 4.92, 0, 0.0, 80, 0, 0.009, 0, 0.017, -0.0, 0, 0.1, 39.12, 4.92, 0, 0.0, 85, 0, 0.009, 0, 0.017, -0.0, 0, 0.1, 26.88, 4.92, 0, 0.0, 85, 0, 0.009, 0, 0.017, -0.0, 0, 0.1, 39.12, 4.92, 0, 0.0, 90, 0, 0.009, 0, 0.017, -0.0, 0, 0.1, 26.88, 4.92, 0, 0.0, 90, 0, 0.009, 0, 0.017, -0.0, 0, 0.1, 39.12, 4.92, 0, 0.0, 110, 0, 0.009, 0, 0.017, -0.0, 0, 0.1, 26.88, 4.92, 0, 0.0, 110, 0, 0.009, 0, 0.017, -0.0, 0, 0.1, 39.12, 4.92, 0, 0.0, 115, 0, 0.009, 0, 0.017, -0.0, 0, 0.1, 26.88, 4.92, 0, 0.0, 115, 0, 0.009, 0, 0.017, -0.0, 0, 0.1, 39.12, 4.92, 0, 0.0, 120, 0, 0.009, 0, 0.017, -0.0, 0, 0.1, 26.88, 4.92, 0, 0.0, 120, 0, 0.009, 0, 0.017, -0.0, 0, 0.1, 39.12, 4.92, 0, 0.0, 125, 0, 0.009, 0, 0.017, -0.0, 0, 0.1, 26.88, 4.92, 0, 0.0, 125, 0, 0.009, 0, 0.017, -0.0, 0, 0.1, 39.12, 0.46, 0.0, 0.0, 127.77, 0.0, 0.009, 0.0, 0.017, 0.0, 0.0, 0.1, 26.88, 0.46, 0.0, 0.0, 127.77, 0.0, 0.009, 0.0, 0.017, 0.0, 0.0, 0.1, 39.12, 0.52, 0, 0.0, 95, 0, 0.009, 0, 0.025, -0.0, 0, 1.7, 26, 0.52, 0, 0.0, 96, 0, 0.009, 0, 0.025, -0.0, 0, 1.7, 26, 0.52, 0, 0.0, 97, 0, 0.009, 0, 0.025, -0.0, 0, 1.7, 26, 0.52, 0, 0.0, 98, 0, 0.009, 0, 0.025, -0.0, 0, 1.7, 26, 0.52, 0, 0.0, 99, 0, 0.009, 0, 0.025, -0.0, 0, 1.7, 26, 0.52, 0, 0.0, 100, 0, 0.009, 0, 0.025, -0.0, 0, 1.7, 26, 0.52, 0, 0.0, 101, 0, 0.009, 0, 0.025, -0.0, 0, 1.7, 26, 0.52, 0, 0.0, 102, 0, 0.009, 0, 0.025, -0.0, 0, 1.7, 26, 0.52, 0, 0.0, 103, 0, 0.009, 0, 0.025, -0.0, 0, 1.7, 26)
+
+[sub_resource type="MultiMesh" id="Batch004"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 2
+buffer = PackedFloat32Array(8.5, 0.0, 0.0, 68.25, 0.0, 0.62, 0.0, 5.04515, 0.0, 0.0, 0.09, 17.23, 4.67, 0, 0.0, 67.4, 0, 0.51, 0, 3.16, -0.0, 0, 0.09, 21.39)
+
+[sub_resource type="MultiMesh" id="Batch005"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 1
+buffer = PackedFloat32Array(28.0, 0.0, 0.0, 78.0, 0.0, 0.6, 0.0, -0.17, 0.0, 0.0, 22.0, 53.0)
+
+[sub_resource type="MultiMesh" id="Batch006"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 1
+buffer = PackedFloat32Array(25.4, 0.0, 0.0, 76.7, 0.0, 0.6, 0.0, -0.167, 0.0, 0.0, 16.8, 53.0)
+
+[sub_resource type="MultiMesh" id="Batch007"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 1
+buffer = PackedFloat32Array(0.8896, 0.0, 0.0, 64.4448, 0.0, 7.38693, 0.0, 3.69346, 0.0, 0.0, 13.45, 53.49614)
+
+[sub_resource type="MultiMesh" id="Batch008"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 51
+buffer = PackedFloat32Array(1.0596, 0.0, 0.0, 64.5298, 0.0, 0.42, 0.0, 0.21, 0.0, 0.0, 13.7, 53.49614, 0.085, 0, 0.0, 64.9196, 0, 1.47, 0, 1.30502, -0.0, 0, 1.07, 48.92114, 0.085, 0, 0.0, 64.9196, 0, 1.47, 0, 1.30502, -0.0, 0, 1.07, 51.97114, 0.085, 0, 0.0, 64.9196, 0, 1.47, 0, 1.30502, -0.0, 0, 1.07, 55.02114, 0.085, 0, 0.0, 64.9196, 0, 1.47, 0, 1.30502, -0.0, 0, 1.07, 58.07114, 0.085, 0, 0.0, 64.9196, 0, 1.47, 0, 3.76733, -0.0, 0, 1.07, 48.92114, 0.085, 0, 0.0, 64.9196, 0, 1.47, 0, 3.76733, -0.0, 0, 1.07, 51.97114, 0.085, 0, 0.0, 64.9196, 0, 1.47, 0, 3.76733, -0.0, 0, 1.07, 55.02114, 0.085, 0, 0.0, 64.9196, 0, 1.47, 0, 3.76733, -0.0, 0, 1.07, 58.07114, 0.085, 0, 0.0, 64.9196, 0, 1.47, 0, 6.22964, -0.0, 0, 1.07, 48.92114, 0.085, 0, 0.0, 64.9196, 0, 1.47, 0, 6.22964, -0.0, 0, 1.07, 51.97114, 0.085, 0, 0.0, 64.9196, 0, 1.47, 0, 6.22964, -0.0, 0, 1.07, 55.02114, 0.085, 0, 0.0, 64.9196, 0, 1.47, 0, 6.22964, -0.0, 0, 1.07, 58.07114, 15.69, 0, 0.0, 79.88477, 0, 0.42, 0, 0.21, -0.0, 0, 13.7, 52.86346, 1.44, 0, 0.0, 75.37006, 0, 1.7, 0, 1.73818, -0.0, 0, 0.12, 46.11146, 1.52, 0, 0.0, 75.37006, 0, 0.09, 0, 0.95818, -0.0, 0, 0.22, 46.04146, 1.44, 0, 0.0, 84.39948, 0, 1.7, 0, 1.73818, -0.0, 0, 0.12, 46.11146, 1.52, 0, 0.0, 84.39948, 0, 0.09, 0, 0.95818, -0.0, 0, 0.22, 46.04146, 0.085, 0, 0.0, 72.17977, 0, 1.47, 0, 1.73818, -0.0, 0, 1.07, 48.28846, 0.085, 0, 0.0, 72.17977, 0, 1.47, 0, 1.73818, -0.0, 0, 1.07, 51.33846, 0.085, 0, 0.0, 72.17977, 0, 1.47, 0, 1.73818, -0.0, 0, 1.07, 54.38846, 0.085, 0, 0.0, 72.17977, 0, 1.47, 0, 1.73818, -0.0, 0, 1.07, 57.43846, 1.44, 0, 0.0, 75.37006, 0, 1.7, 0, 1.73818, -0.0, 0, 0.12, 59.61546, 1.52, 0, 0.0, 75.37006, 0, 0.09, 0, 0.95818, -0.0, 0, 0.22, 59.68546, 1.9, 0, 0.0, 79.88477, 0, 0.16, 0, 2.28, -0.0, 0, 1.25, 60.13846, 1.44, 0, 0.0, 84.39948, 0, 1.7, 0, 1.73818, -0.0, 0, 0.12, 59.61546, 1.52, 0, 0.0, 84.39948, 0, 0.09, 0, 0.95818, -0.0, 0, 0.22, 59.68546, 0.085, 0, 0.0, 87.58977, 0, 1.47, 0, 1.73818, -0.0, 0, 1.07, 48.28846, 0.085, 0, 0.0, 87.58977, 0, 1.47, 0, 1.73818, -0.0, 0, 1.07, 51.33846, 0.085, 0, 0.0, 87.58977, 0, 1.47, 0, 1.73818, -0.0, 0, 1.07, 54.38846, 0.085, 0, 0.0, 87.58977, 0, 1.47, 0, 1.73818, -0.0, 0, 1.07, 57.43846, 1.44, 0, 0.0, 75.37006, 0, 1.7, 0, 5.01775, -0.0, 0, 0.12, 46.11146, 1.52, 0, 0.0, 75.37006, 0, 0.09, 0, 4.23775, -0.0, 0, 0.22, 46.04146, 1.44, 0, 0.0, 79.88477, 0, 1.7, 0, 5.01775, -0.0, 0, 0.12, 46.11146, 1.52, 0, 0.0, 79.88477, 0, 0.09, 0, 4.23775, -0.0, 0, 0.22, 46.04146, 1.44, 0, 0.0, 84.39948, 0, 1.7, 0, 5.01775, -0.0, 0, 0.12, 46.11146, 1.52, 0, 0.0, 84.39948, 0, 0.09, 0, 4.23775, -0.0, 0, 0.22, 46.04146, 0.085, 0, 0.0, 72.17977, 0, 1.47, 0, 5.01775, -0.0, 0, 1.07, 48.28846, 0.085, 0, 0.0, 72.17977, 0, 1.47, 0, 5.01775, -0.0, 0, 1.07, 51.33846, 0.085, 0, 0.0, 72.17977, 0, 1.47, 0, 5.01775, -0.0, 0, 1.07, 54.38846, 0.085, 0, 0.0, 72.17977, 0, 1.47, 0, 5.01775, -0.0, 0, 1.07, 57.43846, 1.44, 0, 0.0, 75.37006, 0, 1.7, 0, 5.01775, -0.0, 0, 0.12, 59.61546, 1.52, 0, 0.0, 75.37006, 0, 0.09, 0, 4.23775, -0.0, 0, 0.22, 59.68546, 1.44, 0, 0.0, 79.88477, 0, 1.7, 0, 5.01775, -0.0, 0, 0.12, 59.61546, 1.52, 0, 0.0, 79.88477, 0, 0.09, 0, 4.23775, -0.0, 0, 0.22, 59.68546, 1.44, 0, 0.0, 84.39948, 0, 1.7, 0, 5.01775, -0.0, 0, 0.12, 59.61546, 1.52, 0, 0.0, 84.39948, 0, 0.09, 0, 4.23775, -0.0, 0, 0.22, 59.68546, 0.085, 0, 0.0, 87.58977, 0, 1.47, 0, 5.01775, -0.0, 0, 1.07, 48.28846, 0.085, 0, 0.0, 87.58977, 0, 1.47, 0, 5.01775, -0.0, 0, 1.07, 51.33846, 0.085, 0, 0.0, 87.58977, 0, 1.47, 0, 5.01775, -0.0, 0, 1.07, 54.38846, 0.085, 0, 0.0, 87.58977, 0, 1.47, 0, 5.01775, -0.0, 0, 1.07, 57.43846)
+
+[sub_resource type="MultiMesh" id="Batch009"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 4
+buffer = PackedFloat32Array(1.1146, 0.0, 0.0, 64.5573, 0.0, 0.2, 0.0, 7.47193, 0.0, 0.0, 13.9, 53.49614, 15.8, 0, 0.0, 79.88477, 0, 0.2, 0, 6.64415, -0.0, 0, 13.9, 52.86346, 2.5, 0, 0.0, 67, 0, 0.32, 0, 0.16, -0.0, 0, 2.5, 62.1, 2.5, 0, 0.0, 82, 0, 0.32, 0, 0.16, -0.0, 0, 2.5, 62.1)
+
+[sub_resource type="MultiMesh" id="Batch010"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 4
+buffer = PackedFloat32Array(0.9846, 0.0, 0.0, 64.4923, 0.0, 0.18, 0.0, 7.58693, 0.0, 0.0, 13.66, 53.49614, 15.54, 0, 0.0, 79.88477, 0, 0.18, 0, 6.75915, -0.0, 0, 13.66, 52.86346, 1.8, 0, 0.0, 76.35427, 0, 1.2, 0, 7.27915, -0.0, 0, 1.6, 54.47746, 1.8, 0, 0.0, 83.41527, 0, 1.2, 0, 7.27915, -0.0, 0, 1.6, 54.47746)
+
+[sub_resource type="MultiMesh" id="Batch011"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 2
+buffer = PackedFloat32Array(1.2, 0, 0.0, 79.88477, 0, 2.04, 0, 1.04, -0.0, 0, 0.075, 46.11346, 1.2, 0, 0.0, 79.88477, 0, 2.04, 0, 1.04, -0.0, 0, 0.075, 59.61346)
+
+[sub_resource type="MultiMesh" id="Batch012"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 38
+buffer = PackedFloat32Array(0.023, 0, 0.0, 64.9716, 0, 1.34, 0, 1.32502, -0.0, 0, 0.93, 48.92114, 0.023, 0, 0.0, 64.9716, 0, 1.34, 0, 1.32502, -0.0, 0, 0.93, 51.97114, 0.023, 0, 0.0, 64.9716, 0, 1.34, 0, 1.32502, -0.0, 0, 0.93, 55.02114, 0.023, 0, 0.0, 64.9716, 0, 1.34, 0, 1.32502, -0.0, 0, 0.93, 58.07114, 0.023, 0, 0.0, 64.9716, 0, 1.34, 0, 3.78733, -0.0, 0, 0.93, 48.92114, 0.023, 0, 0.0, 64.9716, 0, 1.34, 0, 3.78733, -0.0, 0, 0.93, 51.97114, 0.023, 0, 0.0, 64.9716, 0, 1.34, 0, 3.78733, -0.0, 0, 0.93, 55.02114, 0.023, 0, 0.0, 64.9716, 0, 1.34, 0, 3.78733, -0.0, 0, 0.93, 58.07114, 0.023, 0, 0.0, 64.9716, 0, 1.34, 0, 6.24964, -0.0, 0, 0.93, 48.92114, 0.023, 0, 0.0, 64.9716, 0, 1.34, 0, 6.24964, -0.0, 0, 0.93, 51.97114, 0.023, 0, 0.0, 64.9716, 0, 1.34, 0, 6.24964, -0.0, 0, 0.93, 55.02114, 0.023, 0, 0.0, 64.9716, 0, 1.34, 0, 6.24964, -0.0, 0, 0.93, 58.07114, 1.27, 0, 0.0, 75.37006, 0, 1.48, 0, 1.77318, -0.0, 0, 0.026, 46.04446, 1.27, 0, 0.0, 84.39948, 0, 1.48, 0, 1.77318, -0.0, 0, 0.026, 46.04446, 0.023, 0, 0.0, 72.12777, 0, 1.34, 0, 1.75818, -0.0, 0, 0.93, 48.28846, 0.023, 0, 0.0, 72.12777, 0, 1.34, 0, 1.75818, -0.0, 0, 0.93, 51.33846, 0.023, 0, 0.0, 72.12777, 0, 1.34, 0, 1.75818, -0.0, 0, 0.93, 54.38846, 0.023, 0, 0.0, 72.12777, 0, 1.34, 0, 1.75818, -0.0, 0, 0.93, 57.43846, 1.27, 0, 0.0, 75.37006, 0, 1.48, 0, 1.77318, -0.0, 0, 0.026, 59.68246, 1.27, 0, 0.0, 84.39948, 0, 1.48, 0, 1.77318, -0.0, 0, 0.026, 59.68246, 0.023, 0, 0.0, 87.64177, 0, 1.34, 0, 1.75818, -0.0, 0, 0.93, 48.28846, 0.023, 0, 0.0, 87.64177, 0, 1.34, 0, 1.75818, -0.0, 0, 0.93, 51.33846, 0.023, 0, 0.0, 87.64177, 0, 1.34, 0, 1.75818, -0.0, 0, 0.93, 54.38846, 0.023, 0, 0.0, 87.64177, 0, 1.34, 0, 1.75818, -0.0, 0, 0.93, 57.43846, 1.27, 0, 0.0, 75.37006, 0, 1.48, 0, 5.05275, -0.0, 0, 0.026, 46.04446, 1.27, 0, 0.0, 79.88477, 0, 1.48, 0, 5.05275, -0.0, 0, 0.026, 46.04446, 1.27, 0, 0.0, 84.39948, 0, 1.48, 0, 5.05275, -0.0, 0, 0.026, 46.04446, 0.023, 0, 0.0, 72.12777, 0, 1.34, 0, 5.03775, -0.0, 0, 0.93, 48.28846, 0.023, 0, 0.0, 72.12777, 0, 1.34, 0, 5.03775, -0.0, 0, 0.93, 51.33846, 0.023, 0, 0.0, 72.12777, 0, 1.34, 0, 5.03775, -0.0, 0, 0.93, 54.38846, 0.023, 0, 0.0, 72.12777, 0, 1.34, 0, 5.03775, -0.0, 0, 0.93, 57.43846, 1.27, 0, 0.0, 75.37006, 0, 1.48, 0, 5.05275, -0.0, 0, 0.026, 59.68246, 1.27, 0, 0.0, 79.88477, 0, 1.48, 0, 5.05275, -0.0, 0, 0.026, 59.68246, 1.27, 0, 0.0, 84.39948, 0, 1.48, 0, 5.05275, -0.0, 0, 0.026, 59.68246, 0.023, 0, 0.0, 87.64177, 0, 1.34, 0, 5.03775, -0.0, 0, 0.93, 48.28846, 0.023, 0, 0.0, 87.64177, 0, 1.34, 0, 5.03775, -0.0, 0, 0.93, 51.33846, 0.023, 0, 0.0, 87.64177, 0, 1.34, 0, 5.03775, -0.0, 0, 0.93, 54.38846, 0.023, 0, 0.0, 87.64177, 0, 1.34, 0, 5.03775, -0.0, 0, 0.93, 57.43846)
+
+[sub_resource type="MultiMesh" id="Batch013"]
+transform_format = 1
+mesh = SubResource("Cylinder")
+instance_count = 2
+buffer = PackedFloat32Array(1.05, 0, 0.0, 76.35427, 0, 0.18, 0, 7.95915, -0.0, 0, 1.05, 54.47746, 1.05, 0, 0.0, 83.41527, 0, 0.18, 0, 7.95915, -0.0, 0, 1.05, 54.47746)
+
+[sub_resource type="MultiMesh" id="Batch014"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 1
+buffer = PackedFloat32Array(15.35, 0, 0.0, 79.88477, 0, 6.55915, 0, 3.27958, -0.0, 0, 13.45, 52.86346)
+
+[sub_resource type="MultiMesh" id="Batch015"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 2
+buffer = PackedFloat32Array(2.25, 0, 0.0, 67, 0, 0.04, 0, 0.329, -0.0, 0, 2.25, 62.1, 2.25, 0, 0.0, 82, 0, 0.04, 0, 0.329, -0.0, 0, 2.25, 62.1)
+
+[sub_resource type="MultiMesh" id="Batch016"]
+transform_format = 1
+mesh = SubResource("Cylinder")
+instance_count = 2
+buffer = PackedFloat32Array(0.25, 0, 0.0, 67, 0, 2.55568, 0, 1.36699, -0.0, 0, 0.25, 62.1, 0.25, 0, 0.0, 82, 0, 2.7492, 0, 1.4705, -0.0, 0, 0.25, 62.1)
+
+[sub_resource type="MultiMesh" id="Batch017"]
+transform_format = 1
+mesh = SubResource("Foliage")
+instance_count = 4
+buffer = PackedFloat32Array(2.2, 0, 0.0, 67, 0, 2.5, 0, 3.03115, -0.0, 0, 2.27, 62.1, 2.002, 0, 0.0, 66.24, 0, 2.275, 0, 2.70426, -0.0, 0, 2.0657, 62.43, 2.2, 0, 0.0, 82, 0, 2.5, 0, 3.26068, -0.0, 0, 2.27, 62.1, 2.002, 0, 0.0, 81.24, 0, 2.275, 0, 2.90904, -0.0, 0, 2.0657, 62.43)
+
+[sub_resource type="MultiMesh" id="Batch018"]
+transform_format = 1
+mesh = SubResource("Foliage")
+instance_count = 6
+buffer = PackedFloat32Array(1.936, 0, 0.0, 67.52, 0, 2.2, 0, 2.64483, -0.0, 0, 1.9976, 62.5, 1.672, 0, 0.0, 67.67, 0, 1.9, 0, 2.73398, -0.0, 0, 1.7252, 61.47, 1.87, 0, 0.0, 66.55, 0, 2.125, 0, 3.26889, -0.0, 0, 1.9295, 61.53, 1.936, 0, 0.0, 82.52, 0, 2.2, 0, 2.8451, -0.0, 0, 1.9976, 62.5, 1.672, 0, 0.0, 82.67, 0, 1.9, 0, 2.941, -0.0, 0, 1.7252, 61.47, 1.87, 0, 0.0, 81.55, 0, 2.125, 0, 3.51642, -0.0, 0, 1.9295, 61.53)
+
+[sub_resource type="MultiMesh" id="Batch019"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 1
+buffer = PackedFloat32Array(21.0, 0.0, 0.0, 117.5, 0.0, 0.6, 0.0, -0.17, 0.0, 0.0, 22.0, 53.0)
+
+[sub_resource type="MultiMesh" id="Batch020"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 1
+buffer = PackedFloat32Array(18.4, 0.0, 0.0, 118.8, 0.0, 0.6, 0.0, -0.167, 0.0, 0.0, 16.8, 53.0)
+
+[sub_resource type="MultiMesh" id="Batch021"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 2
+buffer = PackedFloat32Array(2.5, 0, 0.0, 112, 0, 0.32, 0, 0.16, -0.0, 0, 2.5, 62.1, 2.25, 0.0, 0.0, 126.875, 0.0, 0.32, 0.0, 0.16, 0.0, 0.0, 2.5, 62.1)
+
+[sub_resource type="MultiMesh" id="Batch022"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 2
+buffer = PackedFloat32Array(2.25, 0, 0.0, 112, 0, 0.04, 0, 0.329, -0.0, 0, 2.25, 62.1, 2.125, 0.0, 0.0, 126.9375, 0.0, 0.04, 0.0, 0.329, 0.0, 0.0, 2.25, 62.1)
+
+[sub_resource type="MultiMesh" id="Batch023"]
+transform_format = 1
+mesh = SubResource("Cylinder")
+instance_count = 2
+buffer = PackedFloat32Array(0.25, 0, 0.0, 112, 0, 2.61928, 0, 1.40101, -0.0, 0, 0.25, 62.1, 0.25, 0, 0.0, 127, 0, 2.82074, 0, 1.50877, -0.0, 0, 0.25, 62.1)
+
+[sub_resource type="MultiMesh" id="Batch024"]
+transform_format = 1
+mesh = SubResource("Foliage")
+instance_count = 4
+buffer = PackedFloat32Array(2.2, 0, 0.0, 112, 0, 2.5, 0, 3.10659, -0.0, 0, 2.27, 62.1, 2.002, 0, 0.0, 111.24, 0, 2.275, 0, 2.77156, -0.0, 0, 2.0657, 62.43, 2.1, 0.0, 0.0, 126.95, 0.0, 2.5, 0.0, 3.34552, 0.0, 0.0, 2.27, 62.1, 2.002, 0, 0.0, 126.24, 0, 2.275, 0, 2.98473, -0.0, 0, 2.0657, 62.43)
+
+[sub_resource type="MultiMesh" id="Batch025"]
+transform_format = 1
+mesh = SubResource("Foliage")
+instance_count = 6
+buffer = PackedFloat32Array(1.936, 0, 0.0, 112.52, 0, 2.2, 0, 2.71065, -0.0, 0, 1.9976, 62.5, 1.672, 0, 0.0, 112.67, 0, 1.9, 0, 2.80202, -0.0, 0, 1.7252, 61.47, 1.87, 0, 0.0, 111.55, 0, 2.125, 0, 3.35024, -0.0, 0, 1.9295, 61.53, 1.448, 0.0, 0.0, 127.276, 0.0, 2.2, 0.0, 2.91913, 0.0, 0.0, 1.9976, 62.5, 1.166, 0.0, 0.0, 127.417, 0.0, 1.9, 0.0, 3.01753, 0.0, 0.0, 1.7252, 61.47, 1.87, 0, 0.0, 126.55, 0, 2.125, 0, 3.60792, -0.0, 0, 1.9295, 61.53)
+
+[sub_resource type="MultiMesh" id="Batch026"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 1
+buffer = PackedFloat32Array(15.25, 0.0, 0.0, 71.625, 0.0, 0.6, 0.0, -0.17, 0.0, 0.0, 19.2, 10.1)
+
+[sub_resource type="MultiMesh" id="Batch027"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 1
+buffer = PackedFloat32Array(12.25, 0.0, 0.0, 70.125, 0.0, 7.88304, 0.0, 3.94152, 0.0, 0.0, 14.0, 10.1)
+
+[sub_resource type="MultiMesh" id="Batch028"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 1
+buffer = PackedFloat32Array(12.615, 0.0, 0.0, 70.3075, 0.0, 0.38, 0.0, 8.07304, 0.0, 0.0, 14.72, 10.1)
+
+[sub_resource type="MultiMesh" id="Batch029"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 1
+buffer = PackedFloat32Array(12.31, 0.0, 0.0, 70.155, 0.0, 0.62, 0.0, 0.31, 0.0, 0.0, 14.1, 10.1)
+
+[sub_resource type="MultiMesh" id="Batch030"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 46
+buffer = PackedFloat32Array(0.055, 0, 0.0, 64.25, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 3.065, 0.055, 0, 0.0, 65.15, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 3.065, 0.055, 0, 0.0, 66.05, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 3.065, 0.055, 0, 0.0, 66.95, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 3.065, 0.055, 0, 0.0, 67.85, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 3.065, 0.055, 0, 0.0, 68.75, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 3.065, 0.055, 0, 0.0, 69.65, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 3.065, 0.055, 0, 0.0, 70.55, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 3.065, 0.055, 0, 0.0, 71.45, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 3.065, 0.055, 0, 0.0, 72.35, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 3.065, 0.055, 0, 0.0, 73.25, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 3.065, 0.055, 0, 0.0, 74.15, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 3.065, 0.055, 0, 0.0, 75.05, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 3.065, 0.055, 0, 0.0, 64.25, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 17.135, 0.055, 0, 0.0, 65.15, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 17.135, 0.055, 0, 0.0, 66.05, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 17.135, 0.055, 0, 0.0, 66.95, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 17.135, 0.055, 0, 0.0, 67.85, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 17.135, 0.055, 0, 0.0, 68.75, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 17.135, 0.055, 0, 0.0, 69.65, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 17.135, 0.055, 0, 0.0, 70.55, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 17.135, 0.055, 0, 0.0, 71.45, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 17.135, 0.055, 0, 0.0, 72.35, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 17.135, 0.055, 0, 0.0, 73.25, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 17.135, 0.055, 0, 0.0, 74.15, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 17.135, 0.055, 0, 0.0, 75.05, 0, 7.09474, 0, 4.17801, -0.0, 0, 0.075, 17.135, 1.115, 0.0, 0.0, 64.5575, 0.0, 0.035, 0.0, 0.3, 0.0, 0.0, 0.02, 17.234, 1.115, 0.0, 0.0, 64.5575, 0.0, 0.035, 0.0, 0.64, 0.0, 0.0, 0.02, 17.234, 1.115, 0.0, 0.0, 64.5575, 0.0, 0.035, 0.0, 0.98, 0.0, 0.0, 0.02, 17.234, 1.115, 0.0, 0.0, 64.5575, 0.0, 0.035, 0.0, 1.32, 0.0, 0.0, 0.02, 17.234, 1.115, 0.0, 0.0, 64.5575, 0.0, 0.035, 0.0, 1.66, 0.0, 0.0, 0.02, 17.234, 1.115, 0.0, 0.0, 64.5575, 0.0, 0.035, 0.0, 2.0, 0.0, 0.0, 0.02, 17.234, 1.115, 0.0, 0.0, 64.5575, 0.0, 0.035, 0.0, 2.34, 0.0, 0.0, 0.02, 17.234, 1.115, 0.0, 0.0, 64.5575, 0.0, 0.035, 0.0, 2.68, 0.0, 0.0, 0.02, 17.234, 1.115, 0.0, 0.0, 64.5575, 0.0, 0.035, 0.0, 3.02, 0.0, 0.0, 0.02, 17.234, 1.115, 0.0, 0.0, 64.5575, 0.0, 0.035, 0.0, 3.36, 0.0, 0.0, 0.02, 17.234, 3.47, 0, 0.0, 72.455, 0, 0.035, 0, 0.3, -0.0, 0, 0.02, 17.234, 3.47, 0, 0.0, 72.455, 0, 0.035, 0, 0.64, -0.0, 0, 0.02, 17.234, 3.47, 0, 0.0, 72.455, 0, 0.035, 0, 0.98, -0.0, 0, 0.02, 17.234, 3.47, 0, 0.0, 72.455, 0, 0.035, 0, 1.32, -0.0, 0, 0.02, 17.234, 3.47, 0, 0.0, 72.455, 0, 0.035, 0, 1.66, -0.0, 0, 0.02, 17.234, 3.47, 0, 0.0, 72.455, 0, 0.035, 0, 2.0, -0.0, 0, 0.02, 17.234, 3.47, 0, 0.0, 72.455, 0, 0.035, 0, 2.34, -0.0, 0, 0.02, 17.234, 3.47, 0, 0.0, 72.455, 0, 0.035, 0, 2.68, -0.0, 0, 0.02, 17.234, 3.47, 0, 0.0, 72.455, 0, 0.035, 0, 3.02, -0.0, 0, 0.02, 17.234, 3.47, 0, 0.0, 72.455, 0, 0.035, 0, 3.36, -0.0, 0, 0.02, 17.234)
+
+[sub_resource type="MultiMesh" id="Batch031"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 6
+buffer = PackedFloat32Array(0.7, 0.0, 0.0, 64.35, 0.0, 0.62, 0.0, 6.10936, 0.0, 0.0, 0.08, 3.029, 1.9, 0, 0.0, 67.75, 0, 0.62, 0, 6.10936, -0.0, 0, 0.08, 3.029, 1.9, 0, 0.0, 71.75, 0, 0.62, 0, 6.10936, -0.0, 0, 0.08, 3.029, 0.7, 0.0, 0.0, 64.35, 0.0, 0.62, 0.0, 6.10936, 0.0, 0.0, 0.08, 17.171, 1.9, 0, 0.0, 67.75, 0, 0.62, 0, 6.10936, -0.0, 0, 0.08, 17.171, 1.9, 0, 0.0, 71.75, 0, 0.62, 0, 6.10936, -0.0, 0, 0.08, 17.171)
+
+[sub_resource type="MultiMesh" id="Batch032"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 2
+buffer = PackedFloat32Array(1.13, 0.0, 0.0, 64.565, 0.0, 3.71, 0.0, 1.91, 0.0, 0.0, 0.115, 17.17, 3.5, 0, 0.0, 72.455, 0, 3.71, 0, 1.91, -0.0, 0, 0.115, 17.17)
+
+[sub_resource type="MultiMesh" id="Batch033"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 3
+buffer = PackedFloat32Array(0.17, 0, 0.0, 65.29, 0, 1.1, 0, 0.55, -0.0, 0, 0.17, 17.5, 0.17, 0, 0.0, 70.545, 0, 1.1, 0, 0.55, -0.0, 0, 0.17, 17.5, 0.17, 0, 0.0, 74.365, 0, 1.1, 0, 0.55, -0.0, 0, 0.17, 17.5)
+
+[sub_resource type="MultiMesh" id="Batch034"]
+transform_format = 1
+mesh = SubResource("Cylinder")
+instance_count = 1
+buffer = PackedFloat32Array(0.56, 0, 0.0, 72.785, 0, 2.4, 0, 9.24304, -0.0, 0, 0.56, 11.5)
+
+[sub_resource type="MultiMesh" id="Batch035"]
+transform_format = 1
+mesh = SubResource("Cylinder")
+instance_count = 1
+buffer = PackedFloat32Array(0.66, 0, 0.0, 72.785, 0, 0.16, 0, 10.46304, -0.0, 0, 0.66, 11.5)
+
+[sub_resource type="MultiMesh" id="Batch036"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 1
+buffer = PackedFloat32Array(0.055, 0, 0.0, 113.244, 0, 2.32, 0, 1.27, -0.0, 0, 5.7904, 12)
+
+[sub_resource type="MultiMesh" id="Batch037"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 50
+buffer = PackedFloat32Array(0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 9.1048, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 9.382, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 9.6592, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 9.9364, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 10.2136, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 10.4908, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 10.768, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 11.0452, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 11.3224, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 11.5996, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 11.8768, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 12.154, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 12.4312, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 12.7084, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 12.9856, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 13.2628, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 13.54, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 13.8172, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 14.0944, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 14.3716, 0.04, 0, 0.0, 113.265, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 14.6488, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 9.1048, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 9.382, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 9.6592, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 9.9364, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 10.2136, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 10.4908, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 10.768, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 11.0452, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 11.3224, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 11.5996, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 11.8768, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 12.154, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 12.4312, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 12.7084, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 12.9856, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 13.2628, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 13.54, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 13.8172, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 14.0944, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 14.3716, 0.04, 0, 0.0, 117.365, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 14.6488, 0.04, 0, 0.0, 127.115, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 3.3438, 0.04, 0, 0.0, 127.115, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 3.66009, 0.04, 0, 0.0, 127.115, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 3.97637, 0.04, 0, 0.0, 127.115, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 4.29266, 0.04, 0, 0.0, 127.115, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 4.60894, 0.04, 0, 0.0, 127.115, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 4.92523, 0.04, 0, 0.0, 127.115, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 5.24151, 0.04, 0, 0.0, 127.115, 0, 2.22, 0, 1.25, -0.0, 0, 0.035, 5.5578)
+
+[sub_resource type="MultiMesh" id="Batch038"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 2
+buffer = PackedFloat32Array(2.2632, 0, 0.0, 116.1, 0, 2.26, 0, 3.83, -0.0, 0, 0.036, 15.095, 0.055, 0, 0.0, 117.344, 0, 2.32, 0, 1.27, -0.0, 0, 5.7904, 12)
+
+[sub_resource type="MultiMesh" id="Batch039"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 1
+buffer = PackedFloat32Array(0.055, 0, 0.0, 127.094, 0, 2.32, 0, 1.27, -0.0, 0, 2.3124, 4.5)
+
+[sub_resource type="MultiMesh" id="Batch040"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 1
+buffer = PackedFloat32Array(18.5, 0, 0.0, 74.05, 0, 0.056, 0, -0.025, -0.0, 0, 8.35, 23.475)
+
+[sub_resource type="MultiMesh" id="Batch041"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 9
+buffer = PackedFloat32Array(0.081, 0, 0.0, 67.2, 0, 0.01, 0, 0.025, -0.0, 0, 4.8, 24.8, 0.081, 0, 0.0, 69.93, 0, 0.01, 0, 0.025, -0.0, 0, 4.8, 24.8, 0.081, 0, 0.0, 72.66, 0, 0.01, 0, 0.025, -0.0, 0, 4.8, 24.8, 0.081, 0, 0.0, 75.39, 0, 0.01, 0, 0.025, -0.0, 0, 4.8, 24.8, 0.081, 0, 0.0, 78.12, 0, 0.01, 0, 0.025, -0.0, 0, 4.8, 24.8, 0.081, 0, 0.0, 80.85, 0, 0.01, 0, 0.025, -0.0, 0, 4.8, 24.8, 13.65, 0, 0.0, 74.025, 0, 0.01, 0, 0.025, -0.0, 0, 0.085, 27.17, 0.9, 0, 0.0, 66.2, 0, 0.04, 0, 3.14, -0.0, 0, 0.15, 19.01, 0.9, 0, 0.0, 68.6, 0, 0.04, 0, 3.14, -0.0, 0, 0.15, 19.01)
+
+[sub_resource type="MultiMesh" id="Batch042"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 5
+buffer = PackedFloat32Array(0.15, 0, 0.0, 65.22, 0, 3.24, 0, 1.62, -0.0, 0, 0.15, 18.19, 0.15, 0, 0.0, 65.22, 0, 3.24, 0, 1.62, -0.0, 0, 0.15, 21.09, 0.15, 0, 0.0, 69.58, 0, 3.24, 0, 1.62, -0.0, 0, 0.15, 18.19, 0.15, 0, 0.0, 69.58, 0, 3.24, 0, 1.62, -0.0, 0, 0.15, 21.09, 4.8, 0, 0.0, 67.4, 0, 0.25, 0, 3.3, -0.0, 0, 3.32, 19.64)
+
+[sub_resource type="MultiMesh" id="Batch043"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 4
+buffer = PackedFloat32Array(0.25, 0, 0.0, 65.22, 0, 0.25, 0, 0.125, -0.0, 0, 0.25, 18.19, 0.25, 0, 0.0, 65.22, 0, 0.25, 0, 0.125, -0.0, 0, 0.25, 21.09, 0.25, 0, 0.0, 69.58, 0, 0.25, 0, 0.125, -0.0, 0, 0.25, 18.19, 0.25, 0, 0.0, 69.58, 0, 0.25, 0, 0.125, -0.0, 0, 0.25, 21.09)
+
+[sub_resource type="MultiMesh" id="Batch044"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 2
+buffer = PackedFloat32Array(0.17, 0, 0.0, 65.22, 0, 0.3, 0, 3.12, -0.0, 0, 3.32, 19.64, 0.17, 0, 0.0, 69.58, 0, 0.3, 0, 3.12, -0.0, 0, 3.32, 19.64)
+
+[sub_resource type="MultiMesh" id="Batch045"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 12
+buffer = PackedFloat32Array(0.27, 0, 0.0, 65.2, 0, 0.09, 0, 3.46, -0.0, 0, 3.52, 19.64, 0.27, 0, 0.0, 65.6, 0, 0.09, 0, 3.46, -0.0, 0, 3.52, 19.64, 0.27, 0, 0.0, 66.0, 0, 0.09, 0, 3.46, -0.0, 0, 3.52, 19.64, 0.27, 0, 0.0, 66.4, 0, 0.09, 0, 3.46, -0.0, 0, 3.52, 19.64, 0.27, 0, 0.0, 66.8, 0, 0.09, 0, 3.46, -0.0, 0, 3.52, 19.64, 0.27, 0, 0.0, 67.2, 0, 0.09, 0, 3.46, -0.0, 0, 3.52, 19.64, 0.27, 0, 0.0, 67.6, 0, 0.09, 0, 3.46, -0.0, 0, 3.52, 19.64, 0.27, 0, 0.0, 68.0, 0, 0.09, 0, 3.46, -0.0, 0, 3.52, 19.64, 0.27, 0, 0.0, 68.4, 0, 0.09, 0, 3.46, -0.0, 0, 3.52, 19.64, 0.27, 0, 0.0, 68.8, 0, 0.09, 0, 3.46, -0.0, 0, 3.52, 19.64, 0.27, 0, 0.0, 69.2, 0, 0.09, 0, 3.46, -0.0, 0, 3.52, 19.64, 0.27, 0, 0.0, 69.6, 0, 0.09, 0, 3.46, -0.0, 0, 3.52, 19.64)
+
+[node name="Chunk_1_0" type="Node3D"]
+
+[node name="VerticalLamp100_N4" parent="." instance=ExtResource("Lamp")]
+position = Vector3(106.2, 0.14, 6)
+rotation_degrees = Vector3(0, 90, 0)
+
+[node name="VerticalLamp100_30" parent="." instance=ExtResource("Lamp")]
+position = Vector3(106.2, 0.14, 40)
+rotation_degrees = Vector3(0, 90, 0)
+
+[node name="BoulevardLamp7" parent="." instance=ExtResource("Lamp")]
+position = Vector3(64, 0.13, 40.45)
+rotation_degrees = Vector3(0, 180, 0)
+
+[node name="BoulevardLamp8" parent="." instance=ExtResource("Lamp")]
+position = Vector3(126, 0.13, 40.45)
+rotation_degrees = Vector3(0, 180, 0)
+
+[node name="MarketPilotDumpster" parent="." instance=ExtResource("Dumpster")]
+position = Vector3(89.2, 0, 43.53)
+rotation_degrees = Vector3(0, 90, 0)
+
+[node name="MarketLighthouseBlock00" parent="." instance=ExtResource("Shop")]
+position = Vector3(121.56197688921738, 0.134, 53.59267414327039)
+scale = Vector3(1.35, 1.35, 1.35)
+
+[node name="MarketLighthouseBench" parent="." instance=ExtResource("Bench")]
+position = Vector3(109.3, 0, 43.76)
+
+[node name="PilotTransitStop" parent="." instance=ExtResource("Shelter")]
+position = Vector3(66, 0, 41.45)
+
+[node name="BondPermitAddress" type="Label3D" parent="."]
+position = Vector3(68.0, 5.045146810541692, 17.29)
+rotation_degrees = Vector3(0, 0, 0)
+pixel_size = 0.0068
+font_size = 48
+outline_size = 0
+modulate = Color(0.95, 0.89, 0.69, 1)
+text = "BONDED FREIGHT"
+cast_shadow = 0
+
+[node name="DepotContainer16" parent="." instance=ExtResource("Container")]
+position = Vector3(112, 0, 12)
+rotation_degrees = Vector3(0, 90, 0)
+
+[node name="DepotContainer17" parent="." instance=ExtResource("Container")]
+position = Vector3(116.1, 0, 12)
+rotation_degrees = Vector3(0, 90, 0)
+
+[node name="DepotContainerUpper17" parent="." instance=ExtResource("Container")]
+position = Vector3(116.1, 2.59, 12)
+rotation_degrees = Vector3(0, 90, 0)
+
+[node name="DepotContainer19" parent="." instance=ExtResource("Container")]
+position = Vector3(124, 0, 4.5)
+
+[node name="BondedExpressSign" type="Label3D" parent="."]
+position = Vector3(67.4, 3.16, 21.45)
+rotation_degrees = Vector3(0, 0, 0)
+pixel_size = 0.0068
+font_size = 48
+outline_size = 0
+modulate = Color(0.95, 0.89, 0.69, 1)
+text = "BONDED EXPRESS"
+cast_shadow = 0
+
+[node name="BondedExpressCart" parent="." instance=ExtResource("Pallet")]
+position = Vector3(66.07, 0, 19.2)
+
+[node name="BondedExpressBox" parent="." instance=ExtResource("Crates")]
+position = Vector3(69.03, 0, 19.46)
+rotation_degrees = Vector3(0, 90, 0)
+
+[node name="GroundConcreteUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch000")
+material_override = SubResource("Concrete")
+cast_shadow = 0
+
+[node name="RoadsAsphaltUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch001")
+material_override = SubResource("Asphalt")
+cast_shadow = 0
+
+[node name="RoadsPaintAmberUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch002")
+material_override = SubResource("PaintAmber")
+cast_shadow = 0
+
+[node name="RoadsPaintIvoryUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch003")
+material_override = SubResource("PaintIvory")
+cast_shadow = 0
+
+[node name="SignsDeepTealUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch004")
+material_override = SubResource("DeepTeal")
+cast_shadow = 1
+
+[node name="MarketPilotSidewalkUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch005")
+material_override = SubResource("Sidewalk")
+cast_shadow = 1
+
+[node name="MarketPilotPaversUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch006")
+material_override = SubResource("Pavers")
+cast_shadow = 1
+
+[node name="MarketPilotRedBrickUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch007")
+material_override = SubResource("RedBrick")
+cast_shadow = 1
+
+[node name="MarketPilotLimestoneUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch008")
+material_override = SubResource("Limestone")
+cast_shadow = 1
+
+[node name="MarketPilotConcreteEdgeUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch009")
+material_override = SubResource("ConcreteEdge")
+cast_shadow = 1
+
+[node name="MarketPilotRoofUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch010")
+material_override = SubResource("Roof")
+cast_shadow = 1
+
+[node name="MarketPilotDeepTealUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch011")
+material_override = SubResource("DeepTeal")
+cast_shadow = 1
+
+[node name="MarketPilotGlassUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch012")
+material_override = SubResource("Glass")
+cast_shadow = 0
+
+[node name="MarketPilotShutterCylinder" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch013")
+material_override = SubResource("Shutter")
+cast_shadow = 1
+
+[node name="MarketPilotOffWhiteUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch014")
+material_override = SubResource("OffWhite")
+cast_shadow = 1
+
+[node name="MarketPilotPlanterSoilUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch015")
+material_override = SubResource("PlanterSoil")
+cast_shadow = 0
+
+[node name="MarketPilotTrunkCylinder" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch016")
+material_override = SubResource("Trunk")
+cast_shadow = 1
+
+[node name="MarketPilotMossFoliage" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch017")
+material_override = SubResource("Moss")
+cast_shadow = 1
+
+[node name="MarketPilotLeafFoliage" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch018")
+material_override = SubResource("Leaf")
+cast_shadow = 1
+
+[node name="MarketLighthouseSidewalkUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch019")
+material_override = SubResource("Sidewalk")
+cast_shadow = 1
+
+[node name="MarketLighthousePaversUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch020")
+material_override = SubResource("Pavers")
+cast_shadow = 1
+
+[node name="MarketLighthouseConcreteEdgeUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch021")
+material_override = SubResource("ConcreteEdge")
+cast_shadow = 1
+
+[node name="MarketLighthousePlanterSoilUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch022")
+material_override = SubResource("PlanterSoil")
+cast_shadow = 0
+
+[node name="MarketLighthouseTrunkCylinder" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch023")
+material_override = SubResource("Trunk")
+cast_shadow = 1
+
+[node name="MarketLighthouseMossFoliage" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch024")
+material_override = SubResource("Moss")
+cast_shadow = 1
+
+[node name="MarketLighthouseLeafFoliage" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch025")
+material_override = SubResource("Leaf")
+cast_shadow = 1
+
+[node name="BondPermitSidewalkUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch026")
+material_override = SubResource("Sidewalk")
+cast_shadow = 1
+
+[node name="BondPermitStoneBlueUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch027")
+material_override = SubResource("StoneBlue")
+cast_shadow = 1
+
+[node name="BondPermitRoofUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch028")
+material_override = SubResource("Roof")
+cast_shadow = 1
+
+[node name="BondPermitLimestoneUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch029")
+material_override = SubResource("Limestone")
+cast_shadow = 1
+
+[node name="BondPermitShutterUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch030")
+material_override = SubResource("Shutter")
+cast_shadow = 1
+
+[node name="BondPermitGlassUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch031")
+material_override = SubResource("Glass")
+cast_shadow = 0
+
+[node name="BondPermitDeepTealUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch032")
+material_override = SubResource("DeepTeal")
+cast_shadow = 1
+
+[node name="BondPermitPaintAmberUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch033")
+material_override = SubResource("PaintAmber")
+cast_shadow = 0
+
+[node name="BondPermitShutterCylinder" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch034")
+material_override = SubResource("Shutter")
+cast_shadow = 1
+
+[node name="BondPermitLimestoneCylinder" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch035")
+material_override = SubResource("Limestone")
+cast_shadow = 1
+
+[node name="DepotTrimCeladonUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch036")
+material_override = SubResource("Celadon")
+cast_shadow = 1
+
+[node name="DepotTrimShutterUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch037")
+material_override = SubResource("Shutter")
+cast_shadow = 1
+
+[node name="DepotTrimRustUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch038")
+material_override = SubResource("Rust")
+cast_shadow = 1
+
+[node name="DepotTrimDeepTealUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch039")
+material_override = SubResource("DeepTeal")
+cast_shadow = 1
+
+[node name="BeaconDeliveryAsphaltUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch040")
+material_override = SubResource("Asphalt")
+cast_shadow = 1
+
+[node name="BeaconDeliveryPaintIvoryUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch041")
+material_override = SubResource("PaintIvory")
+cast_shadow = 0
+
+[node name="BeaconDeliveryDeepTealUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch042")
+material_override = SubResource("DeepTeal")
+cast_shadow = 1
+
+[node name="BeaconDeliveryConcreteEdgeUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch043")
+material_override = SubResource("ConcreteEdge")
+cast_shadow = 1
+
+[node name="BeaconDeliveryShutterUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch044")
+material_override = SubResource("Shutter")
+cast_shadow = 1
+
+[node name="BeaconDeliveryCeladonUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch045")
+material_override = SubResource("Celadon")
+cast_shadow = 1

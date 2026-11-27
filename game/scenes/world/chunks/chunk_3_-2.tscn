@@ -1,0 +1,35 @@
+[gd_scene load_steps=6 format=3]
+
+[sub_resource type="BoxMesh" id="UnitBox"]
+
+[sub_resource type="StandardMaterial3D" id="Shutter"]
+albedo_color = Color(0.23, 0.29, 0.30, 1)
+roughness = 0.66
+
+[sub_resource type="StandardMaterial3D" id="Shore"]
+albedo_color = Color(0.33, 0.41, 0.42, 1)
+roughness = 0.92
+
+[sub_resource type="MultiMesh" id="Batch000"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 3
+buffer = PackedFloat32Array(83.14255, 0, -2.49494, 196, 0, 1.8, 0, -0.64, 17.67249, 0, 11.73777, -106, 6.81943, 0, -1.15102, 203, 0, 16.90759, 0, 8.3538, 0.87569, 0, 8.96354, -106.39541, 8.14831, 0, 0.57575, 210, 0, 15.40102, 0, 7.60051, -0.54698, 0, 8.57692, -107.21747)
+
+[sub_resource type="MultiMesh" id="Batch001"]
+transform_format = 1
+mesh = SubResource("UnitBox")
+instance_count = 3
+buffer = PackedFloat32Array(5.06077, 0, 0.21147, 196, 0, 10.36817, 0, 5.08409, -0.16734, 0, 6.39537, -103.6791, 6.5058, 0, -0.94425, 217, 0, 12.93055, 0, 6.36527, 0.93877, 0, 6.54378, -105.13702, 5.579, 0, 0.91571, 224, 0, 13.32866, 0, 6.56433, -0.6537, 0, 7.81514, -107.83642)
+
+[node name="Chunk_3_-2" type="Node3D"]
+
+[node name="FarShoreShoreUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch000")
+material_override = SubResource("Shore")
+cast_shadow = 1
+
+[node name="FarShoreShutterUnitBox" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("Batch001")
+material_override = SubResource("Shutter")
+cast_shadow = 1

@@ -1,0 +1,6 @@
+{
+  "chunkSizeMeters": 64,
+  "loadRadiusChunks": 2,
+  "unloadPaddingChunks": 1,
+  "lookaheadSeconds": 1.5
+}
