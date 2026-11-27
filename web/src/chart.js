@@ -24,6 +24,14 @@ export function createChart(layout, radar, atlas, legend, interiorLegend) {
   painter.translate(-min[0], -min[1]);
   for (const land of layout.ground ?? []) rectangle(painter, land, DISTRICT_COLORS[land.theme] ?? '#749292');
   for (const water of layout.water ?? []) rectangle(painter, water, '#183d4c');
+  for (const land of layout.terrain ?? []) {
+    painter.fillStyle = '#17262220';
+    for (const contour of [.85, .61, .39]) {
+      painter.beginPath();
+      painter.ellipse(...land.center, land.size[0] * contour / 2, land.size[1] * contour / 2, 0, 0, Math.PI * 2);
+      painter.fill();
+    }
+  }
   for (const road of layout.roads) rectangle(painter, road, road.kind === 'path' ? '#657b65' : '#3c5156');
   painter.fillStyle = '#32464b';
   for (const obstacle of layout.obstacles) {

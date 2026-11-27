@@ -34,6 +34,8 @@ npm run preview
 
 웹판은 월드의 3D 디테일을 128m 격자로 나눠 `godot/chunks/`에서 내려받는다. 시작 지점 주변을 먼저 불러오고, 이동 중 진행 방향의 청크를 준비한다. 멀어진 청크는 해제하고 해안선과 큰 건물 윤곽은 유지한다. `world/harbor_front.json`과 시뮬레이션은 전체 지도와 충돌을 계속 처리한다.
 
+도로 표면과 차선은 청크 경계를 지나도 유지된다. Alderwash의 숲 언덕, Cinder Flats의 사구, Lantern Point의 해안 언덕에서는 보행자와 차량의 높이가 지형을 따라간다.
+
 지도에서 ◆로 표시된 Customs Exchange Cafe, Atlantic Repair, Alderwash Lodge에는 열린 출입구로 걸어 들어갈 수 있다. Atlantic Repair의 작업 통로는 차로 양방향 통과할 수 있다.
 
 ## 실내 모델 수정

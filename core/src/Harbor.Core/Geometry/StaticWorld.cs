@@ -61,13 +61,15 @@ public readonly record struct RayHit(double Distance, Vec3d Point, Vec3d Normal,
 
 /// <summary>Server-side level collision (cover, walls, props) built from data — the dedicated server
 /// has no engine physics. Uniform spatial hash broadphase. Also implements the <see cref="IPhysicsQuery"/> port.</summary>
-public sealed class StaticWorld(double cellSize = 8.0) : IPhysicsQuery
+public sealed class StaticWorld(double cellSize = 8.0, Func<Vec3d, double>? terrainElevation = null) : IPhysicsQuery
 {
     private readonly Dictionary<int, StaticBox> _boxes = new();
     private readonly Dictionary<(int, int), List<int>> _cells = new();
     private int _nextId = 1;
 
     public int Count => _boxes.Count;
+
+    public Vec3d AlignToGround(Vec3d point) => terrainElevation is null ? point : point.WithY(terrainElevation(point));
 
     public int Add(Aabb box, SurfaceMaterial material, string tag = "")
     {
@@ -136,6 +138,23 @@ public sealed class StaticWorld(double cellSize = 8.0) : IPhysicsQuery
         var all = RaycastAll(origin, dir, maxDist);
         hit = all.Count > 0 ? all[0] : default;
         return all.Count > 0;
+    }
+
+    public double CameraObstruction(Vec3d origin, Vec3d direction, double distance)
+    {
+        var available = Raycast(origin, direction, distance, out var hit) ? hit.Distance : distance;
+        if (terrainElevation is null) return available;
+        var ray = direction.Normalized();
+        var steps = (int)System.Math.Ceiling(available / 0.25);
+        for (var index = 1; index <= steps; index++)
+        {
+            var sample = available * index / steps;
+            var point = origin + ray * sample;
+            var elevation = terrainElevation(point);
+            if (elevation > 0 && point.Y < elevation + 0.08)
+                return available * (index - 1) / steps;
+        }
+        return available;
     }
 
     bool IPhysicsQuery.Raycast(Vec3d from, Vec3d to, out Vec3d hit)

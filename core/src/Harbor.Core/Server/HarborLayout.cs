@@ -61,6 +61,19 @@ public sealed record HarborLandmark
     public double[] Position { get; init; } = [];
 }
 
+public sealed record HarborTerrain : HarborArea
+{
+    public double Height { get; init; }
+
+    public double ElevationAt(Vec3d point)
+    {
+        var x = 2 * (point.X - Center[0]) / Size[0];
+        var z = 2 * (point.Z - Center[1]) / Size[1];
+        var falloff = System.Math.Max(0, 1 - x * x - z * z);
+        return Height * falloff * falloff;
+    }
+}
+
 public sealed record HarborLayout
 {
     public double[] Spawn { get; init; } = [];
@@ -71,6 +84,7 @@ public sealed record HarborLayout
     public IReadOnlyList<HarborArea> Water { get; init; } = [];
     public IReadOnlyList<HarborDistrict> Districts { get; init; } = [];
     public IReadOnlyList<HarborLandmark> Landmarks { get; init; } = [];
+    public IReadOnlyList<HarborTerrain> Terrain { get; init; } = [];
     public IReadOnlyList<HarborObstacle> Obstacles { get; init; } = [];
     public Vec3d SpawnPosition => HarborLockdownDef.Point(Spawn);
 
@@ -84,6 +98,8 @@ public sealed record HarborLayout
         Json.Require(double.IsFinite(layout.WaterLevel), $"{path}: water level must be finite");
         Json.Require(layout.Ground != null && layout.Ground.All(ValidArea) && layout.Water != null && layout.Water.All(ValidArea),
             $"{path}: ground or water has an invalid footprint");
+        Json.Require(layout.Terrain != null && layout.Terrain.All(patch => ValidArea(patch)
+            && double.IsFinite(patch.Height) && patch.Height > 0 && patch.Height <= 60), $"{path}: invalid terrain elevations");
         Json.Require(layout.Roads != null && layout.Roads.All(r => ValidArea(r) && double.IsFinite(r.Yaw)
             && ValidLine(r)), $"{path}: road has an invalid footprint or centerline");
         Json.Require(layout.Districts != null && layout.Districts.All(d => ValidArea(d) && !string.IsNullOrWhiteSpace(d.Id)
@@ -105,11 +121,19 @@ public sealed record HarborLayout
 
     public StaticWorld CreateStaticWorld()
     {
-        var world = new StaticWorld();
+        var world = new StaticWorld(terrainElevation: Terrain.Count > 0 ? ElevationAt : null);
         foreach (var obstacle in Obstacles)
             world.Add(Aabb.FromCenter(HarborLockdownDef.Point(obstacle.Center), HarborLockdownDef.Point(obstacle.Size)),
                 MaterialTable.ParseId(obstacle.Material), obstacle.Tag);
         return world;
+    }
+
+    public double ElevationAt(Vec3d point)
+    {
+        var height = 0d;
+        foreach (var patch in Terrain)
+            height = System.Math.Max(height, patch.ElevationAt(point));
+        return height;
     }
 
     private static bool ValidArea(HarborArea? area) => area != null && ValidVector(area.Center, 2) && ValidSize(area.Size, 2);

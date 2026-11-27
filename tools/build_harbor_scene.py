@@ -12,6 +12,14 @@ ROOT = Path(__file__).resolve().parents[1]
 SPAWN = (0, 0, 5)
 BOUNDS = {'min': (-670, -600), 'max': (620, 510)}
 WATER_LEVEL = -1.12
+TERRAIN = [
+    {'id': 'alder_ridge', 'name': 'Alder Ridge', 'center': (-347, 310), 'size': (86, 82), 'height': 11.5,
+     'district': 'alderwash', 'theme': 'forest', 'material': 'ForestFloor'},
+    {'id': 'cinder_dunes', 'name': 'Cinder Dunes', 'center': (-377, -537), 'size': (98, 78), 'height': 16,
+     'district': 'cinder_flats', 'theme': 'desert', 'material': 'DesertSand'},
+    {'id': 'seabank_hill', 'name': 'Seabank Hill', 'center': (238, 343), 'size': (76, 42), 'height': 5.8,
+     'district': 'lantern_point', 'theme': 'wealthy', 'material': 'VillageGrass'},
+]
 obstacles = []
 roads = []
 water = []
@@ -83,8 +91,25 @@ def material(name, color, roughness=0.92, **props):
     sub('StandardMaterial3D', name, albedo_color=f'Color({color}, 1)', roughness=roughness, **props)
 
 
+def altitude(x, z):
+    height = 0
+    for patch in TERRAIN:
+        px, pz = patch['center']
+        width, depth = patch['size']
+        falloff = max(0, 1 - (2*(x-px)/width)**2 - (2*(z-pz)/depth)**2)
+        height = max(height, patch['height']*falloff**2)
+    return round(height, 5)
+
+
+def on_ground(center):
+    x, y, z = center
+    rise = altitude(x, z)
+    return (x, round(y + rise, 5), z) if rise else center
+
+
 def box(name, center, size, material_name, parent, rotation=None):
     # The shared unit cube keeps the scene small, and each object reads as a simple blockout primitive.
+    center = on_ground(center)
     props = {'position': center, 'scale': size}
     if rotation:
         props['rotation_degrees'] = rotation
@@ -94,13 +119,14 @@ def box(name, center, size, material_name, parent, rotation=None):
 
 
 def collider(name, center, size, surface="concrete"):
+    center = on_ground(center)
     obstacles.append({"tag": name, "center": center, "size": size, "material": surface})
     node(name, 'CollisionShape3D', 'WalkCollision', groups='walk_obstacle', position=center,
          shape=f'SubResource("Shape{len(obstacles) - 1:03}")')
 
 
 def prop(name, resource, pos, rotate=0, scale=1, parent='DockKit'):
-    props = {'position': pos}
+    props = {'position': on_ground(pos)}
     if rotate:
         props['rotation_degrees'] = (0, rotate, 0)
     if scale != 1:
@@ -269,6 +295,7 @@ for name, center, size, surface in [
 
 def primitive(zone, label, center, size, heading=0, mesh='UnitBox'):
     """Store a Godot MultiMesh row-major 3×4 transform."""
+    center = on_ground(center)
     record_primitive(zone, label, center, size, (0, heading, 0), mesh)
     x, y, z = center
     width, height, depth = size
@@ -1025,11 +1052,32 @@ def place_interiors():
     return active
 
 
+def terrain_surfaces():
+    materials = {label: (color, scale, strength, grit) for label, color, scale, strength, grit in TERRAIN_MATERIALS}
+    for patch in TERRAIN:
+        name = patch['id']
+        w, d = patch['size']
+        color, scale, strength, grit = materials[patch['material']]
+        sub('ShaderMaterial', name + 'Surface', shader='ExtResource("PavingShader")', **{
+            'shader_parameter/base_color': f'Color({color}, 1)',
+            'shader_parameter/stain_scale': scale,
+            'shader_parameter/stain_strength': strength,
+            'shader_parameter/grit_strength': grit,
+            'shader_parameter/terrain_height': patch['height'],
+            'shader_parameter/terrain_half_size': f'Vector2({w/2}, {d/2})',
+        })
+        sub('PlaneMesh', name + 'Mesh', size=f'Vector2({w}, {d})', subdivide_width=64, subdivide_depth=56,
+            material=f'SubResource("{name}Surface")')
+
+
 def serialize():
     active_interiors = place_interiors()
     interior_ids = {room['id'] for room in active_interiors}
+    lookouts = [{'id': patch['id'], 'name': patch['name'], 'district': patch['district'], 'kind': 'lookout',
+                 'position': (patch['center'][0], patch['height'], patch['center'][1])} for patch in TERRAIN]
     node_sections = scene[scene_nodes_start:]
     del scene[scene_nodes_start:]
+    terrain_surfaces()
     for index, obstacle in enumerate(obstacles):
         sub('BoxShape3D', f'Shape{index:03}', size=obstacle['size'])
     for index, ((zone, material_name, mesh), buffer) in enumerate(batches.items()):
@@ -1037,6 +1085,13 @@ def serialize():
             mesh=f'SubResource("{mesh}")', instance_count=len(buffer)//12,
             buffer='PackedFloat32Array(' + ', '.join(map(str, buffer)) + ')')
     scene.extend(node_sections)
+    node('Terrain', 'Node3D')
+    for patch in TERRAIN:
+        x, z = patch['center']
+        w, d = patch['size']
+        node(patch['id'], 'MeshInstance3D', 'Terrain', position=(x, -.027, z),
+             mesh=f'SubResource("{patch["id"]}Mesh")', cast_shadow=0,
+             custom_aabb=f'AABB({-w/2}, -0.05, {-d/2}, {w}, {patch["height"]+.10}, {d})')
     node('DistrictGeometry', 'Node3D')
     for index, (zone, material_name, mesh) in enumerate(batches):
         no_shadow = zone in ('Roads', 'Ground', 'YardPaint') or zone.startswith(('Ground_', 'Road_', 'Markings_')) or material_name in (
@@ -1050,7 +1105,8 @@ def serialize():
                     '\n'.join(scene), encoding='utf-8')
     layout = {'spawn': SPAWN, 'bounds': BOUNDS, 'waterLevel': WATER_LEVEL, 'roads': roads, 'water': water,
               'ground': ground, 'districts': DISTRICTS,
-              'landmarks': [item for item in LANDMARKS if item['id'] not in interior_ids] + active_interiors,
+              'landmarks': [item for item in LANDMARKS if item['id'] not in interior_ids] + active_interiors + lookouts,
+              'terrain': [{key: patch[key] for key in ('center', 'size', 'height', 'theme')} for patch in TERRAIN],
               'obstacles': obstacles}
     write_json(ROOT / 'data/world/harbor_front.json', layout)
     visuals = {'version': 1, 'waterLevel': WATER_LEVEL, 'materials': visual_materials, 'primitives': visual_primitives,

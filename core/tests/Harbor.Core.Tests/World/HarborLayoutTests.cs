@@ -1,7 +1,9 @@
 using Harbor.Core.Geometry;
 using Harbor.Core.Math;
+using Harbor.Core.Net;
 using Harbor.Core.Ports;
 using Harbor.Core.Server;
+using Harbor.Core.Sim;
 using Harbor.Core.Vehicles;
 using Xunit;
 using M = System.Math;
@@ -69,12 +71,42 @@ public sealed class HarborLayoutTests
             var clearance = road.Kind == "path" ? .36 : 2.45;
             foreach (var point in Sample(from, to))
             {
+                Assert.Equal(0, layout.ElevationAt(point), 6);
                 var volume = new Aabb(point + new Vec3d(-clearance, 0.15, -clearance),
                     point + new Vec3d(clearance, 1.75, clearance));
                 var obstruction = level.Overlapping(volume).FirstOrDefault();
                 Assert.True(obstruction.Id == 0, $"{road.Name} at {point} overlaps {obstruction.Tag}");
             }
         }
+    }
+
+    [Fact]
+    public void DuneHeightGuidesWalkingDrivingAndCamera()
+    {
+        var layout = Load();
+        var dune = Assert.Single(layout.Terrain, terrain => terrain.Theme == "desert");
+        var peak = Point(dune.Center);
+        var start = peak + new Vec3d(0, 0, dune.Size[1] / 2 + 2);
+        var level = layout.CreateStaticWorld();
+        Assert.Equal(dune.Height, layout.ElevationAt(peak), 6);
+        Assert.Equal(0, layout.ElevationAt(start), 6);
+
+        var walking = new MoveState { Position = start };
+        var command = InputCmd.Create(1, 0, 0, 1, 0, 0, InputButtons.None);
+        var cfg = new MovementConfig();
+        var car = new ArcadeVehicle(start);
+        for (var tick = 0; tick < 630; tick++)
+        {
+            Movement.Step(ref walking, command, 1d / 60, cfg, MoveModifiers.Default, level);
+            if (tick < 240) car.Step(new VehicleInput(1, 0, false), 1d / 60, level);
+        }
+        Assert.True(walking.Position.Y > dune.Height * .85, $"walker at {walking.Position}");
+        Assert.True(car.Position.Y > dune.Height * .60, $"vehicle at {car.Position}");
+        Assert.Equal(layout.ElevationAt(walking.Position), walking.Position.Y, 6);
+        Assert.Equal(layout.ElevationAt(car.Position), car.Position.Y, 6);
+
+        var camera = peak.WithY(dune.Height + 1.5);
+        Assert.InRange(level.CameraObstruction(camera, -Vec3d.Up, 5), 1.0, 1.6);
     }
 
     private static HarborLayout Load() => HarborLayout.Load(new DiskFileSystem(Repo.Root), "data/world/harbor_front.json");

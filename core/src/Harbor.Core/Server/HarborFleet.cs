@@ -182,7 +182,7 @@ internal sealed class HarborFleet
         var back = forward * (-shape.HalfLength - 0.57);
         foreach (var offset in new[] { side, -side, back })
         {
-            var position = pivot + offset;
+            var position = _level.AlignToGround(pivot + offset);
             var overlap = ArcadeVehicle.Blocked(_level, position, 0, ExitProbe)
                 || _level.Raycast(pivot + Vec3d.Up, offset, offset.Length, out _)
                 || _vehicles.Any(car => car.Id != vehicleId && ArcadeVehicle.Overlaps(position, 0, ExitProbe,

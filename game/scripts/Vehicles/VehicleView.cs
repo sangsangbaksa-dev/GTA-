@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using Harbor.Core.Math;
 using Harbor.Core.Server;
 using Harbor.Core.Vehicles;
 using Harbor.Game.Bridge;
@@ -47,7 +48,17 @@ public partial class VehicleView : Node3D
 
             var amount = local || view.Root.Position.DistanceSquaredTo(position) > 100f ? 1f : blend;
             view.Root.Position = view.Root.Position.Lerp(position, amount);
-            view.Root.Rotation = new Vector3(0, Mathf.LerpAngle(view.Root.Rotation.Y, yaw, amount), 0);
+            var pitch = 0f;
+            var tilt = 0f;
+            if (car.Position.Y > 0.01)
+            {
+                var forward = Vec3d.FromYawPitch(yaw, 0);
+                var right = new Vec3d(-forward.Z, 0, forward.X);
+                pitch = GroundTilt(car.Position, forward * (car.HalfLength * 0.72));
+                tilt = GroundTilt(car.Position, right * (car.HalfWidth * 0.88));
+            }
+            view.Root.Rotation = new Vector3(Mathf.Lerp(view.Root.Rotation.X, pitch, blend),
+                Mathf.LerpAngle(view.Root.Rotation.Y, yaw, amount), Mathf.Lerp(view.Root.Rotation.Z, tilt, blend));
             var steer = new Vector3(0, -(float)car.Steering, 0);
             if (view.FrontLeft != null) view.FrontLeft.Rotation = steer;
             if (view.FrontRight != null) view.FrontRight.Rotation = steer;
@@ -60,6 +71,13 @@ public partial class VehicleView : Node3D
             _views[id].Root.QueueFree();
             _views.Remove(id);
         }
+    }
+
+    private float GroundTilt(Vec3d point, Vec3d offset)
+    {
+        var high = _host.Level.AlignToGround(point + offset).Y;
+        var low = _host.Level.AlignToGround(point - offset).Y;
+        return (float)System.Math.Atan2(high - low, 2 * offset.Length);
     }
 
     private CarView CreateView(HarborVehicleState car, Vector3 position, float yaw)

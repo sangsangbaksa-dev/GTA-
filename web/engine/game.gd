@@ -240,12 +240,30 @@ func create_vehicle(state: Dictionary) -> Dictionary:
 	return {"root": holder, "steers": steers, "rollers": rollers, "distance": float(state.distance)}
 
 func update_vehicle(view: Dictionary, car: Dictionary, dt: float) -> void:
-	move_view(view.root, vec(car.position), float(car.yaw), dt)
+	var car_root: Node3D = view.root
+	var position := vec(car.position)
+	var yaw := float(car.yaw)
+	move_view(car_root, position, yaw, dt)
+	var pitch := 0.0
+	var roll := 0.0
+	if position.y > 0.01:
+		var forward := Vector2(-sin(yaw), -cos(yaw)) * float(car.halfLength) * 0.72
+		var lateral := Vector2(cos(yaw), -sin(yaw)) * float(car.halfWidth) * 0.88
+		pitch = ground_tilt(position, forward)
+		roll = ground_tilt(position, lateral)
+	var blend := 1.0 - exp(-16.0 * dt)
+	car_root.rotation.x = lerpf(car_root.rotation.x, pitch, blend)
+	car_root.rotation.z = lerpf(car_root.rotation.z, roll, blend)
 	view.distance = lerpf(float(view.distance), float(car.distance), 1.0 - exp(-21.0 * dt))
 	for pivot in view.steers:
 		pivot.rotation.y = lerpf(pivot.rotation.y, -float(car.steering), 1.0 - exp(-14.0 * dt))
 	for wheel in view.rollers:
 		wheel.rotation.x = fmod(float(view.distance) / maxf(0.1, float(car.wheelRadius)), TAU)
+
+func ground_tilt(position: Vector3, offset: Vector2) -> float:
+	var high := float(bridge.groundElevation(position.x + offset.x, position.z + offset.y))
+	var low := float(bridge.groundElevation(position.x - offset.x, position.z - offset.y))
+	return atan2(high - low, 2.0 * offset.length())
 
 func update_population(state: Dictionary, dt: float) -> void:
 	var at := vec(frame.position)

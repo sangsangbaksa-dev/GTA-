@@ -4,6 +4,8 @@ uniform vec4 base_color : source_color = vec4(0.26, 0.26, 0.25, 1.0);
 uniform float stain_scale = 0.32;
 uniform float stain_strength = 0.6;
 uniform float grit_strength = 0.14;
+uniform float terrain_height = 0.0;
+uniform vec2 terrain_half_size = vec2(1.0);
 
 varying vec3 world_surface;
 
@@ -22,6 +24,13 @@ float noise2d(vec2 point) {
 }
 
 void vertex() {
+    if (terrain_height > 0.0) {
+        vec2 offset = VERTEX.xz / terrain_half_size;
+        float falloff = max(0.0, 1.0 - dot(offset, offset));
+        VERTEX.y += terrain_height * falloff * falloff;
+        vec2 slope = -4.0 * terrain_height * falloff * offset / terrain_half_size;
+        NORMAL = normalize(vec3(-slope.x, 1.0, -slope.y));
+    }
     world_surface = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 

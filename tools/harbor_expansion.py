@@ -155,6 +155,20 @@ class Expansion:
 
     def build_roads(self):
         self.roads.extend(self.segments)
+        # Fill the outside of a turn: two rectangular strips overlap at the
+        # centerline but leave triangular holes near their outer edges.
+        for name, width, kind, points in ROADS:
+            for before, corner, after in zip(points, points[1:], points[2:]):
+                ax, az = corner[0]-before[0], corner[1]-before[1]
+                bx, bz = after[0]-corner[0], after[1]-corner[1]
+                if abs(ax*bz-az*bx) < 1e-6:
+                    continue
+                x, z = corner
+                finish = 'ForestPath' if kind == 'path' else ('DesertTrack' if kind == 'service' and x < -250 and z < -195 else 'Asphalt')
+                zone = f'Road_{int(x//128)}_{int(z//128)}'
+                # Sit just below every road strip so the adjoining surface has
+                # no z-fighting, while the exposed wedge remains covered.
+                self.primitive(zone, finish, (x, 0.006, z), (width, 0.027, width), mesh='Cylinder')
         for index, segment in enumerate(self.segments):
             ax, az = segment['from']
             bx, bz = segment['to']
@@ -243,7 +257,7 @@ class Expansion:
                                                 (.19, .20, .74, .56, 'PineLight')]:
                 self.primitive(zone, tint, (x+ox*h, h*height, z+oz*h), (h*width, h*.54, h*width), mesh='Foliage')
 
-    def building(self, zone, name, x, z, w, d, height, facade, style):
+    def building(self, zone, name, x, z, w, d, height, facade, style, variant=0):
         self.model(zone, name, (x, height/2, z), (w, height, d), facade)
         self.primitive(zone, 'IvoryStone' if style in ('tower', 'villa') else 'ConcreteEdge',
                        (x, 0.32, z), (w+.12, 0.64, d+.12))
@@ -279,13 +293,36 @@ class Expansion:
                 for third in (-1, 0, 1):
                     self.primitive(zone, 'IvoryStone', (x+side*(w/2+.12), height*.53, z+third*d*.27),
                                    (.23, height*.94, .23))
-            self.model(zone, name+'Crown', (x, height+1.35, z), (w*.58, 2.5, d*.53), 'StoneBlue')
-            self.primitive(zone, 'BlueGlass', (x, height+2.71, z), (w*.46, .23, d*.44))
+            if variant == 1:
+                # A stepped civic crown, inset entirely within the building footprint.
+                for level, (fraction, rise) in enumerate(((.78, 2.4), (.55, 2.3), (.30, 2.1))):
+                    bottom = height + sum((2.4, 2.3, 2.1)[:level])
+                    self.primitive(zone, 'Limestone', (x, bottom+rise/2, z),
+                                   (w*fraction, rise, d*fraction))
+                    self.primitive(zone, 'BlueGlass', (x, bottom+rise*.54, z+d*fraction*.501),
+                                   (w*fraction*.76, rise*.45, .06))
+            elif variant == 2:
+                # Asymmetric upper volumes break up the regular glass skyline.
+                self.primitive(zone, 'StoneBlue', (x-w*.15, height+2.0, z), (w*.55, 4, d*.72))
+                self.primitive(zone, 'BlueGlass', (x+w*.24, height+1.1, z), (w*.22, 2.2, d*.48))
+            else:
+                self.primitive(zone, 'StoneBlue', (x, height+1.35, z), (w*.58, 2.5, d*.53))
+                self.primitive(zone, 'BlueGlass', (x, height+2.71, z), (w*.46, .23, d*.44))
         elif style in ('villa', 'lodge', 'hangar'):
             cap = min(4.3, w*.16)
             self.primitive(zone, 'Terracotta' if style == 'villa' else 'Shutter', (x, height+cap/2, z),
                            (w+1.1, cap, d+1.02), mesh='RoofPrism')
             if style == 'villa':
+                if variant == 1:
+                    # A raised central pavilion makes a second, perpendicular roofline.
+                    self.primitive(zone, facade, (x, height+1.0, z), (w*.43, 2.0, d*.52))
+                    self.primitive(zone, 'Terracotta', (x, height+2.65, z),
+                                   (w*.47, 1.3, d*.57), mesh='RoofPrism')
+                elif variant == 2:
+                    # Twin end pavilions evoke a courtyard villa without extending its footprint.
+                    for side in (-1, 1):
+                        self.primitive(zone, facade, (x+side*w*.29, height+.85, z), (w*.30, 1.7, d*.55))
+                        self.primitive(zone, 'IvoryStone', (x+side*w*.29, height+1.75, z), (w*.32, .18, d*.58))
                 self.primitive(zone, 'Limestone', (x+w*.23, height+cap*.81, z-d*.21), (1.08, cap*.92, 1.1))
                 self.primitive(zone, 'IvoryStone', (x, 0.16, z+d/2+2.3), (4.35, .32, 4.6))
             if style == 'hangar':
@@ -294,6 +331,13 @@ class Expansion:
                     self.primitive(zone, 'Shutter', (x+(i-4)*w*.068, height*.41, z+d/2+.19),
                                    (.11, height*.76, .05))
         else:
+            if variant == 1:
+                self.primitive(zone, 'Terracotta', (x, height+.95, z), (w*.94, 1.9, d*.94), mesh='RoofPrism')
+            elif variant == 2:
+                # Raised parapets and a small rooftop service room recall converted workshops.
+                for side in (-1, 1):
+                    self.primitive(zone, 'RedBrick', (x, height+.5, z+side*d*.46), (w*.94, 1.0, .28))
+                self.primitive(zone, 'ConcreteEdge', (x-w*.22, height+1.15, z), (w*.35, 2.3, d*.38))
             self.primitive(zone, 'Shutter', (x+w*.24, height+.56, z+d*.2), (1.46, 1.10, 1.43))
             self.primitive(zone, 'RedBrick', (x-w*.22, height+.6, z-d*.19), (.67, 1.2, .69))
 
@@ -315,7 +359,7 @@ class Expansion:
                 w = self.random.uniform(12.0, 19.8)
                 d = self.random.uniform(15.0, 23.0)
                 h = [17, 21, 31, 37, 46, 24, 58][(row*4+column)%7] + self.random.uniform(-2, 3)
-                self.building(zone, tag, x, z, w, d, h, 'StoneBlue' if column%3 else 'Limestone', 'tower')
+                self.building(zone, tag, x, z, w, d, h, 'StoneBlue' if column%3 else 'Limestone', 'tower', (row+column)%3)
                 self.prop(f'{tag}Lamp', 'Lamp', (x+w/2+1.2, 0, z+d/2+.8), 90)
         self.building('Meridian', 'MeridianTower', -12, -384, 28, 35, 86, 'BlueGlass', 'tower')
         self.model('Meridian', 'MeridianSpire', (-12, 98, -384), (.82, 18, .82), 'Shutter', 'Cylinder', 'metal')
@@ -340,7 +384,7 @@ class Expansion:
                 w, d = self.random.uniform(9.7, 15.0), self.random.uniform(10.2, 15.6)
                 h = self.random.choice([3.4, 4.1, 5.2, 6.7, 7.8, 8.6])
                 facade = ['Celadon', 'StoneBlue', 'Terra', 'Limestone', 'RedBrick'][((row*7)+column)%5]
-                self.building(zone, tag, x, z, w, d, h, facade, 'rowhouse')
+                self.building(zone, tag, x, z, w, d, h, facade, 'rowhouse', (row+column)%3)
                 if column%3 == 0:
                     self.primitive(zone, 'Terracotta', (x-.18, 2.24, z+d/2+.62), (w*.72, .24, 1.15))
                     self.prop(tag+'Bin', 'Dumpster', (x+w/2+1.2, 0, z-.8), 180)
@@ -488,7 +532,7 @@ class Expansion:
                 tag = f'Villa{row}_{column}'
                 w, d = self.random.uniform(13.5, 18.5), self.random.uniform(12.4, 18.6)
                 facade = ['OffWhite', 'IvoryStone', 'Limestone', 'Celadon'][column%4]
-                self.building(zone, tag, x, z, w, d, 4.5+1.8*(column%3), facade, 'villa')
+                self.building(zone, tag, x, z, w, d, 4.5+1.8*(column%3), facade, 'villa', (row+column)%3)
                 self.deck('Ground_'+zone, (x-w*.58, z-d*.63, x+w*.58, z+d*.89), 'VillageStone', top=.019, thickness=.09)
                 for side in (-1, 1):
                     self.branches(zone, tag+'Cypress'+str(side+1), x+side*(w/2+2.5), z+d*.54, 5.3, True)

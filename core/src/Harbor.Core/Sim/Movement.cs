@@ -63,7 +63,10 @@ public static class Movement
         s.Velocity = (s.Velocity.WithY(0) + delta).WithY(0);
 
         s.Position += s.Velocity * dt;
-        if (world != null) ResolveCollisions(ref s, cfg, world);
+        if (world == null) return;
+        s.Position = world.AlignToGround(s.Position);
+        ResolveCollisions(ref s, cfg, world);
+        s.Position = world.AlignToGround(s.Position);
     }
 
     /// <summary>Pushes the actor's cylinder out of static boxes (up to 3 iterations) and removes

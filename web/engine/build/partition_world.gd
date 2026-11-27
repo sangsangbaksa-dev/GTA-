@@ -26,6 +26,9 @@ func build() -> Error:
 				move_into(node, backdrop)
 			"LateAfternoonSun", "Bay":
 				move_into(node, backdrop, node.transform)
+			"Terrain":
+				for surface in node.get_children():
+					move_into(surface, backdrop, node.transform * surface.transform)
 			"DistrictGeometry":
 				for instance in node.get_children():
 					partition_batch(instance, backdrop)
@@ -85,6 +88,7 @@ func partition_batch(source: MultiMeshInstance3D, backdrop: Node3D) -> void:
 	var bounds := info.mesh.get_aabb()
 	var key := [info.mesh, source.material_override, source.cast_shadow]
 	var buffer := info.buffer
+	var continuous_road := String(source.name).begins_with("Road") or String(source.name).begins_with("Markings_")
 	for i in info.instance_count:
 		# The headless renderer only keeps the serialized MultiMesh buffer.
 		var row := i * 12
@@ -98,7 +102,7 @@ func partition_batch(source: MultiMeshInstance3D, backdrop: Node3D) -> void:
 		var size := (transform * bounds).size
 		var cell := Grid.cell_at(transform.origin)
 		# Keep the coastline, long roads and tall building silhouettes visible beyond the detail radius.
-		var root := backdrop if maxf(size.x, size.z) >= 48.0 or size.y >= 25.0 else chunk_at(cell)
+		var root := backdrop if continuous_road or maxf(size.x, size.z) >= 48.0 or size.y >= 25.0 else chunk_at(cell)
 		# Backdrop batches still use local bounds so the renderer can cull them.
 		var batch_key := key + [cell] if root == backdrop else key
 		if not batches.has(root):

@@ -234,6 +234,7 @@ async function startGodot() {
     frame: () => serializedFrame,
     frameVersion: () => frameVersion,
     cameraDistance: (...args) => api.CameraDistance(...args),
+    groundElevation: (x, z) => api.GroundElevation(x, z),
     requestChunk(file, complete) {
       fetch(assetUrl('godot/chunks/' + file), { cache: 'force-cache', signal: AbortSignal.timeout(12_000) })
         .then(response => {

@@ -42,7 +42,7 @@ public sealed record ArcadeVehicleTuning
     }
 }
 
-/// <summary>Flat-ground vehicle motion against the authoritative static level, in meters and radians.</summary>
+/// <summary>Ground-following vehicle motion against the authoritative static level, in meters and radians.</summary>
 public sealed class ArcadeVehicle
 {
     public const double HalfWidth = 0.89;
@@ -99,6 +99,7 @@ public sealed class ArcadeVehicle
             var acceleration = throttle > 0 ? _tuning.Acceleration : _tuning.ReverseAcceleration;
             Speed = Approach(Speed, throttle * limit, acceleration * dt);
         }
+        Position = world.AlignToGround(Position);
         if (Speed == 0) return;
 
         // Small translation and heading increments prevent skipping thin geometry on longer ticks.
@@ -109,7 +110,7 @@ public sealed class ArcadeVehicle
         {
             var nextYaw = M.IEEERemainder(Yaw + headingDelta / pieces, 2 * M.PI);
             var headingMidpoint = Yaw + headingDelta / (2 * pieces) - Steering * (1 - _tuning.CornerGrip) * speedRatio;
-            var nextPosition = Position + Vec3d.FromYawPitch(headingMidpoint, 0) * (distance / pieces);
+            var nextPosition = world.AlignToGround(Position + Vec3d.FromYawPitch(headingMidpoint, 0) * (distance / pieces));
             if (Blocked(world, nextPosition, nextYaw, Shape) || blockedByVehicle?.Invoke(nextPosition, nextYaw) == true)
             {
                 Speed = 0;

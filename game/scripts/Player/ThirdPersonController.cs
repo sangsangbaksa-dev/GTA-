@@ -263,9 +263,8 @@ public partial class ThirdPersonController : Node3D
         var orbit = Basis.FromEuler(new Vector3(_pitch, _yaw, 0));
         var arm = orbit * new Vector3(_cameraShoulder, 0, Mathf.Max(0.5f, _cameraDistance));
         var length = arm.Length();
-        var armTarget = 1f;
-        if (_host.Level.Raycast(CoreHost.ToCore(pivot), CoreHost.ToCore(arm), length, out var hit))
-            armTarget = Mathf.Clamp(((float)hit.Distance - 0.18f) / length, 0.035f, 1f);
+        var available = _host.Level.CameraObstruction(CoreHost.ToCore(pivot), CoreHost.ToCore(arm), length);
+        var armTarget = available < length ? Mathf.Clamp(((float)available - 0.18f) / length, 0.035f, 1f) : 1f;
         _cameraArm = armTarget < _cameraArm ? armTarget : Mathf.Lerp(_cameraArm, armTarget, blend);
         _camera.GlobalPosition = pivot + arm * _cameraArm;
         _camera.GlobalRotation = new Vector3(_pitch, _yaw, 0);

@@ -79,9 +79,12 @@ public static partial class BrowserHarbor
     [JSExport]
     public static double CameraDistance(double x, double y, double z, double dx, double dy, double dz, double distance)
     {
-        var hit = _authority.Level.Raycast(new Vec3d(x, y, z), new Vec3d(dx, dy, dz), distance, out var obstacle);
-        return hit ? System.Math.Max(0.12, obstacle.Distance - 0.22) : distance;
+        var available = _authority.Level.CameraObstruction(new Vec3d(x, y, z), new Vec3d(dx, dy, dz), distance);
+        return available < distance ? System.Math.Max(0.12, available - 0.22) : distance;
     }
+
+    [JSExport]
+    public static double GroundElevation(double x, double z) => Layout.Value.ElevationAt(new Vec3d(x, 0, z));
 
     private static void Advance(double seconds)
     {
