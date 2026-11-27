@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createCityActivities as create,mapActivityPoint} from '../src/city-activities-domain.mjs';
+import {createCityActivities as create,mapActivityPoint,roadGraph,roadRoute} from '../src/city-activities-domain.mjs';
 const layout={roads:[{kind:'path',name:'Fern Glade Trail',from:[0,0],to:[0,20]},{kind:'path',name:'Fern Glade Trail',from:[0,20],to:[20,20]}]};
 const frame=(x,z,{driving=false,speed=0,yaw=0,id=1,wanted=0,alive=true}={})=>({alive,position:{x,y:0,z},state:{isDriving:driving,playerVehicleId:id,wantedLevel:wanted,vehicle:{position:{x,y:0,z},speed,yaw}}});
 const walk=(g,x,z)=>g.update(frame(x,z),.25);
@@ -17,3 +17,11 @@ test('invalid storage and duplicate completion rejected',()=>{let g=create(layou
 
 test('map marker projection centers and scales consistently',()=>{const b={min:[-100,-50],max:[100,50]};assert.deepEqual(mapActivityPoint(b,240,140,[0,0]),[120,70]);assert.deepEqual(mapActivityPoint(b,240,140,[-100,-50]),[20,20]);});
 test('implausible short-distance walking teleport is rejected',()=>{const g=create(layout);g.select('trail',g.trails[0].id);walk(g,0,0);g.update(frame(0,15),.1);assert.equal(g.view().active,null);});
+
+const surveyLayout={...layout,districts:[{id:'a',name:'Test District'}],landmarks:[{id:'lookout',name:'Lookout',district:'a',kind:'lookout',position:[10,12,10]}]};
+const observer=(opts={})=>{const f=frame(10,10,opts);f.position.y=opts.height??12;f.velocity={x:opts.vx??0,y:0,z:0};return f;};
+test('survey requires ground-level height, no wanted level and no vehicle',()=>{let g=create(surveyLayout);assert.equal(g.select('survey','lookout'),true);for(const opts of [{height:0},{driving:true},{wanted:1},{vx:3}]){for(let i=0;i<15;i++)g.update(observer(opts),.25);assert.equal(g.record.surveyed.length,0);}for(let i=0;i<12;i++)g.update(observer(),.25);assert.deepEqual(g.record.surveyed,['lookout']);assert.equal(g.journal()[0].done,1);assert.equal(g.select('survey','lookout'),false);});
+test('survey requires uninterrupted observation and saves unique known ids',()=>{let g=create(surveyLayout,{surveyed:['bad']});g.select('survey','lookout');for(let i=0;i<8;i++)g.update(observer(),.25);g.update(observer({vx:3}),.25);for(let i=0;i<8;i++)g.update(observer(),.25);assert.equal(g.record.surveyed.length,0);for(let i=0;i<4;i++)g.update(observer(),.25);assert.deepEqual(create(surveyLayout,{surveyed:['lookout','lookout','bad']}).record.surveyed,['lookout']);});
+test('road guidance follows connected segments, never cuts through blocks',()=>{const graph=roadGraph([{kind:'street',from:[0,0],to:[0,100]},{kind:'street',from:[0,100],to:[100,100]}]);const path=roadRoute(graph,[0,10],[90,100]);assert.equal(Math.round(path.meters),180);assert.ok(path.points.some(p=>p[0]===0&&p[1]===100));});
+test('disconnected streets return no driving route',()=>{const graph=roadGraph([{kind:'street',from:[0,0],to:[0,20]},{kind:'street',from:[100,100],to:[100,120]}]);assert.equal(roadRoute(graph,[0,0],[100,120]),null);});
+test('new simulation generation invalidates active records',()=>{const g=create(layout);g.select('trail',g.trails[0].id);walk(g,0,0);const f=frame(0,1);f.state.runGeneration=2;g.update(f,.25);assert.equal(g.view().active,null);});
