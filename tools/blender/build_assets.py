@@ -611,6 +611,7 @@ GROUPS = {
     "characters": character_group(characters.ROSTER + [harbor_people.CIVILIAN]),
     "harbor_people": character_group(harbor_people.ROSTER),
     "makehuman_civilians": character_group(makehuman_person.CIVILIANS),
+    "makehuman_player": character_group([("characters/chr_rook_courier.glb", makehuman_person.build_rook_courier)]),
     "weapons": [
         ("weapons/wpn_pistol_kestrel.glb", wpn_pistol),
         ("weapons/wpn_smg_wasp.glb", wpn_smg),

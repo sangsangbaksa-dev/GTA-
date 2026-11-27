@@ -48,6 +48,31 @@ internal sealed class HarborFleet
     public Vehicle? Driving(int actorId) => _drivers.GetValueOrDefault(actorId);
     public bool IsDriving(int actorId) => _drivers.ContainsKey(actorId);
 
+    public void ResolvePedestrianContacts(Actor actor, MovementConfig config)
+    {
+        if (!actor.IsAlive) return;
+        var position = actor.Position;
+        foreach (var car in _vehicles)
+            ArcadeVehicle.ResolvePedestrianContact(ref actor.Move, config, car.Body.Position, car.Body.Yaw, car.Body.Shape);
+        foreach (var (car, model) in Traffic())
+            ArcadeVehicle.ResolvePedestrianContact(ref actor.Move, config, car.Position, car.Yaw, model.Shape);
+        if (position == actor.Position) return;
+
+        Movement.ResolveCollisions(ref actor.Move, config, _level);
+        if (actor.Move.Velocity.Y == 0 && M.Abs(position.Y - _level.GroundElevation(position)) <= 0.03)
+            actor.Position = _level.AlignToGround(actor.Position);
+    }
+
+    public double CameraObstruction(int actorId, Vec3d origin, Vec3d direction, double distance)
+    {
+        foreach (var car in _vehicles)
+            if (car.DriverId != actorId)
+                distance = ArcadeVehicle.CameraObstruction(origin, direction, distance, car.Body.Position, car.Body.Yaw, car.Body.Shape);
+        foreach (var (car, model) in Traffic())
+            distance = ArcadeVehicle.CameraObstruction(origin, direction, distance, car.Position, car.Yaw, model.Shape);
+        return distance;
+    }
+
     public void Step(double dt, long tick)
     {
         var traffic = Traffic().ToArray();

@@ -4,7 +4,7 @@ const WorldStream := preload("res://world_stream.gd")
 const DaylightCycle := preload("res://daylight_cycle.gd")
 const WORLD_PATH := "res://scenes/world/HarborBackdrop.scn"
 const PEOPLE := [
-	"chr_harbor_rook", "chr_calloway_amara", "chr_calloway_mateo", "chr_calloway_linnea", "chr_calloway_arthur",
+	"chr_rook_courier", "chr_calloway_amara", "chr_calloway_mateo", "chr_calloway_linnea", "chr_calloway_arthur",
 	"chr_harbor_crew", "chr_harbor_officer",
 ]
 const CIVILIANS := 4
@@ -25,6 +25,8 @@ var world_stream := WorldStream.new()
 var daylight := DaylightCycle.new()
 var previous_session := 0
 var displayed_minute := -1
+var render_loop_active := true
+var next_resolution_check := 0
 var player: Dictionary
 var actor_scenes: Array[PackedScene] = []
 var vehicle_scenes: Dictionary = {}
@@ -48,6 +50,7 @@ func _ready() -> void:
 	if OS.has_feature("web"):
 		bridge = JavaScriptBridge.get_interface("harborView")
 		low_detail = bool(bridge.lowDetail())
+	RenderingServer.global_shader_parameter_set("harbor_reduced_effects", low_detail)
 
 	var world_scene := load(WORLD_PATH) as PackedScene
 	var world := world_scene.instantiate() as Node3D
@@ -64,7 +67,7 @@ func _ready() -> void:
 
 	camera.fov = 59
 	camera.near = 0.09
-	camera.far = 310.0 if low_detail else 660.0
+	camera.far = 245.0 if low_detail else 660.0
 	add_child(camera)
 	camera.make_current()
 
@@ -114,12 +117,18 @@ func configure_lighting(world: Node3D) -> void:
 		sunlight.directional_shadow_max_distance = 90.0
 		sunlight.shadow_enabled = not low_detail
 	if low_detail:
-		get_viewport().scaling_3d_scale = 0.86
-	else:
-		get_viewport().msaa_3d = Viewport.MSAA_2X
+		get_viewport().screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
 
 func _process(delta: float) -> void:
 	if bridge == null:
+		return
+	var mode := str(bridge.screen())
+	var render := mode == "intro" or mode == "play"
+	if render != render_loop_active:
+		render_loop_active = render
+		RenderingServer.set_render_loop_enabled(render)
+	if not render:
+		next_resolution_check = Time.get_ticks_msec() + 1800
 		return
 	var tick := int(bridge.frameVersion())
 	if tick != last_tick:
@@ -132,7 +141,6 @@ func _process(delta: float) -> void:
 		return
 	var state: Dictionary = frame.state
 	update_population(state, delta)
-	var mode := str(bridge.screen())
 	var session := int(bridge.sessionId())
 	if session != previous_session:
 		daylight.reset()
@@ -144,6 +152,10 @@ func _process(delta: float) -> void:
 	if mode == "intro":
 		look_over_harbor(vec(frame.position))
 	elif mode == "play":
+		var now := Time.get_ticks_msec()
+		if now >= next_resolution_check:
+			next_resolution_check = now + 1800
+			bridge.tuneResolution(Engine.get_frames_per_second())
 		daylight.advance(delta)
 		var focus := vec(frame.position)
 		var velocity := vec(frame.velocity)
@@ -254,23 +266,28 @@ func create_vehicle(state: Dictionary) -> Dictionary:
 				var paint := material.duplicate() as StandardMaterial3D
 				paint.albedo_color = CAR_COLORS[variant]
 				mesh.set_surface_override_material(surface, paint)
-	return {"root": holder, "steers": steers, "rollers": rollers, "distance": float(state.distance)}
+	return {"root": holder, "steers": steers, "rollers": rollers, "distance": float(state.distance),
+		"tilt_at": Vector3.INF, "tilt_yaw": 0.0, "tilt": Vector2.ZERO}
 
 func update_vehicle(view: Dictionary, car: Dictionary, dt: float) -> void:
 	var car_root: Node3D = view.root
 	var position := vec(car.position)
 	var yaw := float(car.yaw)
 	move_view(car_root, position, yaw, dt)
-	var pitch := 0.0
-	var roll := 0.0
-	if position.y > 0.01:
-		var forward := Vector2(-sin(yaw), -cos(yaw)) * float(car.halfLength) * 0.72
-		var lateral := Vector2(cos(yaw), -sin(yaw)) * float(car.halfWidth) * 0.88
-		pitch = ground_tilt(position, forward)
-		roll = ground_tilt(position, lateral)
+	var tilt_at: Vector3 = view.tilt_at
+	if tilt_at.distance_squared_to(position) > 0.5 * 0.5 or absf(angle_difference(view.tilt_yaw, yaw)) > 0.09:
+		var tilt := Vector2.ZERO
+		if position.y > 0.01:
+			var forward := Vector2(-sin(yaw), -cos(yaw)) * float(car.halfLength) * 0.72
+			var lateral := Vector2(cos(yaw), -sin(yaw)) * float(car.halfWidth) * 0.88
+			tilt = Vector2(ground_tilt(position, forward), ground_tilt(position, lateral))
+		view.tilt_at = position
+		view.tilt_yaw = yaw
+		view.tilt = tilt
+	var target_tilt: Vector2 = view.tilt
 	var blend := 1.0 - exp(-16.0 * dt)
-	car_root.rotation.x = lerpf(car_root.rotation.x, pitch, blend)
-	car_root.rotation.z = lerpf(car_root.rotation.z, roll, blend)
+	car_root.rotation.x = lerpf(car_root.rotation.x, target_tilt.x, blend)
+	car_root.rotation.z = lerpf(car_root.rotation.z, target_tilt.y, blend)
 	view.distance = lerpf(float(view.distance), float(car.distance), 1.0 - exp(-21.0 * dt))
 	for pivot in view.steers:
 		pivot.rotation.y = lerpf(pivot.rotation.y, -float(car.steering), 1.0 - exp(-14.0 * dt))
@@ -366,6 +383,7 @@ func add_contact_shadow(parent: Node3D, size: Vector2) -> void:
 	mark.mesh = contact_mesh
 	mark.material_override = contact_material
 	mark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mark.visibility_range_end = 35.0
 	mark.position = Vector3(0.11, 0.035, 0.07)
 	mark.scale = Vector3(size.x, 1.0, size.y)
 	parent.add_child(mark)

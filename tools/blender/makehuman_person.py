@@ -423,12 +423,11 @@ def _convert_to_harbor_51_rig(name, rig, parts, height):
     return mesh_obj, rig
 
 
-def _cap_scene_textures():
+def _cap_scene_textures(skin_images, skin_resolution):
     for img in bpy.data.images:
         if img.size[0] == 0 or img.size[1] == 0:
             continue
-        stem = os.path.splitext(img.name)[0].lower()
-        limit = 1024 if "skin" in stem or "diffuse" in stem else 512
+        limit = skin_resolution if img in skin_images else skin_resolution // 2
         if img.size[0] > limit or img.size[1] > limit:
             ratio = limit / max(img.size)
             img.scale(max(1, round(img.size[0] * ratio)), max(1, round(img.size[1] * ratio)))
@@ -451,6 +450,7 @@ def build_makehuman_person(
     glasses_name=None,
     glasses_rgb=(0.66, 0.50, 0.22),
     glasses_mat_name=None,
+    skin_resolution=512,
 ):
     """Build a distinct MakeHuman character mapped onto Harbor's 51-bone rig."""
     services = _load_mpfb()
@@ -576,7 +576,9 @@ def build_makehuman_person(
         mat.use_backface_culling = False
 
     bm_obj.material_slots[0].material.name = f"{name}_skin"
-    _make_opaque(bm_obj.material_slots[0].material, roughness=0.58)
+    skin_material = bm_obj.material_slots[0].material
+    _make_opaque(skin_material, roughness=0.58)
+    skin_images = {node.image for node in skin_material.node_tree.nodes if node.type == "TEX_IMAGE" and node.image}
     teeth_obj.material_slots[0].material.name = f"{name}_teeth"
     _make_opaque(teeth_obj.material_slots[0].material, roughness=0.25)
 
@@ -596,8 +598,43 @@ def build_makehuman_person(
     all_parts = [bm_obj, eye_obj, teeth_obj, brow_obj, hair_obj, *garment_objs, shoes_obj, *extra_parts]
     mesh_obj, rig = _convert_to_harbor_51_rig(name, rig, all_parts, height=height)
 
-    _cap_scene_textures()
+    _cap_scene_textures(skin_images, skin_resolution)
     return rig, mesh_obj
+
+
+def build_rook_courier():
+    """Rook in a sea-green jacket, slate trousers and dark riding shoes."""
+    return build_makehuman_person(
+        name="chr_rook_courier",
+        height=1.82,
+        macro={
+            "gender": 1.0,
+            "age": 0.33,
+            "muscle": 0.58,
+            "weight": 0.37,
+            "proportions": 0.53,
+            "height": 0.66,
+            "cupsize": 0.5,
+            "firmness": 0.5,
+            "race": {"asian": 0.72, "caucasian": 0.22, "african": 0.06},
+        },
+        skin_name="young_asian_male",
+        eye_color="bluegreen",
+        eyebrow_name="eyebrow004",
+        hair_name="short01",
+        hair_rgb=(0.04, 0.04, 0.05),
+        garments=[{
+            "asset": "male_casualsuit03",
+            "rules": [
+                ("rook_seagreen_jacket", (0.055, 0.29, 0.26), 0.62, lambda fc, z0, z1: z1 > 1.10 and fc > 500),
+                ("rook_slate_trousers", (0.095, 0.13, 0.16), 0.84, lambda fc, z0, z1: z1 <= 1.10),
+                ("rook_sand_trim", (0.51, 0.38, 0.23), 0.79, lambda fc, z0, z1: True),
+            ],
+        }],
+        shoes_name="shoes03",
+        shoes_rgb=(0.09, 0.09, 0.10),
+        skin_resolution=1024,
+    )
 
 
 def build_amara_cole(name="chr_calloway_amara", height=1.69):

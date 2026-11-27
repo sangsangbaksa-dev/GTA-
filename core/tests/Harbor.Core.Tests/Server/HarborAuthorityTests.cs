@@ -497,6 +497,34 @@ public sealed class HarborAuthorityTests
         Assert.True(pilot.State.PoliceHasContact);
     }
 
+    [Fact]
+    public void ParkedVehicleStopsWalkingAndTheCameraButCanStillBeEnteredAndExited()
+    {
+        var game = new Harness(singlePlayer: true, sandbox: true, streetOverride: new StreetPopulationDef());
+        var pilot = game.Join("Rook");
+        var car = game.Authority.Vehicle;
+        var behind = car.Position + new Vec3d(0, 0, 4);
+        pilot.Actor.Position = behind;
+        Assert.InRange(game.Authority.CameraObstruction(pilot.Actor.Id, behind + Vec3d.Up, new Vec3d(0, 0, -1), 6),
+            4 - car.Shape.HalfLength - 0.001, 4 - car.Shape.HalfLength + 0.001);
+
+        pilot.Forward = 1;
+        game.Ticks(75);
+        pilot.Forward = 0;
+        var gap = pilot.Actor.Position.Z - car.Position.Z;
+        var solidDistance = car.Shape.HalfLength + game.Authority.Session.MovementConfig.Radius;
+        Assert.InRange(gap, solidDistance, solidDistance + 0.04);
+        Assert.True(pilot.State.CanEnterVehicle);
+        Assert.Equal(0, pilot.Actor.Move.Velocity.Z, 5);
+
+        game.Press(pilot, InputButtons.Vehicle);
+        Assert.True(pilot.State.IsDriving);
+        Assert.Equal(6, game.Authority.CameraObstruction(pilot.Actor.Id, car.Position + Vec3d.Up, new Vec3d(0, 0, 1), 6));
+        game.Press(pilot, InputButtons.Vehicle);
+        Assert.False(pilot.State.IsDriving);
+        Assert.True(System.Math.Abs(pilot.Actor.Position.X - car.Position.X) > car.Shape.HalfWidth);
+    }
+
     private sealed class Harness
     {
         private const double Step = 1.0 / 30.0;

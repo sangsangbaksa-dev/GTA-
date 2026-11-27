@@ -225,10 +225,23 @@ function prefersLowDetail() {
   return Boolean(software || input.coarse.matches);
 }
 
-async function startGodot() {
+async function startGodot(simulationReady) {
   let ready;
   const initialized = new Promise(resolve => { ready = resolve; });
   const lowDetail = prefersLowDetail();
+  const maxRenderScale = lowDetail ? 0.65 : Math.min(window.devicePixelRatio || 1, 1.5);
+  let renderScale = maxRenderScale;
+  let slowSamples = 0;
+  let fastSamples = 0;
+  const resize = () => {
+    const width = Math.max(1, Math.round(canvas.clientWidth * renderScale));
+    const height = Math.max(1, Math.round(canvas.clientHeight * renderScale));
+    if (canvas.width !== width) canvas.width = width;
+    if (canvas.height !== height) canvas.height = height;
+  };
+  resize();
+  const viewportObserver = new ResizeObserver(resize);
+  viewportObserver.observe(canvas);
   globalThis.harborView = {
     ready,
     lowDetail: () => lowDetail,
@@ -238,6 +251,16 @@ async function startGodot() {
     frame: () => serializedFrame,
     frameVersion: () => frameVersion,
     sessionId: () => sessionId,
+    tuneResolution(fps) {
+      slowSamples = fps < 28 ? slowSamples + 1 : 0;
+      fastSamples = fps >= 53 ? fastSamples + 1 : 0;
+      if (slowSamples < 2 && fastSamples < 4) return;
+      const next = Math.max(0.5, Math.min(maxRenderScale, renderScale + (slowSamples >= 2 ? -0.15 : 0.1)));
+      slowSamples = fastSamples = 0;
+      if (next === renderScale) return;
+      renderScale = next;
+      resize();
+    },
     showClock(minute) {
       const time = [Math.floor(minute / 60), minute % 60].map(part => String(part).padStart(2, '0')).join(':');
       worldClock.dateTime = time;
@@ -272,17 +295,16 @@ async function startGodot() {
   });
   const engine = new globalThis.Engine({
     canvas,
-    executable,
-    mainPack: executable + '.pck',
     focusCanvas: false,
-    canvasResizePolicy: 2,
+    canvasResizePolicy: 0,
     ensureCrossOriginIsolationHeaders: false,
-  });
-  await engine.startGame({
     onProgress(current, total) {
       if (total > 0) status.textContent = '3D 도시 불러오는 중 · ' + Math.floor(current / total * 100) + '%';
     },
   });
+  const pack = executable + '.pck';
+  await Promise.all([simulationReady, engine.init(executable), engine.preloadFile(pack, pack)]);
+  await engine.start({ args: ['--main-pack', pack] });
   let timer;
   try {
     await Promise.race([
@@ -295,7 +317,7 @@ async function startGodot() {
   canvas.dataset.engine = 'godot';
 }
 
-async function initialize() {
+async function initializeSimulation() {
   const runtimePath = assetUrl('runtime/_framework/dotnet.js');
   const [runtime, plan] = await Promise.all([
     import(/* @vite-ignore */ runtimePath).then(({ dotnet }) => dotnet.create()),
@@ -306,7 +328,11 @@ async function initialize() {
   api = exports.Harbor.Browser.BrowserHarbor;
   replaceFrame(api.Start());
   chart = createChart(layout, byId('radar'), byId('atlas'), byId('map-legend'), byId('map-interiors'));
-  await startGodot();
+}
+
+async function initialize() {
+  const simulationReady = initializeSimulation();
+  await Promise.all([simulationReady, startGodot(simulationReady)]);
   start.textContent = '도시로 들어가기';
   status.textContent = input.coarse.matches ? '화면을 드래그해 둘러보세요.' : 'WASD 이동 · Space 점프 · 마우스 카메라 · F 차량 · M 지도';
   start.disabled = false;

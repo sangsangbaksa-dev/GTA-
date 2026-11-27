@@ -14,7 +14,7 @@ public partial class CombatPresentation : Node3D
     private const string AssetRoot = "res://assets/";
     private static readonly (string Preferred, string Fallback)[] CharacterPaths =
     {
-        ("chr_harbor_rook", "chr_player_rook"),
+        ("chr_rook_courier", "chr_player_rook"),
         ("chr_harbor_crew", "chr_enemy_gunman"),
         ("chr_harbor_officer", "chr_enemy_enforcer")
     };

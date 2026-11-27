@@ -102,14 +102,17 @@ public sealed class HarborAuthority
     public double? BestTime { get; private set; }
 
     private readonly HarborFleet _fleet;
+    private readonly bool _replicateState;
     private readonly Dictionary<int, int> _players = new();
     private long _lastPublishedTick = -1;
     private int _runGeneration = 1;
 
     public HarborAuthority(GameData combatData, HarborLockdownDef encounter, HarborLayout layout,
         ArcadeVehicleTuning vehicleTuning, ITransport transport, ILog log, int maxPlayers = 1,
-        HarborJobCatalog? jobs = null, StreetPopulationDef? ambient = null, VehicleCatalog? vehicles = null, bool sandbox = false)
+        HarborJobCatalog? jobs = null, StreetPopulationDef? ambient = null, VehicleCatalog? vehicles = null, bool sandbox = false,
+        bool replicateState = true)
     {
+        _replicateState = replicateState;
         Level = layout.CreateStaticWorld();
         World = new SimWorld(log);
         Session = World.AddSystem(new ServerSession(transport,
@@ -130,6 +133,7 @@ public sealed class HarborAuthority
         Lockdown.Jobs = Jobs;
         Session.ShouldApplyMovement = actor => !_fleet.IsDriving(actor.Id)
             && Lockdown.Phase is not (LockdownPhase.Succeeded or LockdownPhase.Failed);
+        Session.ResolveMovementContacts = actor => _fleet.ResolvePedestrianContacts(actor, Session.MovementConfig);
         var events = World.Events;
         events.Subscribe<PlayerJoined>(OnJoined);
         events.Subscribe<PlayerLeft>(OnLeft);
@@ -144,10 +148,13 @@ public sealed class HarborAuthority
         World.Update(delta);
         if (Lockdown.Phase == LockdownPhase.Succeeded && (BestTime is null || Lockdown.Elapsed < BestTime))
             BestTime = Lockdown.Elapsed;
-        if (_players.Count > 0 && Session.Tick - _lastPublishedTick >= 2) PublishState();
+        if (_replicateState && _players.Count > 0 && Session.Tick - _lastPublishedTick >= 2) PublishState();
     }
 
     public HarborVehicleState GetPlayerVehicle(int actorId) => (_fleet.Driving(actorId) ?? _fleet.Starter).State;
+
+    public double CameraObstruction(int actorId, Vec3d origin, Vec3d direction, double distance) =>
+        _fleet.CameraObstruction(actorId, origin, direction.Normalized(), Level.CameraObstruction(origin, direction, distance));
 
     public HarborState GetState(int actorId)
     {

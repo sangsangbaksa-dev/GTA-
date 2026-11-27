@@ -2,6 +2,7 @@ using Harbor.Core.Data;
 using Harbor.Core.Geometry;
 using Harbor.Core.Math;
 using Harbor.Core.Ports;
+using Harbor.Core.Sim;
 using M = System.Math;
 
 namespace Harbor.Core.Vehicles;
@@ -158,6 +159,49 @@ public sealed class ArcadeVehicle
         bool Intersects(Vec3d axis) =>
             M.Abs(axis.Dot(offset)) < M.Abs(axis.Dot(aForward)) * aShape.HalfLength + M.Abs(axis.Dot(aRight)) * aShape.HalfWidth
                                 + M.Abs(axis.Dot(bForward)) * bShape.HalfLength + M.Abs(axis.Dot(bRight)) * bShape.HalfWidth;
+    }
+
+    internal static void ResolvePedestrianContact(ref MoveState move, MovementConfig config, Vec3d pivot, double yaw, VehicleShape shape)
+    {
+        var relative = move.Position - pivot;
+        var radius = config.Radius + 0.015;
+        var reach = shape.HalfLength + shape.HalfWidth + radius;
+        if (relative.Y >= shape.RoofHeight || relative.Y + config.Height <= 0.12
+            || relative.WithY(0).LengthSquared >= reach * reach) return;
+
+        var forward = Vec3d.FromYawPitch(yaw, 0);
+        var right = new Vec3d(-forward.Z, 0, forward.X);
+        var x = relative.Dot(right);
+        var z = relative.Dot(forward);
+        var dx = x - M.Clamp(x, -shape.HalfWidth, shape.HalfWidth);
+        var dz = z - M.Clamp(z, -shape.HalfLength, shape.HalfLength);
+        var squared = dx * dx + dz * dz;
+        if (squared >= radius * radius) return;
+
+        var edgeX = shape.HalfWidth - M.Abs(x);
+        var edgeZ = shape.HalfLength - M.Abs(z);
+        var distance = M.Sqrt(squared);
+        var outward = distance > 1e-8 ? (right * dx + forward * dz) / distance
+            : edgeX < edgeZ ? right * (x < 0 ? -1 : 1) : forward * (z < 0 ? -1 : 1);
+        var separation = distance > 1e-8 ? radius - distance : radius + M.Min(edgeX, edgeZ);
+        move.Position += outward * separation;
+        var inwardSpeed = move.Velocity.Dot(outward);
+        if (inwardSpeed < 0) move.Velocity -= outward * inwardSpeed;
+    }
+
+    internal static double CameraObstruction(Vec3d origin, Vec3d direction, double distance, Vec3d pivot, double yaw, VehicleShape shape)
+    {
+        var offset = origin - pivot;
+        var reach = distance + shape.HalfLength + shape.HalfWidth;
+        if (offset.WithY(0).LengthSquared > reach * reach) return distance;
+
+        var forward = Vec3d.FromYawPitch(yaw, 0);
+        var right = new Vec3d(-forward.Z, 0, forward.X);
+        var localOrigin = new Vec3d(offset.Dot(right), offset.Y, offset.Dot(forward));
+        var localDirection = new Vec3d(direction.Dot(right), direction.Y, direction.Dot(forward));
+        var body = new Aabb(new Vec3d(-shape.HalfWidth, 0.12, -shape.HalfLength),
+            new Vec3d(shape.HalfWidth, shape.RoofHeight, shape.HalfLength));
+        return body.Raycast(localOrigin, localDirection, distance, out var hit, out _) && hit > 0.001 ? hit : distance;
     }
 
     private static bool Separated(Vec3d offset, Vec3d extent, Vec3d axis, double halfSize) =>

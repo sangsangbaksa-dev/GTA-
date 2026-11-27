@@ -50,7 +50,7 @@ public static partial class BrowserHarbor
         _network = new InMemoryNetwork { LatencySeconds = 0 };
         var endpoint = _network.CreateServer();
         _authority = new HarborAuthority(Data.Value, Encounter.Value, Layout.Value, Tuning.Value, endpoint,
-            new BrowserLog(), ambient: Population.Value, vehicles: Vehicles.Value, sandbox: true);
+            new BrowserLog(), ambient: Population.Value, vehicles: Vehicles.Value, sandbox: true, replicateState: false);
         _client = new ClientSession(_network.Connect(endpoint), "Rook", staticWorld: _authority.Level, interpolationDelayTicks: 0);
         _presses = _held = InputButtons.None;
         _right = _forward = _yaw = _pitch = 0;
@@ -79,7 +79,7 @@ public static partial class BrowserHarbor
     [JSExport]
     public static double CameraDistance(double x, double y, double z, double dx, double dy, double dz, double distance)
     {
-        var available = _authority.Level.CameraObstruction(new Vec3d(x, y, z), new Vec3d(dx, dy, dz), distance);
+        var available = _authority.CameraObstruction(_client.LocalActorId, new Vec3d(x, y, z), new Vec3d(dx, dy, dz), distance);
         return available < distance ? System.Math.Max(0.12, available - 0.22) : distance;
     }
 

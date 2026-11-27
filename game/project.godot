@@ -31,3 +31,10 @@ common/physics_ticks_per_second=60
 
 renderer/rendering_method="forward_plus"
 anti_aliasing/quality/screen_space_aa=1
+
+[shader_globals]
+
+harbor_reduced_effects={
+"type": "bool",
+"value": false
+}

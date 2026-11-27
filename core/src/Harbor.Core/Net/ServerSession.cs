@@ -39,6 +39,7 @@ public sealed class ServerSession(ITransport transport, ServerConfig? config = n
     public MovementConfig MovementConfig { get; } = movement ?? new MovementConfig();
     public StaticWorld? StaticWorld { get; } = staticWorld;
     public Func<Actor, bool>? ShouldApplyMovement { get; set; }
+    public Action<Actor>? ResolveMovementContacts { get; set; }
     public LagCompHistory History { get; private set; } = null!;
     public long Tick { get; private set; }
     public int MaxRewindTicks { get; private set; }
@@ -179,7 +180,10 @@ public sealed class ServerSession(ITransport transport, ServerConfig? config = n
         c.LastInput = cmd;
         var mods = Movement.ModifiersFor(actor.Status, MovementConfig);
         if (ShouldApplyMovement?.Invoke(actor) != false)
+        {
             Movement.Step(ref actor.Move, cmd, dt, MovementConfig, mods, StaticWorld);
+            ResolveMovementContacts?.Invoke(actor);
+        }
         if (fresh)
         {
             var view = History.ClampTick(cmd.ViewTick, Tick, MaxRewindTicks);

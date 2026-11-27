@@ -131,7 +131,7 @@ public static class Movement
 
     /// <summary>Pushes the actor's cylinder out of static boxes (up to 3 iterations) and removes
     /// velocity into the contact normal so the actor slides along cover.</summary>
-    private static void ResolveCollisions(ref MoveState s, MovementConfig cfg, StaticWorld world)
+    internal static void ResolveCollisions(ref MoveState s, MovementConfig cfg, StaticWorld world)
     {
         var r = cfg.Radius;
         for (var iter = 0; iter < 3; iter++)

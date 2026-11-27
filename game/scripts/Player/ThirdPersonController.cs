@@ -48,7 +48,7 @@ public partial class ThirdPersonController : Node3D
     [Export] public float GamepadLookSpeed { get; set; } = 2.4f;
     [Export] public float CameraDistance { get; set; } = 4.25f;
     [Export(PropertyHint.File, "*.glb,*.tscn")]
-    public string ModelPath { get; set; } = "res://assets/characters/chr_harbor_rook.glb";
+    public string ModelPath { get; set; } = "res://assets/characters/chr_rook_courier.glb";
 
     private CoreHost _host = null!;
     private Node3D _avatar = null!;

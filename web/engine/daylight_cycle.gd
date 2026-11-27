@@ -19,7 +19,10 @@ func setup(world: Node3D, reduced: bool) -> void:
 		# The packed resource is shared; duplicate it before changing it.
 		env.environment = env.environment.duplicate() as Environment
 		atmosphere = env.environment
-		if atmosphere.sky != null:
+		if reduced:
+			atmosphere.background_mode = Environment.BG_COLOR
+			atmosphere.sky = null
+		elif atmosphere.sky != null:
 			atmosphere.sky = atmosphere.sky.duplicate() as Sky
 			if atmosphere.sky.sky_material is ProceduralSkyMaterial:
 				sky_material = atmosphere.sky.sky_material.duplicate() as ProceduralSkyMaterial
@@ -53,6 +56,8 @@ func apply() -> void:
 		atmosphere.ambient_light_energy = lerpf(0.27, 0.60, day)
 		atmosphere.fog_light_color = fog
 		atmosphere.fog_density = lerpf(0.0031, 0.00255 if low_detail else 0.00195, day)
+		if low_detail:
+			atmosphere.background_color = Color("#1c2e46").lerp(Color("#87adc4"), day).lerp(Color("#bf8d7e"), dusk * 0.65)
 	# Keep sky rebuilds infrequent: each quantized 20-minute time bucket.
 	if sky_material != null and (last_hour < 0.0 or absf(hour - last_hour) >= 1.0 / 3.0):
 		last_hour = hour

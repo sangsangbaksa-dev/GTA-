@@ -15,7 +15,7 @@ public partial class HarborRoster : CenterContainer
     private static readonly Role[] People =
     {
         new("Rook", "Courier", "Rook takes the jobs that move between the port and the city.",
-            "chr_harbor_rook", "chr_player_rook"),
+            "chr_rook_courier", "chr_player_rook"),
         new("Mara Vale", "Port Officer", "Vale works patrol across the quays and bridge approaches.",
             "chr_harbor_officer", "chr_enemy_enforcer"),
         new("Niko Voss", "Rival Crew", "Voss runs his crew between the yards and the market streets.",
