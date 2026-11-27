@@ -1,0 +1,33 @@
+name: Publish verified Harbor living streets bundle
+on:
+  push:
+    branches: [codex/publish-harbor-living-streets-20261127]
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retrieve successful browser CI artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api /repos/sangsangbaksa-dev/GTA-/actions/artifacts/15174230438/zip > harbor-web-living-streets.zip
+          echo '9504b074ce14c7bd29e5e4b5c864ac9376778c8c2c547b7f6d4e1caacfd64734  harbor-web-living-streets.zip' | sha256sum --check
+          unzip -tq harbor-web-living-streets.zip
+          unzip -p harbor-web-living-streets.zip index.html | grep -q 'sandbox-extras.js'
+      - name: Publish immutable browser bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: sangsangbaksa-dev/GTA-
+        run: |
+          set -euo pipefail
+          tag=harbor-web-living-streets-20261127
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release already exists; refusing to overwrite"
+            exit 1
+          fi
+          gh release create "$tag" harbor-web-living-streets.zip --target cf1f8b4c60a3f079d3412793c8cd8d7b75b931b3 --title "Harbor living streets browser bundle" --notes "Verified artifact from successful CI run 45943567719. SHA256: 9504b074ce14c7bd29e5e4b5c864ac9376778c8c2c547b7f6d4e1caacfd64734." --prerelease
