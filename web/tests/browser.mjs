@@ -87,6 +87,21 @@ try {
   const interiors = await page.locator('#map-interiors').textContent();
   for (const name of ['Customs Exchange Cafe', 'Atlantic Repair', 'Alderwash Lodge'])
     assert.ok(interiors.includes(name), name + ' appears on the map');
+  // The supplemental activity interface must be present in the actual shipping browser build.
+  const cityPanel = page.locator('#harbor-city-activities');
+  await cityPanel.locator('summary').click();
+  const activity = cityPanel.getByRole('combobox', { name: '도시 생활 활동' });
+  await page.waitForFunction(() => document.querySelector('#harbor-city-activities select')?.options.length === 37);
+  assert.equal(await activity.locator('optgroup').count(), 4);
+  await activity.selectOption('survey|alder_ridge');
+  await cityPanel.getByRole('button', { name: '활동 선택' }).click();
+  assert.equal(await cityPanel.getByRole('button', { name: '활동 종료' }).isEnabled(), true);
+  await page.getByRole('button', { name: '지도 닫기' }).click({ noWaitAfter: true });
+  await page.locator('#city-activity-hud').waitFor();
+  assert.match(await page.locator('#city-activity-hud').textContent(), /Alder Ridge/);
+  await page.keyboard.press('m');
+  await cityPanel.getByRole('button', { name: '활동 종료' }).click();
+  assert.equal(await cityPanel.getByRole('button', { name: '활동 종료' }).isEnabled(), false);
   if (process.env.HARBOR_SHOTS) await page.screenshot({ path: process.env.HARBOR_SHOTS + '-map.png' });
   await page.getByRole('button', { name: '지도 닫기' }).click({ noWaitAfter: true });
   await page.locator('#hud').waitFor();
