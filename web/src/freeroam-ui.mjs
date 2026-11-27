@@ -1,3 +1,4 @@
+import './drive-audio-ui.mjs';
 import { createFreeRoam } from './freeroam-domain.mjs';
 function installFreeRoam(createFreeRoam) {
   const key="harbor.freeroam.v1";
