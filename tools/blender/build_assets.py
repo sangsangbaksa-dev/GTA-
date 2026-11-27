@@ -134,13 +134,21 @@ def empty(name, loc, parent=None):
 
 def export(path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    bpy.ops.export_scene.gltf(
+    has_nla = any(
+        o.type == "ARMATURE" and o.animation_data and len(o.animation_data.nla_tracks) > 0
+        for o in bpy.context.scene.objects
+    )
+    export_kwargs = dict(
         filepath=path,
         export_format="GLB",
-        export_apply=True,
+        export_apply=not has_nla,
         export_yup=True,
-        export_animations=False,
+        export_animations=has_nla,
     )
+    if has_nla:
+        export_kwargs["export_animation_mode"] = "NLA_TRACKS"
+        export_kwargs["export_force_sampling"] = False
+    bpy.ops.export_scene.gltf(**export_kwargs)
     print(f"[harbor] wrote {path}")
 
 

@@ -106,7 +106,7 @@ public partial class ActorViews(GameSession session) : Node3D
         v = new CharacterView { ActorId = id, Name = $"Actor{id}" };
         AddChild(v);
         var info = session.State.Actors.GetValueOrDefault(id);
-        var model = info.Model is { Length: > 0 } m && m.StartsWith("chr_") ? m : kind == ActorKind.Player ? "chr_player_rook" : "chr_enemy_gunman";
+        var model = info.Model is { Length: > 0 } m && m.StartsWith("chr_") ? m : kind == ActorKind.Player ? "chr_harbor_clerk" : "chr_enemy_gunman";
         v.SetModel(model);
         if (kind == ActorKind.Player)
         {

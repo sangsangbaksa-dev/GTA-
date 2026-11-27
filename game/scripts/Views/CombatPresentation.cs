@@ -14,7 +14,7 @@ public partial class CombatPresentation : Node3D
     private const string AssetRoot = "res://assets/";
     private static readonly (string Preferred, string Fallback)[] CharacterPaths =
     {
-        ("chr_harbor_rook", "chr_player_rook"),
+        ("chr_harbor_clerk", "chr_player_rook"),
         ("chr_harbor_crew", "chr_enemy_gunman"),
         ("chr_harbor_officer", "chr_enemy_enforcer")
     };
@@ -43,6 +43,7 @@ public partial class CombatPresentation : Node3D
     private string _weaponId = "";
     private float _playerFlinch;
     private float _weaponKick;
+    private float _combatHoldLeft;
     private float _stepDistance;
     private Vector3? _lastPlayerPosition;
     private bool _reloading;
@@ -153,6 +154,7 @@ public partial class CombatPresentation : Node3D
         _lastPlayerPosition = null;
         _stepDistance = 0;
         _weaponKick = 0;
+        _combatHoldLeft = 0;
         _playerFlinch = 0;
         _weaponId = "";
         _reloading = false;
@@ -241,13 +243,21 @@ public partial class CombatPresentation : Node3D
 
         _weaponKick = Mathf.MoveToward(_weaponKick, 0, dt * 5.6f);
         _playerFlinch = Mathf.MoveToward(_playerFlinch, 0, dt * 6.5f);
+        if (_player.IsDancing || _player.IsSprinting)
+            _combatHoldLeft = 0;
+        else if (_player.IsAiming || _weaponKick > 0.01f || _reloading)
+            _combatHoldLeft = 1.35f;
+        else
+            _combatHoldLeft = Mathf.Max(0, _combatHoldLeft - dt);
+
         if (!_host.IsDriving)
         {
             var camera = _player.Camera;
             var raised = _player.IsAiming ? 1f : _weaponKick > 0 ? 0.86f : _player.IsSprinting ? 0.10f : 0.31f;
             var pitch = _player.IsAiming || _weaponKick > 0 ? camera.GlobalRotation.X : 0;
+            var engageWeight = _combatHoldLeft > 0 ? 1f : 0f;
             _playerPose?.Update(raised, pitch, _weaponKick, (_reloading ? 1f : 0) + _playerFlinch * 0.22f,
-                status.Health <= 0, blend);
+                status.Health <= 0, blend, engageWeight);
         }
 
         var position = CoreHost.ToGodot(_host.RenderPosition);
@@ -540,6 +550,7 @@ public partial class CombatPresentation : Node3D
         private float _raised;
         private float _pitch;
         private float _reload;
+        private float _engage = 1f;
         public Vector3? MuzzlePosition => _muzzle is { } muzzle && muzzle.IsVisibleInTree()
             ? muzzle.GlobalPosition
             : null;
@@ -578,12 +589,29 @@ public partial class CombatPresentation : Node3D
             _foregrip = _weapon.FindChild("grip_off", recursive: true, owned: false) as Node3D;
         }
 
-        public void Update(float raised, float pitch, float kick, float reload, bool hidden, float blend)
+        public void Update(float raised, float pitch, float kick, float reload, bool hidden, float blend, float weight = 1f)
         {
             if (_weapon == null || _right.Upper < 0 || _left.Upper < 0) return;
 
-            _weapon.Visible = !hidden;
-            if (hidden) return;
+            _engage = Mathf.Lerp(_engage, hidden ? 0f : weight, blend);
+            if (hidden || _engage <= 0.015f)
+            {
+                _weapon.Visible = false;
+                return;
+            }
+            _weapon.Visible = true;
+
+            Quaternion rUp0 = default, rFo0 = default, rHa0 = default, lUp0 = default, lFo0 = default, lHa0 = default;
+            var partial = _engage < 0.999f;
+            if (partial)
+            {
+                rUp0 = _rig.GetBonePoseRotation(_right.Upper);
+                rFo0 = _rig.GetBonePoseRotation(_right.Fore);
+                rHa0 = _rig.GetBonePoseRotation(_right.Hand);
+                lUp0 = _rig.GetBonePoseRotation(_left.Upper);
+                lFo0 = _rig.GetBonePoseRotation(_left.Fore);
+                lHa0 = _rig.GetBonePoseRotation(_left.Hand);
+            }
 
             _raised = Mathf.Lerp(_raised, raised, blend);
             _pitch = Mathf.Lerp(_pitch, pitch, blend);
@@ -610,6 +638,19 @@ public partial class CombatPresentation : Node3D
                 : rightHand + new Vector3(-rightSign * 0.05f, -0.035f, 0.027f);
             support = support.Lerp(new Vector3(-rightSign * 0.26f, 1.04f * _torsoRatio + hipShift, 0.16f), _reload * 0.9f);
             Solve(_left, support - weaponBasis.Z * 0.063f, new Vector3(-rightSign * 0.95f, -1, -0.20f), weaponBasis.Z);
+
+            if (partial)
+            {
+                BlendArm(_right, rUp0, rFo0, rHa0, _engage);
+                BlendArm(_left, lUp0, lFo0, lHa0, _engage);
+            }
+        }
+
+        private void BlendArm(Arm arm, Quaternion up0, Quaternion fo0, Quaternion ha0, float w)
+        {
+            _rig.SetBonePoseRotation(arm.Upper, up0.Slerp(_rig.GetBonePoseRotation(arm.Upper), w));
+            _rig.SetBonePoseRotation(arm.Fore, fo0.Slerp(_rig.GetBonePoseRotation(arm.Fore), w));
+            _rig.SetBonePoseRotation(arm.Hand, ha0.Slerp(_rig.GetBonePoseRotation(arm.Hand), w));
         }
 
         private void HoldShield(float side)

@@ -21,7 +21,7 @@ blender -b --factory-startup -P tools/blender/build_vehicles.py -- \
 
 - 소품 전체 목록은 **sangsangbaksa-dev/Set**의 `props/`에서 관리한다 (ADR 0003). 부두 소품은 `tools/blender/build_props.py`로 다시 생성하고, 두 저장소의 GLB를 같은 산출물로 갱신한다.
 - 본 이름: `hips, spine, chest, neck, head, shoulder/upper_arm/forearm/hand.{L,R}, {thumb,index,middle,ring,pinky}_{1..3}.{L,R}, thigh/shin/foot/toe.{L,R}` — 애니메이션 리타깃 기준.
-- 캐릭터 제작 방식: `tools/blender/human.py`(메타볼 리메시 절차 생성) 및 `tools/blender/makehuman_person.py`(MPFB2 + CC0 MakeHuman 인체·의상 조합 → 51본 리그 변환, ADR 0008). 로스터는 `characters.py`와 `harbor_people.py`.
-- `chr_harbor_*` 다섯 모델은 `tools/blender/harbor_people.py`에서 같은 51본 골격으로 제작하며 `--only harbor_people` 또는 `--only chr_harbor_clerk`로 내보낸다 (`chr_harbor_clerk` 재생성 전 `bash tools/blender/setup_makehuman.sh` 1회 실행).
+- 캐릭터 제작 방식: `tools/blender/human.py`(전투 적 3종 및 레거시 폴백 절차 생성) 및 `tools/blender/makehuman_person.py` + `mixamo_mocap.py`(MPFB2 + CC0 MakeHuman 항구 인물 8종 인체·의상 조합 및 주인공 Mixamo 9종 모션 리타겟팅 → 51본 리그 변환, ADR 0008). 로스터는 `characters.py`와 `harbor_people.py`.
+- `chr_harbor_*` 일곱 모델과 `chr_npc_civilian`은 `tools/blender/makehuman_person.py`에서 같은 51본 골격으로 제작하며 `--only harbor_people,chr_npc_civilian` 또는 개별 모델 ID(`--only chr_harbor_clerk` 등)로 내보낸다 (재생성 전 `bash tools/blender/setup_makehuman.sh` 1회 실행).
 - 아트 스타일: 스타일라이즈드 미드폴리 및 MakeHuman CC0 PBR 텍스처 캐릭터. 실존 게임/브랜드 디자인 금지.
 - 미리보기: `docs/art/preview_*.png` (`render_preview.py`), 캐릭터 클로즈업 `docs/art/characters/` (`render_characters.py`).

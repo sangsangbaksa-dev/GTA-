@@ -1,5 +1,6 @@
 using Godot;
 using Harbor.Core.Sim;
+using Harbor.Game.Player;
 
 namespace Harbor.Game.Views;
 
@@ -15,10 +16,13 @@ public partial class CharacterView : Node3D
     private Node3D _pivot = null!;
     private Node3D? _model;
     private CharacterRig? _rig;
+    private MixamoGait? _mixamo;
     private Node3D? _weapon;
     private float _weaponLength = 0.3f;
     private Label3D _tag = null!;
     private float _phase;
+    private float _prevYaw;
+    private float _turnRate;
     private float _deadBlend;
     private float _downBlend;
     private float _crouchBlend;
@@ -42,11 +46,13 @@ public partial class CharacterView : Node3D
         ModelId = modelId;
         _model?.QueueFree();
         _rig = null;
+        _mixamo = null;
         var path = $"res://assets/characters/{modelId}.glb";
         if (!ResourceLoader.Exists(path)) path = "res://assets/characters/chr_npc_civilian.glb";
         _model = GD.Load<PackedScene>(path).Instantiate<Node3D>();
         _model.RotationDegrees = new Vector3(0, 180, 0); // glTF characters face +Z, Godot forward is -Z
         _pivot.AddChild(_model);
+        _mixamo = MixamoGait.Create(_model);
         var sk = FindSkeleton(_model);
         if (sk != null) _rig = new CharacterRig(sk, _model);
     }
@@ -102,6 +108,16 @@ public partial class CharacterView : Node3D
         var speed = new Vector2(local.X, local.Z).Length();
         var fwdSpeed = -local.Z; // node forward is -Z
         var sprint = (flags & ActorFlags.Sprinting) != 0;
+        var rawTurn = dt > 0.0001f ? Mathf.AngleDifference(_prevYaw, yaw) / dt : 0f;
+        _prevYaw = yaw;
+        _turnRate = Mathf.Lerp(_turnRate, rawTurn, 1f - Mathf.Exp(-14f * dt));
+
+        if (_mixamo != null && _deadBlend < 0.01f && _downBlend < 0.01f && _aimBlend < 0.05f)
+        {
+            _mixamo.Update(speed, (flags & ActorFlags.Crouched) != 0, sprint, false, _turnRate, fwdSpeed < -0.3f, dt);
+            if (_weapon != null) _weapon.Visible = false;
+            return;
+        }
         _phase += dt * (speed > 0.2f ? 2.1f + speed * 0.95f : 0) * (fwdSpeed >= -0.3f ? 1 : -1);
         var amp = Mathf.Clamp(speed / 6.2f, 0, 1) * (sprint ? 0.75f : 0.55f) * (1 - _crouchBlend * 0.5f);
         var sL = Mathf.Sin(_phase) * amp;

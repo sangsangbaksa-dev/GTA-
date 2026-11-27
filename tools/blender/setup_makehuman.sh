@@ -52,3 +52,11 @@ for zp in sorted(glob.glob(os.path.join(os.environ.get("MAKEHUMAN_CACHE_DIR", "/
 S["AssetService"].update_all_asset_lists()
 print("[makehuman] ready:", user_data)
 '
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+"${BLENDER_BIN}" -b --factory-startup --python-expr "
+import sys
+sys.path.insert(0, '${SCRIPT_DIR}')
+import mixamo_mocap
+print('[mixamo] cached:', mixamo_mocap.ensure_mixamo_cache())
+"

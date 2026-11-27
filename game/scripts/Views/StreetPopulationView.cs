@@ -16,8 +16,9 @@ public partial class StreetPopulationView : Node3D
     private readonly List<int> _expired = new();
     private CoreHost _host = null!;
     private PackedScene? _dockhand;
-    private PackedScene? _clerk;
+    private PackedScene? _stevedore;
     private PackedScene? _civilian;
+    private PackedScene? _broker;
     private PackedScene? _car;
     private int _generation;
 
@@ -25,8 +26,9 @@ public partial class StreetPopulationView : Node3D
     {
         _host = GetNode<CoreHost>("../CoreHost");
         _dockhand = LoadOptional("res://assets/characters/chr_harbor_dockhand.glb");
-        _clerk = LoadOptional("res://assets/characters/chr_harbor_clerk.glb");
+        _stevedore = LoadOptional("res://assets/characters/chr_harbor_stevedore.glb");
         _civilian = LoadOptional("res://assets/characters/chr_npc_civilian.glb");
+        _broker = LoadOptional("res://assets/characters/chr_harbor_broker.glb");
         _car = LoadOptional("res://assets/vehicles/veh_calloway_compact.glb");
     }
 
@@ -93,9 +95,10 @@ public partial class StreetPopulationView : Node3D
         var slot = Mathf.PosMod(appearance, 4);
         var scene = slot switch
         {
-            0 or 2 => _dockhand ?? _clerk ?? _civilian,
-            1 => _clerk ?? _civilian ?? _dockhand,
-            _ => _civilian ?? _clerk ?? _dockhand
+            0 => _dockhand ?? _civilian,
+            1 => _stevedore ?? _dockhand ?? _civilian,
+            2 => _civilian ?? _dockhand,
+            _ => _broker ?? _stevedore ?? _civilian
         };
         if (scene == null) return new Pedestrian(root, null, id);
 
@@ -105,12 +108,14 @@ public partial class StreetPopulationView : Node3D
         model.Scale = Vector3.One * height;
         root.AddChild(model);
 
-        if (scene == _dockhand && slot == 2)
-            Recolor(model, "dockhand_hivis_vermilion", new Color("#c7aa50"));
-        else if (scene == _clerk && (slot == 3 || ((id - 1) / 4) % 2 == 1))
-            Recolor(model, "clerk_ochre_coat", new Color("#3d5a63"));
-        else if (scene == _civilian)
-            Recolor(model, "hoodie_cobalt", slot == 1 ? new Color("#755b72") : new Color("#637e81"));
+        var alternate = ((id - 1) / 4) % 2 == 1;
+        if (alternate)
+        {
+            if (scene == _dockhand) Recolor(model, "dockhand_hivis_vermilion", new Color("#c7aa50"));
+            else if (scene == _stevedore) Recolor(model, "stevedore_mustard_shirt", new Color("#4d7a73"));
+            else if (scene == _civilian) Recolor(model, "hoodie_cobalt", new Color("#755b72"));
+            else if (scene == _broker) Recolor(model, "broker_tweed_jacket", new Color("#2f4652"));
+        }
 
         return new Pedestrian(root, RookGait.Create(model), id);
     }

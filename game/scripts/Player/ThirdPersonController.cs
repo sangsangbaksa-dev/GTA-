@@ -29,6 +29,7 @@ public partial class ThirdPersonController : Node3D
     private const string LookRight = "walk_look_right";
     private const string LookUp = "walk_look_up";
     private const string LookDown = "walk_look_down";
+    private const string Dance = "walk_dance";
     private const float InitialPitch = -0.30f;
     private const string FallbackModelPath = "res://assets/characters/chr_player_rook.glb";
 
@@ -42,15 +43,18 @@ public partial class ThirdPersonController : Node3D
     public bool IsAiming { get; private set; }
     public bool AimHasTarget { get; private set; }
     public bool IsSprinting => _host.HasPlayer && _host.Client.Predicted.Sprinting;
+    public bool IsDancing { get; private set; }
+    public string ActiveClip => _mixamo?.ActiveClip ?? "";
 
     [Export] public float MouseSensitivity { get; set; } = 0.0025f;
     [Export] public float GamepadLookSpeed { get; set; } = 2.4f;
     [Export] public float CameraDistance { get; set; } = 4.25f;
     [Export(PropertyHint.File, "*.glb,*.tscn")]
-    public string ModelPath { get; set; } = "res://assets/characters/chr_harbor_rook.glb";
+    public string ModelPath { get; set; } = "res://assets/characters/chr_harbor_clerk.glb";
 
     private CoreHost _host = null!;
     private Node3D _avatar = null!;
+    private MixamoGait? _mixamo;
     private RookGait? _gait;
     private Camera3D _camera = null!;
     private float _yaw;
@@ -58,6 +62,8 @@ public partial class ThirdPersonController : Node3D
     private float _cameraHeight = 1.55f;
     private float _stride;
     private float _bodyAngle;
+    private float _turnRate;
+    private bool _turnCatchup;
     private float _cameraArm = 1f;
     private int _seenGeneration;
     private byte _selectedSlot;
@@ -93,6 +99,7 @@ public partial class ThirdPersonController : Node3D
         RegisterAction(Brake, KeyBinding(Key.Space), ButtonBinding(JoyButton.A));
         RegisterAction(VehicleThrottle, AxisBinding(JoyAxis.TriggerRight, 1));
         RegisterAction(VehicleReverse, AxisBinding(JoyAxis.TriggerLeft, 1));
+        RegisterAction(Dance, KeyBinding(Key.B), ButtonBinding(JoyButton.DpadDown));
         RegisterAction(Pause, KeyBinding(Key.Escape), ButtonBinding(JoyButton.Start));
 
         _avatar = new Node3D { Name = "Avatar", Visible = false };
@@ -100,10 +107,11 @@ public partial class ThirdPersonController : Node3D
         var path = !string.IsNullOrEmpty(ModelPath) && ResourceLoader.Exists(ModelPath) ? ModelPath : FallbackModelPath;
         if (ResourceLoader.Exists(path) && ResourceLoader.Load<PackedScene>(path) is { } model)
         {
-            var rook = model.Instantiate<Node3D>();
-            rook.Rotation = new Vector3(0, Mathf.Pi, 0);
-            _avatar.AddChild(rook);
-            _gait = RookGait.Create(rook);
+            var protagonist = model.Instantiate<Node3D>();
+            protagonist.Rotation = new Vector3(0, Mathf.Pi, 0);
+            _avatar.AddChild(protagonist);
+            _mixamo = MixamoGait.Create(protagonist);
+            if (_mixamo == null) _gait = RookGait.Create(protagonist);
         }
         else
         {
@@ -128,6 +136,9 @@ public partial class ThirdPersonController : Node3D
         _yaw = 0;
         _pitch = InitialPitch;
         _bodyAngle = 0;
+        _turnRate = 0;
+        _turnCatchup = false;
+        IsDancing = false;
         _stride = 0;
         _cameraHeight = 1.55f;
         _cameraArm = 1f;
@@ -136,6 +147,8 @@ public partial class ThirdPersonController : Node3D
         _selectedSlot = 0;
         _manualOrbitLeft = 0;
     }
+
+    public void SetDancing(bool dancing) => IsDancing = dancing && _host.HasPlayer && !_host.IsDriving;
 
     public override void _Notification(int what)
     {
@@ -179,6 +192,7 @@ public partial class ThirdPersonController : Node3D
             if (@event.IsActionPressed(Primary)) _selectedSlot = 0;
             if (@event.IsActionPressed(Secondary)) _selectedSlot = 1;
             if (@event.IsActionPressed(Cycle)) _selectedSlot = (byte)(1 - _selectedSlot);
+            if (@event.IsActionPressed(Dance) && !_host.IsDriving) IsDancing = !IsDancing;
         }
     }
 
@@ -233,10 +247,34 @@ public partial class ThirdPersonController : Node3D
         var velocity = CoreHost.ToGodot(state.Velocity);
         var blend = 1f - Mathf.Exp(-12f * frame);
         var speed = enabled && !driving ? velocity.Length() : 0;
+        if (driving || IsAiming || state.Crouched || movement.LengthSquared() > 0.04f || speed > 0.25f
+            || (buttons & (InputButtons.Fire | InputButtons.Crouch | InputButtons.Interact | InputButtons.Melee | InputButtons.Carjack)) != 0)
+        {
+            IsDancing = false;
+        }
+
+        var prevBodyAngle = _bodyAngle;
         if (IsAiming || (buttons & InputButtons.Fire) != 0)
+        {
+            _turnCatchup = false;
             _bodyAngle = Mathf.LerpAngle(_bodyAngle, _yaw, blend);
+        }
         else if (speed > 0.15f)
+        {
+            _turnCatchup = false;
             _bodyAngle = Mathf.LerpAngle(_bodyAngle, Mathf.Atan2(-velocity.X, -velocity.Z), blend);
+        }
+        else if (!IsDancing)
+        {
+            var lookDelta = Mathf.Abs(Mathf.AngleDifference(_bodyAngle, _yaw));
+            if (lookDelta > 0.95f) _turnCatchup = true;
+            else if (lookDelta < 0.06f) _turnCatchup = false;
+            if (_turnCatchup)
+                _bodyAngle = Mathf.LerpAngle(_bodyAngle, _yaw, 1f - Mathf.Exp(-5.5f * frame));
+        }
+
+        var rawTurnRate = frame > 0.0001f ? Mathf.AngleDifference(prevBodyAngle, _bodyAngle) / frame : 0f;
+        _turnRate = Mathf.Lerp(_turnRate, rawTurnRate, 1f - Mathf.Exp(-14f * frame));
 
         if (driving != _wasDriving)
         {
@@ -249,7 +287,10 @@ public partial class ThirdPersonController : Node3D
         var cycle = state.Sprinting ? 2.45f : state.Crouched ? 4.45f : 3.35f;
         _stride = Mathf.PosMod(_stride + speed * frame * cycle * (retreating ? -1 : 1), Mathf.Tau);
         var strafe = speed > 0.2f ? Mathf.Clamp(localVelocity.X / speed, -1, 1) : 0;
-        _gait?.Update(_stride, speed, state.Crouched, blend, frame, state.Sprinting, strafe: strafe);
+        if (_mixamo != null)
+            _mixamo.Update(speed, state.Crouched, state.Sprinting, IsDancing, _turnRate, retreating, frame);
+        else
+            _gait?.Update(_stride, speed, state.Crouched, blend, frame, state.Sprinting, strafe: strafe);
         _avatar.GlobalPosition = position;
         _avatar.Rotation = new Vector3(0, _bodyAngle, 0);
 
