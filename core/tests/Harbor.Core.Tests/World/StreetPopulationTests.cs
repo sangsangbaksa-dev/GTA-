@@ -152,6 +152,44 @@ public sealed class StreetPopulationTests
         Assert.True(released.Position.X > 2);
     }
 
+    [Fact]
+    public void AmbientActorsFollowTerrainElevation()
+    {
+        var level = new StaticWorld(terrainElevation: p => 8 + p.X * 0.02);
+        var world = new SimWorld(new NullLog());
+        var population = world.AddSystem(new StreetPopulation(new StreetPopulationDef
+        {
+            PedestrianRoutes = [Path("hill", 1.4, false, [0, 0, 0], [50, 0, 0])],
+            TrafficRoutes = [Path("hill-road", 8, true, [0, 0, 0], [50, 0, 0], [50, 0, 30], [0, 0, 30])],
+            Cargo = [new StreetCargoDef("hill-crate", [25, 0, 0], 10)]
+        }, level));
+        Advance(world, 20);
+        var state = population.GetState();
+        foreach (var p in state.Pedestrians.Select(p => p.Position).Concat(state.Traffic.Select(c => c.Position)).Concat(state.Cargo.Select(c => c.Position)))
+            Assert.InRange(System.Math.Abs(p.Y - level.GroundElevation(p)), 0, 0.02);
+    }
+
+    [Fact]
+    public void PedestrianReactsToApproachingCarButNotSlowOrDistantCar()
+    {
+        var (world, population) = MakeWorld(new StreetPopulationDef
+        {
+            FleeSeconds = 2,
+            PedestrianRoutes = [Path("street", 1.4, false, [0, 0, 0], [150, 0, 0])]
+        });
+        var p = Assert.Single(population.GetState().Pedestrians).Position;
+        population.VehicleThreats = () => [(p + new Vec3d(0, 0, 5), 0.0, 2.0), (p + new Vec3d(0, 6, 5), 0.0, 12.0)];
+        Advance(world, 5);
+        Assert.False(Assert.Single(population.GetState().Pedestrians).Fleeing);
+        p = Assert.Single(population.GetState().Pedestrians).Position;
+        population.VehicleThreats = () => [(p + new Vec3d(0, 0, 5), 0.0, 12.0)];
+        Advance(world, 15);
+        Assert.True(Assert.Single(population.GetState().Pedestrians).Fleeing);
+        population.VehicleThreats = null;
+        Advance(world, 80);
+        Assert.False(Assert.Single(population.GetState().Pedestrians).Fleeing);
+    }
+
     private static StreetRouteDef Path(string id, double speed, bool loop, params double[][] points)
         => new() { Id = id, Count = 1, Speed = speed, Loop = loop, Points = points };
 

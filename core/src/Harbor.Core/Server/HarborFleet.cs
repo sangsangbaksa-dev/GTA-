@@ -37,7 +37,11 @@ internal sealed class HarborFleet
                 catalog.Find(model);
         }
         if (ambient != null)
+        {
             ambient.VehicleObstacles = () => _vehicles.Select(car => (car.Body.Position, car.Model.Shape.HalfLength));
+            ambient.VehicleThreats = () => _vehicles.Where(car => car.DriverId >= 0)
+                .Select(car => (car.Body.Position, car.Body.Yaw, car.Body.Speed));
+        }
     }
 
     public Vehicle Starter { get; }
@@ -160,7 +164,7 @@ internal sealed class HarborFleet
 
     private Vehicle Add(int id, VehicleModel model, Vec3d position, double yaw, int appearance)
     {
-        var car = new Vehicle(id, model, position, yaw, appearance);
+        var car = new Vehicle(id, model, _level.AlignToGround(position), yaw, appearance);
         _vehicles.Add(car);
         return car;
     }

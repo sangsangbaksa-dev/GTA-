@@ -121,7 +121,7 @@ public sealed class HarborAuthority
             UsesDownedState = (_, _) => false,
         });
         var heat = World.AddSystem(new HeatSystem(encounter.Heat));
-        if (ambient != null) Ambient = World.AddSystem(new StreetPopulation(ambient));
+        if (ambient != null) Ambient = World.AddSystem(new StreetPopulation(ambient, Level));
         _fleet = new HarborFleet(encounter, Level, World, vehicles ?? VehicleCatalog.Default(vehicleTuning),
             Ambient, ambient, vehicles != null);
         Lockdown = World.AddSystem(new HarborLockdown(encounter, Combat, Session, Level, heat, _fleet, Ambient, sandbox));
